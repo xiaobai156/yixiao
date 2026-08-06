@@ -1,0 +1,619 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-29T21:51:59.8993782+08:00",
+  "purpose": "V1只读行为与资产基线，供V2迁移和双跑比较",
+  "source": {
+    "root": "C:\\Users\\Administrator\\Desktop\\每天工具\\数据系列\\杀肖-修复版",
+    "git_repository": false,
+    "excluded": [
+      {
+        "relative_path": "近10期对比基准.json",
+        "exists": false,
+        "content_read": false,
+        "hashed": false,
+        "reason": "用户已废弃；V2禁止读取或迁移"
+      }
+    ]
+  },
+  "inventory": {
+    "file_count": 23,
+    "python_count": 6,
+    "test_file_count": 3,
+    "json_count": 8,
+    "batch_count": 4,
+    "aggregate_sha256": "041DDEF5A1884E9B49058A77419DD7F2F459A491BDBC8218C56657F27E6E7EE0",
+    "files": [
+      {
+        "relative_path": "复抓失败.bat",
+        "kind": "batch",
+        "bytes": 1755,
+        "lines": 63,
+        "last_write_utc": "2026-07-12T07:06:19.6704245Z",
+        "sha256": "6DA9D2D35B5ED8D3BA8404674074BE24B4CA00F46A801D85846BEBD70AC72FAB"
+      },
+      {
+        "relative_path": "爬虫-每天杀肖 - 检查重复.bat",
+        "kind": "batch",
+        "bytes": 1019,
+        "lines": 48,
+        "last_write_utc": "2026-05-28T19:02:52.0125498Z",
+        "sha256": "654B443DB305FA23823C13795D8A212FE8EF51E4A988B57F20F93146E5E6EE90"
+      },
+      {
+        "relative_path": "爬虫-每天杀肖-多期.bat",
+        "kind": "batch",
+        "bytes": 1294,
+        "lines": 44,
+        "last_write_utc": "2026-07-29T13:19:31.1278951Z",
+        "sha256": "FA2C73074605EC85FBC6F94A8DF2F24DF79F63C7BA38BEC7B67892B57E51F5DB"
+      },
+      {
+        "relative_path": "爬虫-每天杀肖.bat",
+        "kind": "batch",
+        "bytes": 1212,
+        "lines": 44,
+        "last_write_utc": "2026-07-12T07:06:19.6694147Z",
+        "sha256": "2A7281C24012C5D90CE1EBE4C75EB50EE6C2F682192983032A55818441BCC03A"
+      },
+      {
+        "relative_path": "专属解析规则.generated.json",
+        "kind": "json",
+        "bytes": 331142,
+        "lines": 2105,
+        "last_write_utc": "2026-07-22T07:53:15.2036003Z",
+        "sha256": "5E5D7C01190F4098A7DCF8ACD43EA576B1BFA8E8B082FF798AACEA3D92065B7B"
+      },
+      {
+        "relative_path": "admin_sample.html",
+        "kind": "asset",
+        "bytes": 49008,
+        "lines": 1,
+        "last_write_utc": "2026-07-08T18:32:20.0872107Z",
+        "sha256": "FCA3E9D438B638B5BC63C38A7B9070FF7A03099099D60512BBAF486366B206D3"
+      },
+      {
+        "relative_path": "AGENTS.md",
+        "kind": "asset",
+        "bytes": 20091,
+        "lines": 219,
+        "last_write_utc": "2026-07-29T13:17:57.8969757Z",
+        "sha256": "388CF330C6AEF0F25563D5BB600FFBBA0B7A71B5DC9FB4F7DA0A25FFA478144F"
+      },
+      {
+        "relative_path": "duplicate_site_checker.py",
+        "kind": "python",
+        "bytes": 3133,
+        "lines": 63,
+        "last_write_utc": "2026-07-10T09:15:01.5201656Z",
+        "sha256": "CAFD706D2735A5D8B8FE1E67E79670315CEFB9CA1841CF1BB7498FDDC3B35315"
+      },
+      {
+        "relative_path": "dynamic_record_id_audit.py",
+        "kind": "python",
+        "bytes": 37217,
+        "lines": 977,
+        "last_write_utc": "2026-07-29T13:17:57.8959758Z",
+        "sha256": "2FB17DA8A0C54F45812D4F91A5107499050CA64B2A44CB2AC276DB057B538768"
+      },
+      {
+        "relative_path": "failed_site_validator.py",
+        "kind": "python",
+        "bytes": 84903,
+        "lines": 1805,
+        "last_write_utc": "2026-07-29T11:04:50.2698640Z",
+        "sha256": "FBEE7F32782407CE36A05712D49977CAD04B28D06ED906C66E9C3E17E08F46EA"
+      },
+      {
+        "relative_path": "full_browser_audit.py",
+        "kind": "python",
+        "bytes": 4743,
+        "lines": 130,
+        "last_write_utc": "2026-07-20T06:21:33.9349966Z",
+        "sha256": "C26FF72E1D9B9CAB7406B4DFA4FB225346215ACF2D731F6855235C79BC53FCC2"
+      },
+      {
+        "relative_path": "performance_profile.py",
+        "kind": "python",
+        "bytes": 27409,
+        "lines": 692,
+        "last_write_utc": "2026-07-29T13:17:57.8959758Z",
+        "sha256": "0B40A29B2E3F1E0FC995153A0586B8B302C04F9A561A4C5E85B82E4777D10951"
+      },
+      {
+        "relative_path": "performance_reports/209期-performance-20260728-211845.json",
+        "kind": "json",
+        "bytes": 1724925,
+        "lines": 53895,
+        "last_write_utc": "2026-07-28T13:18:45.3267234Z",
+        "sha256": "CF6F4427072C7DD06C58945CD6D5540E85F3B9434F68DD9EB7DB4AE0F09C0F6F"
+      },
+      {
+        "relative_path": "performance_reports/209期-performance-20260728-213554.json",
+        "kind": "json",
+        "bytes": 1725058,
+        "lines": 53935,
+        "last_write_utc": "2026-07-28T13:35:54.3667351Z",
+        "sha256": "3571743BA8D2CA831A440D1F62C60F5E1FB3A566A7856BBD94657A5A79223460"
+      },
+      {
+        "relative_path": "performance_reports/209期-performance-20260728-215205.json",
+        "kind": "json",
+        "bytes": 1727290,
+        "lines": 54000,
+        "last_write_utc": "2026-07-28T13:52:05.1602621Z",
+        "sha256": "A65F89B35F7055DE4D08F61110D0817288E769A48F0F8F18F0788BA89614E287"
+      },
+      {
+        "relative_path": "performance_reports/209期-performance-20260728-220825.json",
+        "kind": "json",
+        "bytes": 1648599,
+        "lines": 51361,
+        "last_write_utc": "2026-07-28T14:08:25.9762107Z",
+        "sha256": "509BB955C5B806E65B2C336B67038951046F63CD98DA0DEC9C393761B8BBAA76"
+      },
+      {
+        "relative_path": "performance_reports/209期-performance-20260728-222222.json",
+        "kind": "json",
+        "bytes": 1675363,
+        "lines": 52277,
+        "last_write_utc": "2026-07-28T14:22:22.7961562Z",
+        "sha256": "185071A392DA26B6EDD0CC4DE72C0A672AFC5D40C05F7C625C0685356A32F68A"
+      },
+      {
+        "relative_path": "recent_10_cache.json",
+        "kind": "json",
+        "bytes": 390350,
+        "lines": 12179,
+        "last_write_utc": "2026-07-29T11:31:02.0539405Z",
+        "sha256": "6B3C4F71E8D68CAFAD048E96751B1F95793C6B1A141EFF41023751BAD112C02B"
+      },
+      {
+        "relative_path": "sites.json",
+        "kind": "json",
+        "bytes": 62860,
+        "lines": 2119,
+        "last_write_utc": "2026-07-29T09:28:18.6505166Z",
+        "sha256": "E354B6FF0057ECFC77C085E535B3E4172C9C0C5BE6F4AE098FE39AA4DFA21166"
+      },
+      {
+        "relative_path": "test_failed_site_validator.py",
+        "kind": "test",
+        "bytes": 779,
+        "lines": 26,
+        "last_write_utc": "2026-07-29T11:04:15.4768351Z",
+        "sha256": "F9530717B6BC5E4316D24C485E9ECB21BBD6C8DBA0E771AB6FFBE2F98C1BBB8F"
+      },
+      {
+        "relative_path": "test_new_site_onboarding.py",
+        "kind": "test",
+        "bytes": 41990,
+        "lines": 1081,
+        "last_write_utc": "2026-07-29T08:58:33.8225615Z",
+        "sha256": "A5B97AE5C86EC4CB09A327F241634302DA2357DB12E27DBF0B0C62B535C02470"
+      },
+      {
+        "relative_path": "test_zodiac_site_scraper.py",
+        "kind": "test",
+        "bytes": 379201,
+        "lines": 8356,
+        "last_write_utc": "2026-07-29T13:17:57.8992001Z",
+        "sha256": "74344EEAA3A7E657E42E8FA1908E05B34BB36A5EBAB37A4ED811FA332988BE46"
+      },
+      {
+        "relative_path": "zodiac_site_scraper.py",
+        "kind": "python",
+        "bytes": 443308,
+        "lines": 10728,
+        "last_write_utc": "2026-07-29T13:19:31.1273673Z",
+        "sha256": "1C812D9DA7EB785AC5EDD1958393F621537F699B360798D3EFA689420A11FE4E"
+      }
+    ]
+  },
+  "sites": {
+    "path": "sites.json",
+    "sha256": "E354B6FF0057ECFC77C085E535B3E4172C9C0C5BE6F4AE098FE39AA4DFA21166",
+    "site_count": 375,
+    "fields": [
+      "api_url",
+      "name",
+      "pick",
+      "section",
+      "url"
+    ],
+    "raw_sections": [
+      {
+        "value": null,
+        "count": 151
+      },
+      {
+        "value": "新增的站点",
+        "count": 223
+      },
+      {
+        "value": "已有站点",
+        "count": 1
+      }
+    ],
+    "effective_output_sections": [
+      {
+        "value": "已有站点",
+        "count": 152
+      },
+      {
+        "value": "新增的站点",
+        "count": 223
+      }
+    ],
+    "directions": [
+      {
+        "value": "bottom",
+        "count": 199
+      },
+      {
+        "value": "left",
+        "count": 1
+      },
+      {
+        "value": "top",
+        "count": 175
+      }
+    ],
+    "api_url_count": 18,
+    "topic_url_count": 198,
+    "hash_user_url_count": 20,
+    "duplicate_trimmed_names": [],
+    "shared_urls": [
+      {
+        "url": "https://sgghdnx.47598995.app:17466/#xw",
+        "count": 3,
+        "names": [
+          "关公杀一肖",
+          "佛主禁肖图",
+          "三怪禁肖图"
+        ]
+      }
+    ],
+    "compatibility_exceptions": [
+      {
+        "name": "新竹论坛",
+        "pick": "left",
+        "url": "https://rpczmj.flzw4-yz5wn-mlrxxt.xyz/",
+        "requirement": "V2必须保留left方向语义，不能强制改成top"
+      },
+      {
+        "raw_section_missing": 151,
+        "requirement": "section缺失时按已有站点输出"
+      }
+    ]
+  },
+  "cache": {
+    "path": "recent_10_cache.json",
+    "sha256": "6B3C4F71E8D68CAFAD048E96751B1F95793C6B1A141EFF41023751BAD112C02B",
+    "window_back_periods": 10,
+    "latest_period": 210,
+    "site_count": 375,
+    "total_records": 1104,
+    "record_period_min": 208.0,
+    "record_period_max": 210.0,
+    "record_count_min": 1.0,
+    "record_count_max": 3.0,
+    "record_count_distribution": [
+      {
+        "record_count": 1,
+        "site_count": 9
+      },
+      {
+        "record_count": 2,
+        "site_count": 3
+      },
+      {
+        "record_count": 3,
+        "site_count": 363
+      }
+    ],
+    "sites_with_error": 1,
+    "sites_with_fingerprint": 375,
+    "sites_with_record_provenance": 110
+  },
+  "formal_txt": {
+    "directories": {
+      "success": "C:\\Users\\Administrator\\Desktop\\每天工具\\数据系列\\七类数据统一归纳",
+      "failure": "C:\\Users\\Administrator\\Desktop\\每天工具\\数据系列\\七类数据统一归纳失败"
+    },
+    "file_count": 15,
+    "zodiac_file_count": 3,
+    "aggregate_sha256": "EDD1057747E441A17EF9B1CDB22E02BF52EE9D90026FAAAF27F9BB4F8073895C",
+    "files": [
+      {
+        "kind": "success",
+        "name": "210期-半波.txt",
+        "bytes": 3472,
+        "last_write_utc": "2026-07-29T11:31:12.9703274Z",
+        "sha256": "95609DDEF875964F189164AEEF0F1F4F7E35B6CC359C8D89AD6FAE9041AAE336",
+        "zodiac_output": false
+      },
+      {
+        "kind": "success",
+        "name": "210期-半头.txt",
+        "bytes": 2115,
+        "last_write_utc": "2026-07-29T11:29:39.4683830Z",
+        "sha256": "26C7736E6188C26BF4EA7B30ED2BABCBB1E37A9A0526E9C667991D8C30A8FE6E",
+        "zodiac_output": false
+      },
+      {
+        "kind": "success",
+        "name": "210期-段.txt",
+        "bytes": 2975,
+        "last_write_utc": "2026-07-29T09:51:35.8948256Z",
+        "sha256": "272B205A39ADBC97461342BB66A93CA38A46468C468603770E89B4A6DC8EBDFA",
+        "zodiac_output": false
+      },
+      {
+        "kind": "success",
+        "name": "210期-二肖.txt",
+        "bytes": 3918,
+        "last_write_utc": "2026-07-29T11:23:00.6446322Z",
+        "sha256": "DB74F0F50630CADFCDD01A30FDD879783FD6B6CE3BA8D842A1460497974F8868",
+        "zodiac_output": false
+      },
+      {
+        "kind": "success",
+        "name": "210期-合.txt",
+        "bytes": 2469,
+        "last_write_utc": "2026-07-29T11:58:26.6668248Z",
+        "sha256": "3B23196E324744B2148CEEA9E4E692236A38C82BE5095E22C483DD4A34D71B84",
+        "zodiac_output": false
+      },
+      {
+        "kind": "success",
+        "name": "210期-头.txt",
+        "bytes": 4441,
+        "last_write_utc": "2026-07-29T12:10:21.6303269Z",
+        "sha256": "C2BBC2A9DB03A1408A07B00B97CF03AC2C31FFA60D5F589E7191223813C70D40",
+        "zodiac_output": false
+      },
+      {
+        "kind": "success",
+        "name": "210期-尾.txt",
+        "bytes": 4685,
+        "last_write_utc": "2026-07-29T10:40:48.5442597Z",
+        "sha256": "E1D1E5723843601E904BBA37457051230611B3DA3D14EFC25E9698E58FB537C6",
+        "zodiac_output": false
+      },
+      {
+        "kind": "success",
+        "name": "210期-五行.txt",
+        "bytes": 4293,
+        "last_write_utc": "2026-07-29T09:52:43.3558421Z",
+        "sha256": "7BED8DED77F3CEE9E3EAAFFB6C2C22F694968EACE7A23F17C799EF522DFE1D29",
+        "zodiac_output": false
+      },
+      {
+        "kind": "success",
+        "name": "210期-肖-新增.txt",
+        "bytes": 4329,
+        "last_write_utc": "2026-07-29T11:57:05.4724983Z",
+        "sha256": "E8CF83F68C09FAF31DECA369709506FC7E557EF7C4D3910598DD67A6DC0FFE58",
+        "zodiac_output": true
+      },
+      {
+        "kind": "success",
+        "name": "210期-肖.txt",
+        "bytes": 3009,
+        "last_write_utc": "2026-07-29T11:31:02.0122161Z",
+        "sha256": "C26C2CC8C73B118343E4B74EAB7B62A8D3F26F250F26494FE2B4A9A44198B5C3",
+        "zodiac_output": true
+      },
+      {
+        "kind": "success",
+        "name": "210期-一波.txt",
+        "bytes": 2385,
+        "last_write_utc": "2026-07-29T11:37:16.0441224Z",
+        "sha256": "AE4186A4AFC56E1F84CFF9F3A53B17411451EB0C4F91CAE3B571DE798A5760E8",
+        "zodiac_output": false
+      },
+      {
+        "kind": "failure",
+        "name": "210期-半波-失败.txt",
+        "bytes": 438,
+        "last_write_utc": "2026-07-29T10:02:51.8475668Z",
+        "sha256": "4DC7E1AB03439802F7132E2E8245568BD437A376465E0B514038FB5BAF114212",
+        "zodiac_output": false
+      },
+      {
+        "kind": "failure",
+        "name": "210期-二肖-失败.txt",
+        "bytes": 460,
+        "last_write_utc": "2026-07-29T09:46:10.5224310Z",
+        "sha256": "BC0B3438070513274FD9E5A78C47711F3614CCD67B1D1FDD6F94D64F630CC704",
+        "zodiac_output": false
+      },
+      {
+        "kind": "failure",
+        "name": "210期-杀一波-失败.txt",
+        "bytes": 287,
+        "last_write_utc": "2026-07-29T10:04:19.0734009Z",
+        "sha256": "FA5EF4F901B93F13463B1B55EDD39E65C7B8A6A1E4D7CD75DFBA61226B627A57",
+        "zodiac_output": false
+      },
+      {
+        "kind": "failure",
+        "name": "210期-肖-失败.txt",
+        "bytes": 333,
+        "last_write_utc": "2026-07-29T11:31:02.0152183Z",
+        "sha256": "BE407D338C2C8B36D39967B9B73F3F427FE78570AB49F46FE93C006AEAB8A43F",
+        "zodiac_output": true
+      }
+    ]
+  },
+  "compatibility": {
+    "batch_entrypoints": [
+      {
+        "name": "爬虫-每天杀肖.bat",
+        "mode": "single_period",
+        "required_period": true
+      },
+      {
+        "name": "爬虫-每天杀肖-多期.bat",
+        "mode": "multi_period",
+        "required_periods": true,
+        "updates_cache": false
+      },
+      {
+        "name": "复抓失败.bat",
+        "mode": "retry_errors",
+        "required_period": true
+      },
+      {
+        "name": "爬虫-每天杀肖 - 检查重复.bat",
+        "mode": "duplicate_check",
+        "required_period": true,
+        "baseline": "recent_10_cache.json"
+      }
+    ],
+    "scraper_cli_arguments": [
+      "--sites-file",
+      "-o/--output",
+      "--errors",
+      "--timeout",
+      "--sleep",
+      "--workers",
+      "--limit",
+      "-p/--period/--issue",
+      "--multi-periods",
+      "--periods",
+      "--retry-attempts",
+      "--retry-sleep",
+      "--retry-errors",
+      "--include-url",
+      "--no-url"
+    ],
+    "duplicate_cli_arguments": [
+      "-p/--period/--issue",
+      "--periods",
+      "-o/--output",
+      "--errors",
+      "--timeout",
+      "--workers",
+      "--sleep",
+      "--limit",
+      "--sites-file"
+    ],
+    "success_names": [
+      "N期-肖.txt",
+      "N期-肖-新增.txt"
+    ],
+    "failure_names": [
+      "N期-肖-失败.txt",
+      "N期-肖-失败-新增.txt"
+    ],
+    "multi_period_summary_name": "P1-P2-...期-肖-多期全部失败汇总.txt",
+    "success_line_format": "{生肖} {站名} {URL}",
+    "failure_line_format": "{站名} {方向} {URL} 原因：[{失败分类}] {详细原因}",
+    "encoding": "UTF-8",
+    "failure_categories": [
+      "缓存同期冲突",
+      "专属解析未命中",
+      "浏览器渲染失败",
+      "页面下架",
+      "空内容",
+      "SSL失败",
+      "HTTP 502",
+      "HTTP请求失败",
+      "DNS失败",
+      "连接重置",
+      "超时",
+      "缺少生肖",
+      "期数不匹配",
+      "高可信范围缺期",
+      "候选选择未命中",
+      "正文未更新",
+      "禁止硬凑",
+      "非生肖内容",
+      "页面缺期数",
+      "候选冲突",
+      "解析失败",
+      "网络失败",
+      "其他失败"
+    ]
+  },
+  "tests": {
+    "command": "python -m pytest -q -p no:cacheprovider --junitxml=<V2>/fixtures/baseline/v1_pytest.xml",
+    "junit_relative_path": "fixtures/baseline/v1_pytest.xml",
+    "junit_sha256": "2DE36B57DABA43D1794C8DF13B16861CC8371D8A072242CBC283F90FDE8FFA2D",
+    "pytest_cases": 386,
+    "subtests": 139,
+    "junit_total": 525,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "duration_seconds": 12.631,
+    "coverage_plugin_available": false
+  },
+  "verification": {
+    "syntax": {
+      "status": "pass",
+      "files_checked": 9
+    },
+    "types": {
+      "status": "not_run",
+      "reason": "pyright未安装"
+    },
+    "lint": {
+      "status": "baseline_has_issues",
+      "tool": "ruff 0.15.10 --no-cache",
+      "issue_count": 6,
+      "issues": [
+        {
+          "code": "F841",
+          "file": "test_zodiac_site_scraper.py",
+          "line": 496
+        },
+        {
+          "code": "F841",
+          "file": "test_zodiac_site_scraper.py",
+          "line": 1959
+        },
+        {
+          "code": "F841",
+          "file": "test_zodiac_site_scraper.py",
+          "line": 2559
+        },
+        {
+          "code": "F541",
+          "file": "zodiac_site_scraper.py",
+          "line": 3452
+        },
+        {
+          "code": "F541",
+          "file": "zodiac_site_scraper.py",
+          "line": 6592
+        },
+        {
+          "code": "F821",
+          "file": "zodiac_site_scraper.py",
+          "line": 9517
+        }
+      ]
+    },
+    "secret_scan": {
+      "status": "pass",
+      "patterns_checked": 5,
+      "hits": 0
+    },
+    "readonly": {
+      "test_watched_files": 68,
+      "test_changed_files": 0,
+      "v1_files_modified_since_v2_rule_creation": 0,
+      "formal_txt_modified_since_v2_rule_creation": 0,
+      "ruff_cache_removed": true
+    }
+  },
+  "known_risks": [
+    "V1不是Git仓库，完整性依赖SHA-256清单。",
+    "V1当前有6项ruff问题，其中zodiac_site_scraper.py:9517为未定义名；V2不得继承。",
+    "pyright未安装，步骤1没有V1类型检查基线。",
+    "pytest-cov未安装，步骤1没有V1覆盖率基线。",
+    "缓存只含208至210期、每站1至3条记录；文件名虽为recent_10，当前实际未满10条。"
+  ]
+}

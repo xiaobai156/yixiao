@@ -1,0 +1,63 @@
+{
+  "sites": [
+    {
+      "name": "妞妞女神",
+      "pick": "top",
+      "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/168380",
+      "parser_id": "special.user_forum_post",
+      "source_policy": "api_then_http",
+      "api_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/168380/forums?per_page=20",
+      "archived_at": "2026-08-03T15:12:14+08:00",
+      "archive_reason": "215期 top 最新有效候选为209期/208期/207期，不再抓取"
+    }
+  ],
+  "cache_entries": [
+    {
+      "name": "妞妞女神",
+      "pick": "top",
+      "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/168380",
+      "error": "RuntimeError: 用户接口未找到指定 210期；浏览器兜底未取得可验证的用户接口响应：[用户ID边界失败] 浏览器未捕获用户ID 168380 的结构化接口响应",
+      "record_provenance": {
+        "208": {
+          "route_kind": "user",
+          "route_id": "168380",
+          "record_id": "15693352",
+          "record_draw": "208",
+          "record_path": "$[0]",
+          "title": "绝杀一肖",
+          "author": "妮妮女神",
+          "record_period": "208",
+          "api_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/168380/forums?page=1&per_page=20",
+          "source_order": "0",
+          "source_line": "208期♥绝杀一肖——马——？",
+          "record_binding": "ddd231c8f8371571175d12aff94de2eda1f628131ea2c1116dae16cf5d309c0e"
+        },
+        "209": {
+          "route_kind": "user",
+          "route_id": "168380",
+          "record_id": "15698089",
+          "record_draw": "209",
+          "record_path": "$[0]",
+          "title": "绝杀一肖",
+          "author": "妮妮女神",
+          "record_period": "209",
+          "api_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/168380/forums?page=1&per_page=20",
+          "source_order": "0",
+          "source_line": "209期♥绝杀一肖——猴——？",
+          "record_binding": "03ce23c2ff54f886a69a4f4eb4baa4ad68c3f2c9521447b05b7708537cab8c8b"
+        }
+      },
+      "records": [
+        {
+          "period": 209,
+          "zodiac": "猴"
+        },
+        {
+          "period": 208,
+          "zodiac": "马"
+        }
+      ],
+      "fingerprint": "猴马"
+    }
+  ]
+}

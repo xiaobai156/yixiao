@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "source": "V1/recent_10_cache.json",
+  "captured_at": "2026-07-29T19:31:02+08:00",
+  "capture_time_basis": "frozen V1 cache snapshot mtime",
+  "records": [
+    {
+      "name": "福禄寿喜财",
+      "source_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/#/users/154933",
+      "api_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/154933/forums?page=1&per_page=20",
+      "document_type": "json",
+      "target_period": 210,
+      "expected_zodiac": "狗",
+      "payload": [
+        {
+          "id": 15709395,
+          "status": "published",
+          "user_id": 154933,
+          "lottery": "macao",
+          "year": 2026,
+          "draw": 210,
+          "topic": "210期",
+          "content": "208期杀蛇√\n209期杀鼠√\n210期杀狗√",
+          "user": {
+            "id": 154933,
+            "nickname": "福禄寿喜财"
+          }
+        }
+      ],
+      "source_proof": {
+        "route_kind": "user",
+        "route_id": "154933",
+        "record_id": "15709395",
+        "record_draw": "210",
+        "record_path": "$[0]",
+        "source_order": "28",
+        "source_line": "210期杀狗√",
+        "record_binding": "447f46bb64abc74bfe84e2631a3c8e044740aa664ba68b27f58844bd0e4bab92"
+      }
+    },
+    {
+      "name": "六龙玩庄",
+      "source_url": "https://buzsxio.821n4-hgj04-edkrft.xyz:29455/article/manager/6a1307c35eabe2c9e91d87c6?url=bxj",
+      "api_url": "https://buzsxio.821n4-hgj04-edkrft.xyz:29455/api/proxy/manager-articles/6a1307c35eabe2c9e91d87c6",
+      "document_type": "json",
+      "target_period": 210,
+      "expected_zodiac": "虎",
+      "payload": {
+        "id": "6a1307c35eabe2c9e91d87c6",
+        "title": "<p><strong>210期：【绝杀一肖】〓 关注中奖</strong></p>",
+        "author": "六龙玩庄",
+        "content": "210期:《六龙玩庄》 🏃‍♀️绝杀一肖🏃‍♀️【虎】开:00准"
+      },
+      "source_proof": {
+        "route_kind": "article",
+        "route_id": "6a1307c35eabe2c9e91d87c6",
+        "record_id": "6a1307c35eabe2c9e91d87c6",
+        "record_path": "$",
+        "source_order": "99",
+        "source_line": "210期:《六龙玩庄》 🏃‍♀️绝杀一肖🏃‍♀️【虎】开:00准",
+        "record_binding": "8a8ae4559608a223522095339e245d10e6875386961441fa542154071a482aeb"
+      }
+    }
+  ]
+}
