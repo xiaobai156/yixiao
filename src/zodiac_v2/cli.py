@@ -23,6 +23,7 @@ SOURCE_POLICIES = frozenset(
         "http_named_topic",
         "http_period_keyword_article",
         "api_then_http",
+        "browser",
         "browser_user",
         "http_then_browser",
     }
@@ -62,7 +63,7 @@ def build_parser() -> argparse.ArgumentParser:
     retry = commands.add_parser("retry", help="按失败清单限定复抓，只读验证")
     _common(retry)
     retry.add_argument("--period", "--issue", type=_period, required=True)
-    retry.add_argument("--retry-errors", type=Path, required=True)
+    retry.add_argument("--retry-errors", type=Path, action="append", required=True)
 
     duplicate = commands.add_parser("duplicate", help="仅使用 recent_10_cache.json 判重")
     _common(duplicate)
@@ -74,15 +75,25 @@ def build_parser() -> argparse.ArgumentParser:
     onboard.add_argument("--name", required=True)
     onboard.add_argument("--url", required=True)
     onboard.add_argument("--api-url")
-    onboard.add_argument("--pick", choices=(Direction.TOP.value, Direction.BOTTOM.value), default="top")
+    onboard.add_argument(
+        "--pick",
+        choices=(Direction.TOP.value, Direction.BOTTOM.value),
+        default=Direction.TOP.value,
+    )
+    onboard.add_argument(
+        "--section",
+        choices=tuple(section.value for section in SiteSection),
+        default=SiteSection.NEW.value,
+    )
     onboard.add_argument("--parser-id", default="family.strict_article")
     onboard.add_argument("--source-policy", choices=tuple(sorted(SOURCE_POLICIES)), default="http_documents")
     onboard.add_argument("--period", "--issue", type=_period, required=True)
+    onboard.add_argument("--allow-short-history", action="store_true")
 
     repair = commands.add_parser("repair", help="已有失败站八阶段只读修复验证")
     _common(repair)
     repair.add_argument("--period", "--issue", type=_period, required=True)
-    repair.add_argument("--retry-errors", type=Path, required=True)
+    repair.add_argument("--retry-errors", type=Path, action="append", required=True)
     return parser
 
 
@@ -193,7 +204,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         _print_results(results)
         return 0
     if args.command in {"retry", "repair"}:
-        text = args.retry_errors.read_text(encoding="utf-8")
+        text = "\n".join(path.read_text(encoding="utf-8") for path in args.retry_errors)
         selected = sites_from_failure_text(text, sites)
         reports = repair_sites(scraper, selected, args.period)
         _print_results(tuple(report.result for report in reports))
@@ -206,14 +217,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.name,
             args.url,
             Direction(args.pick),
-            SiteSection.NEW,
+            SiteSection(args.section),
             args.parser_id,
             args.source_policy,
             args.api_url,
         )
         data = load_recent_cache(args.cache_file)
         periods = tuple(range(args.period, args.period - 10, -1))
-        decision = validate_new_site(scraper, candidate, sites, data, periods)
+        decision = validate_new_site(
+            scraper,
+            candidate,
+            sites,
+            data,
+            periods,
+            allow_short_history=args.allow_short_history,
+        )
         for reason in decision.reasons:
             print(reason)
         print("新增站点验收通过" if decision.accepted else "新增站点验收拒绝")
