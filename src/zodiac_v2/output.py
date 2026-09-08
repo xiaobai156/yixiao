@@ -259,10 +259,6 @@ def _format_success_rows(
     if not all_rows and not extras:
         return "无\n"
     counter: Counter[str] = Counter(zodiac for zodiac, _name in all_rows)
-    rank_by_count = {
-        count: rank
-        for rank, count in enumerate(sorted(set(counter.values()), reverse=True), start=1)
-    }
     separator = "红色" if section is SiteSection.NEW else "羽墨"
     lines = [f"{zodiac} {name}" for zodiac, name in materialized]
     lines.extend(extras)
@@ -271,11 +267,8 @@ def _format_success_rows(
     lines.extend(
         [
             "",
-            "内容\t次数\t排名",
-            *(
-                f"{zodiac}\t{counter[zodiac]}\t{rank_by_count[counter[zodiac]]}"
-                for zodiac in sorted(counter, key=lambda item: (-counter[item], ZODIAC_ORDER.index(item)))
-            ),
+            "生肖次数排行榜",
+            *(f"{zodiac} {counter[zodiac]}次" for zodiac in sorted(counter, key=lambda item: (-counter[item], ZODIAC_ORDER.index(item))),),
             "",
             "前一期失败统计",
             "无",
@@ -392,6 +385,8 @@ def merge_formal_single_result_output(
     target_prefix = f"{result.site.name} {result.site.direction.value} "
     failure_rows = [row for row in failure_rows if not row.startswith(target_prefix)]
     if not result.ok:
+        success_rows = [row for row in success_rows if _output_name_key(row[1]) != target_name_key]
+        trailing_success_rows = [row for row in trailing_success_rows if _output_name_key(row[1]) != target_name_key]
         failure_rows.append(_target_failure_row(result))
 
     payloads = _OutputPayloads(
