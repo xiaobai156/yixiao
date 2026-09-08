@@ -6,6 +6,7 @@ import re
 import warnings
 from dataclasses import dataclass
 from http.client import IncompleteRead
+from time import monotonic
 from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -169,14 +170,26 @@ class ResilientHttpTransport:
         self.fallback = fallback
 
     def request(self, url: str, *, timeout: float, max_bytes: int) -> HttpResponse:
+        deadline = monotonic() + timeout
+
+        def fallback_request() -> HttpResponse:
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                raise SourceFetchError(
+                    SourceFetchCode.NETWORK,
+                    f"HTTP 取源总超时 {timeout:g}秒",
+                    url=url,
+                )
+            return self.fallback.request(url, timeout=remaining, max_bytes=max_bytes)
+
         try:
             result = self.primary.request(url, timeout=timeout, max_bytes=max_bytes)
         except SourceFetchError as exc:
             if exc.code is not SourceFetchCode.NETWORK:
                 raise
-            return self.fallback.request(url, timeout=timeout, max_bytes=max_bytes)
+            return fallback_request()
         if result.status in TRANSIENT_HTTP_STATUSES:
-            return self.fallback.request(url, timeout=timeout, max_bytes=max_bytes)
+            return fallback_request()
         return result
 
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import threading
 from collections.abc import Iterable, Mapping
 from copy import deepcopy
@@ -31,14 +32,23 @@ class _CacheWriteData(dict[str, object]):
 
 
 def _section(value: object) -> SiteSection:
-    return SiteSection.NEW if str(value or "").strip() == SiteSection.NEW.value else SiteSection.EXISTING
+    normalized = str(value or "").strip()
+    if not normalized:
+        return SiteSection.EXISTING
+    try:
+        return SiteSection(normalized)
+    except ValueError as exc:
+        raise ValueError(f"缓存目录分类非法：{value!r}") from exc
 
 
 def _direction(value: object) -> Direction:
     try:
-        return Direction(str(value or "").strip())
+        direction = Direction(str(value or "").strip())
     except ValueError as exc:
         raise ValueError(f"缓存方向非法：{value!r}") from exc
+    if direction is Direction.LEFT:
+        raise ValueError(f"缓存方向非法：{value!r}")
+    return direction
 
 
 def _identity(site: Mapping[str, object]) -> tuple[str, str, Direction, SiteSection]:
@@ -79,6 +89,24 @@ def _validated_records(site: Mapping[str, object]) -> list[tuple[int, str]]:
     provenance = site.get("record_provenance")
     if provenance is not None and not isinstance(provenance, dict):
         raise ValueError("record_provenance 必须是对象")
+    if records and not isinstance(provenance, dict):
+        raise ValueError("record_provenance 必须与 records 完整对应")
+    if isinstance(provenance, dict):
+        record_periods = {str(period) for period, _zodiac in records}
+        if set(provenance) != record_periods:
+            raise ValueError("record_provenance 必须与 records 完整对应")
+        for period, value in provenance.items():
+            if period not in record_periods or not isinstance(value, dict):
+                raise ValueError(f"record_provenance 期数或记录非法：{period!r}")
+            if value.get("validation_status") != "validated":
+                raise ValueError(f"record_provenance {period} 缺少 validated 状态")
+            source_id = str(value.get("source_id") or "").strip()
+            source_url = str(value.get("source_url") or "").strip()
+            evidence_sha256 = str(value.get("evidence_sha256") or "").strip()
+            if not source_id or not source_url:
+                raise ValueError(f"record_provenance {period} 缺少来源身份")
+            if re.fullmatch(r"[0-9a-fA-F]{64}", evidence_sha256) is None:
+                raise ValueError(f"record_provenance {period} 的 evidence_sha256 非法")
     return records
 
 
@@ -88,8 +116,12 @@ def _validated_cache_root(data: object) -> dict[str, object]:
     if data.get("window_back_periods", CACHE_WINDOW) != CACHE_WINDOW:
         raise ValueError("recent_10_cache.json 的 window_back_periods 必须固定为 10")
     latest = data.get("latest_period")
-    if latest is not None and (isinstance(latest, bool) or not isinstance(latest, int) or latest <= 0):
-        raise ValueError("latest_period 必须是正整数或 null")
+    if latest is not None and (
+        isinstance(latest, bool)
+        or not isinstance(latest, int)
+        or not 1 <= latest <= 9999
+    ):
+        raise ValueError("latest_period 必须是 1 到 9999 的整数或 null")
     if not isinstance(data.get("sites"), list):
         raise ValueError("recent_10_cache.json 的 sites 必须是数组")
     quarantined = data.get("quarantined_sites", [])
@@ -165,7 +197,12 @@ def validate_cache_data(data: object) -> dict[str, object]:
         if identity in identities:
             raise ValueError(f"缓存存在重复目录身份：{identity[0]} {identity[1]}")
         identities.add(identity)
-        _validated_records(site)
+        records = _validated_records(site)
+        latest = validated_root.get("latest_period")
+        if isinstance(latest, int) and any(period > latest for period, _zodiac in records):
+            raise ValueError(
+                f"缓存目录 {identity[0]} 存在晚于 latest_period {latest} 的记录"
+            )
     quarantined = _validated_quarantined_sites(validated_root)
     overlap = identities & quarantined.keys()
     if overlap:
@@ -330,6 +367,121 @@ def update_recent_cache(
     return _CacheWriteData(validate_cache_data(updated))
 
 
+def backfill_recent_cache_records(
+    data: object,
+    records: Iterable[CacheRecord],
+    *,
+    permit: WritePermit,
+) -> dict[str, object]:
+    """Add one validated older period without rolling back the cache window."""
+
+    target_period = permit.target_period
+    permit.require_formal_single(target_period)
+    updated = validate_cache_data(data)
+    latest = updated.get("latest_period")
+    if not isinstance(latest, int) or target_period > latest:
+        raise ValueError("缓存旧期回填目标不能晚于当前最新期")
+    sites: list[dict[str, Any]] = updated["sites"]  # type: ignore[assignment]
+    by_identity = {_identity(site): site for site in sites}
+    quarantined = _validated_quarantined_sites(updated)
+    seen: set[CacheIdentity] = set()
+    for record in records:
+        if not isinstance(record, CacheRecord):
+            raise ValueError("缓存回填只能包含 CacheRecord")
+        if record.period != target_period:
+            raise ValueError(f"缓存回填期数边界失败：{record.period}期 不等于 {target_period}期")
+        if record.identity in seen:
+            raise ValueError(f"缓存回填包含重复目录身份：{record.name}")
+        seen.add(record.identity)
+        if record.identity in quarantined:
+            raise ValueError(f"缓存目录 {record.name} 已隔离：{quarantined[record.identity]}")
+        site = by_identity.get(record.identity)
+        if site is None:
+            raise ValueError(f"缓存回填目录身份不存在：{record.name}")
+        records_by_period = dict(_validated_records(site))
+        existing = records_by_period.get(target_period)
+        if existing is not None and existing != record.zodiac:
+            raise ValueError(
+                f"缓存同期冲突：{record.name} {target_period}期旧值 {existing}，新值 {record.zodiac}"
+            )
+        records_by_period[target_period] = record.zodiac
+        kept = sorted(records_by_period, reverse=True)[:CACHE_WINDOW]
+        site["records"] = [
+            {"period": period, "zodiac": records_by_period[period]} for period in kept
+        ]
+        site["fingerprint"] = "".join(records_by_period[period] for period in kept)
+        provenance = site.get("record_provenance")
+        provenance_by_period = dict(provenance) if isinstance(provenance, dict) else {}
+        provenance_by_period[str(target_period)] = {
+            "validation_status": "validated",
+            "source_id": record.source_id,
+            "source_url": record.source_url,
+            "evidence_sha256": record.evidence_sha256,
+        }
+        if record.record_id is not None:
+            provenance_by_period[str(target_period)]["record_id"] = record.record_id
+        site["record_provenance"] = {
+            str(period): provenance_by_period[str(period)]
+            for period in kept
+            if isinstance(provenance_by_period.get(str(period)), dict)
+        }
+        exception = site.get("onboarding_exception")
+        if isinstance(exception, dict):
+            exception = dict(exception)
+            for key in ("validated_periods", "valid_periods"):
+                periods = exception.get(key)
+                if isinstance(periods, list) and all(isinstance(period, int) for period in periods):
+                    exception[key] = sorted({*periods, target_period}, reverse=True)
+            missing = exception.get("missing_periods")
+            if isinstance(missing, list):
+                exception["missing_periods"] = [
+                    period for period in missing if period != target_period
+                ]
+            site["onboarding_exception"] = exception
+    return _CacheWriteData(validate_cache_data(updated))
+
+
+def replace_site_direction(
+    data: object,
+    *,
+    name: str,
+    url: str,
+    section: SiteSection,
+    direction: Direction,
+    permit: WritePermit,
+) -> dict[str, object]:
+    """Migrate one existing cache identity when its configured direction changes."""
+    permit.require_formal_single(permit.target_period)
+    updated = validate_cache_data(data)
+    if not name.strip() or not url.strip():
+        raise ValueError("缓存方向迁移必须包含站名和 URL")
+    if not isinstance(section, SiteSection) or not isinstance(direction, Direction):
+        raise ValueError("缓存方向迁移的分类或方向非法")
+    sites: list[dict[str, Any]] = updated["sites"]  # type: ignore[assignment]
+    matches = [
+        site
+        for site in sites
+        if isinstance(site, dict)
+        and site.get("name") == name
+        and site.get("url") == url
+        and _section(site.get("section")) is section
+    ]
+    if len(matches) != 1:
+        raise ValueError(f"缓存方向迁移命中 {len(matches)} 个站点：{name}")
+    target = matches[0]
+    old_identity = _identity(target)
+    new_identity = (name, url, direction, section)
+    if old_identity == new_identity:
+        return _CacheWriteData(validate_cache_data(updated))
+    if any(
+        site is not target and isinstance(site, dict) and _identity(site) == new_identity
+        for site in sites
+    ):
+        raise ValueError(f"缓存方向迁移目标身份已存在：{name}")
+    target["pick"] = direction.value
+    return _CacheWriteData(validate_cache_data(updated))
+
+
 def mark_failed_sites(
     data: object,
     failures: Iterable[tuple[CacheIdentity, str]],
@@ -418,4 +570,85 @@ def write_recent_cache(path: Path, data: object, permit: WritePermit) -> None:
         raise PermissionError("正式缓存只接受统一验证器签发数据")
     if data._digest != _cache_digest(validated):
         raise PermissionError("正式缓存签发数据已被修改")
+    _atomic_write(path, json.dumps(validated, ensure_ascii=False, indent=2) + "\n")
+
+
+def append_onboarding_records(
+    data: object,
+    records: Iterable[CacheRecord],
+    *,
+    current_period: int,
+    permit: WritePermit,
+    metadata: Mapping[CacheIdentity, Mapping[str, object]] | None = None,
+) -> dict[str, object]:
+    """Build signed cache data for formally accepted onboarding sites."""
+
+    permit.require_formal_single(current_period)
+    updated = validate_cache_data(data)
+    grouped: dict[CacheIdentity, list[CacheRecord]] = {}
+    for record in records:
+        if not isinstance(record, CacheRecord):
+            raise ValueError("新增站点缓存只能包含 CacheRecord")
+        if record.period > current_period:
+            raise ValueError(f"新增站点缓存期数不能超过基准期：{record.period}期")
+        grouped.setdefault(record.identity, []).append(record)
+    if not grouped:
+        raise ValueError("正式新增没有可写入的缓存记录")
+
+    existing = {_identity(site) for site in updated["sites"] if isinstance(site, dict)}
+    for identity, site_records in grouped.items():
+        if identity in existing:
+            raise ValueError(f"缓存已有站点身份重复：{identity[0]}")
+        periods = [record.period for record in site_records]
+        if len(set(periods)) != len(periods):
+            raise ValueError(f"新增站点缓存存在重复期号：{identity[0]}")
+        ordered = sorted(site_records, key=lambda item: item.period, reverse=True)
+        if len(ordered) > CACHE_WINDOW:
+            raise ValueError(f"新增站点缓存超过 {CACHE_WINDOW} 期：{identity[0]}")
+        entry: dict[str, object] = {
+            "name": identity[0],
+            "pick": identity[2].value,
+            "url": identity[1],
+            "section": identity[3].value,
+            "error": "",
+            "records": [
+                {"period": record.period, "zodiac": record.zodiac} for record in ordered
+            ],
+            "fingerprint": "".join(record.zodiac for record in ordered),
+            "record_provenance": {
+                str(record.period): {
+                    "validation_status": "validated",
+                    "source_id": record.source_id,
+                    "source_url": record.source_url,
+                    "evidence_sha256": record.evidence_sha256,
+                    **({"record_id": record.record_id} if record.record_id is not None else {}),
+                }
+                for record in ordered
+            },
+        }
+        if metadata is not None and identity in metadata:
+            entry["onboarding_exception"] = dict(metadata[identity])
+        updated["sites"].append(entry)
+        existing.add(identity)
+    latest = updated.get("latest_period")
+    if not isinstance(latest, int) or current_period > latest:
+        updated["latest_period"] = current_period
+    return _CacheWriteData(validate_cache_data(updated))
+
+
+def write_recent_cache_backfill(path: Path, data: object, permit: WritePermit) -> None:
+    """Atomically persist an onboarded site's older history without rolling back the cache window."""
+    validated = validate_cache_data(data)
+    latest = validated.get("latest_period")
+    if not isinstance(latest, int):
+        raise PermissionError("正式缓存回填必须包含明确 latest_period")
+    permit.require_formal_single(permit.target_period)
+    if latest < permit.target_period:
+        raise PermissionError(
+            f"缓存总窗口 {latest}期 早于回填目标 {permit.target_period}期，禁止前置写入"
+        )
+    if not isinstance(data, _CacheWriteData) or data._token is not _CACHE_TOKEN:
+        raise PermissionError("正式缓存回填只接受统一验证器签发数据")
+    if data._digest != _cache_digest(validated):
+        raise PermissionError("正式缓存回填签发数据已被修改")
     _atomic_write(path, json.dumps(validated, ensure_ascii=False, indent=2) + "\n")

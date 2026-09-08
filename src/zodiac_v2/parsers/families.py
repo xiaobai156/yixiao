@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
-from dataclasses import dataclass
+from collections.abc import Collection, Mapping
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 
 from zodiac_v2.contracts import Candidate, SiteConfig, SourceBundle
-from zodiac_v2.parsers.common import TextLine, document_lines, normalize_space, scoped_blocks
+from zodiac_v2.parsers.common import (
+    TextLine,
+    document_lines,
+    normalize_space,
+    scoped_blocks,
+)
+
+_PENDING_DRAW_PATTERN = re.compile(r"[开開]\s*[:：]?\s*0{2,4}\s*(?:准|错)?")
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,6 +22,7 @@ class StrictArticleSpec:
     record_pattern: str
     author_pattern: str | None = None
     allow_pending_title: bool = False
+    directional_cycles: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +31,7 @@ class AnchoredSectionSpec:
     record_pattern: str
     stop_pattern: str | None = None
     include_anchor_line: bool = False
+    record_window_lines: int = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +40,7 @@ class _CompiledStrictArticleSpec:
     record_pattern: re.Pattern[str]
     author_pattern: re.Pattern[str] | None
     allow_pending_title: bool
+    directional_cycles: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +49,7 @@ class _CompiledAnchoredSectionSpec:
     record_pattern: re.Pattern[str]
     stop_pattern: re.Pattern[str] | None
     include_anchor_line: bool
+    record_window_lines: int
 
 
 def _physical_match_key(
@@ -77,11 +88,13 @@ class RegexFamilyParser:
         anchor_aliases: Mapping[str, str] | None = None,
         require_anchor: bool = True,
         period_marker_required: bool = True,
+        directional_cycle_sites: Collection[str] = (),
     ) -> None:
         self.patterns = tuple(re.compile(pattern, re.IGNORECASE) for pattern in patterns)
         self.anchor_aliases = MappingProxyType(dict(anchor_aliases or {}))
         self.require_anchor = require_anchor
         self.period_marker_required = period_marker_required
+        self.directional_cycle_sites = frozenset(directional_cycle_sites)
 
     def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
         anchor = self.anchor_aliases.get(site.name, site.name)
@@ -126,6 +139,11 @@ class RegexFamilyParser:
                                 if key in seen:
                                     continue
                                 seen.add(key)
+                                record_status = (
+                                    "incomplete"
+                                    if _PENDING_DRAW_PATTERN.search(window)
+                                    else "complete"
+                                )
                                 candidates.append(
                                     Candidate(
                                         period,
@@ -140,12 +158,49 @@ class RegexFamilyParser:
                                             *(() if anchor_line is None else (f"anchor-line:{anchor_line}",)),
                                             f"block-range:{start}-{start + len(block)}",
                                             f"record-offset:{match_offset}",
+                                            f"record-status:{record_status}",
                                         ),
                                         record_id=document.record_id,
                                     )
                                 )
         candidates.sort(key=lambda candidate: candidate.page_order)
+        if site.name in self.directional_cycle_sites:
+            return _tag_annual_record_cycles(candidates)
         return tuple(candidates)
+
+
+def _tag_annual_record_cycles(candidates: list[Candidate]) -> tuple[Candidate, ...]:
+    by_document: dict[str, list[Candidate]] = {}
+    for candidate in candidates:
+        by_document.setdefault(candidate.document_id, []).append(candidate)
+
+    tagged: list[Candidate] = []
+    for document_candidates in by_document.values():
+        cycles: list[list[Candidate]] = [[]]
+        previous_period: int | None = None
+        for candidate in document_candidates:
+            period = candidate.period
+            wraps_year = previous_period is not None and (
+                (previous_period <= 20 and period >= 100)
+                or (previous_period >= 300 and period <= 20)
+            )
+            if wraps_year:
+                cycles.append([])
+            cycles[-1].append(candidate)
+            previous_period = period
+        if len(cycles) == 1:
+            tagged.extend(document_candidates)
+            continue
+        tagged.extend(
+            replace(
+                candidate,
+                evidence=(*candidate.evidence, f"record-cycle:{cycle_index}"),
+            )
+            for cycle_index, cycle in enumerate(cycles)
+            for candidate in cycle
+        )
+    tagged.sort(key=lambda candidate: candidate.page_order)
+    return tuple(tagged)
 
 
 def _line_windows(lines: tuple[TextLine, ...], index: int) -> tuple[str, ...]:
@@ -170,6 +225,7 @@ class AnchoredSectionFamilyParser:
                     re.compile(spec.record_pattern, re.IGNORECASE),
                     re.compile(spec.stop_pattern, re.IGNORECASE) if spec.stop_pattern else None,
                     spec.include_anchor_line,
+                    spec.record_window_lines,
                 )
                 for name, spec in specs.items()
             }
@@ -196,7 +252,13 @@ class AnchoredSectionFamilyParser:
                     if index > anchor_index and spec.anchor_pattern.search(line):
                         end_index = index
                         break
-                    for match in spec.record_pattern.finditer(line):
+                    record_text = normalize_space(
+                        " ".join(
+                            item.text
+                            for item in lines[index : index + spec.record_window_lines]
+                        )
+                    )
+                    for match in spec.record_pattern.finditer(record_text):
                         period = int(match.group(1).lstrip("0") or "0")
                         zodiac = match.group(2)
                         key = _physical_match_key(
@@ -213,7 +275,7 @@ class AnchoredSectionFamilyParser:
                             Candidate(
                                 period,
                                 zodiac,
-                                line,
+                                record_text,
                                 document.source_id,
                                 document.page_order * 1_000_000 + index,
                                 (
@@ -239,6 +301,7 @@ class StrictArticleFamilyParser:
                     re.compile(spec.record_pattern, re.IGNORECASE),
                     re.compile(spec.author_pattern, re.IGNORECASE) if spec.author_pattern else None,
                     spec.allow_pending_title,
+                    spec.directional_cycles,
                 )
                 for name, spec in specs.items()
             }
@@ -275,7 +338,7 @@ class StrictArticleFamilyParser:
                 accepted_title_periods = {title_period}
                 if spec.allow_pending_title and title_period > 1:
                     accepted_title_periods.add(title_period - 1)
-                for cycle in _strict_cycles(records, title_period):
+                for cycle_index, cycle in enumerate(_strict_cycles(records, title_period)):
                     eligible = tuple(
                         candidate for candidate in cycle if candidate.period <= title_period
                     )
@@ -288,6 +351,17 @@ class StrictArticleFamilyParser:
                         continue
                     if any(candidate.period > title_period for candidate in cycle[: accepted_indexes[0]]):
                         continue
+                    if spec.directional_cycles:
+                        eligible = tuple(
+                            replace(
+                                candidate,
+                                evidence=(
+                                    *candidate.evidence,
+                                    f"record-cycle:{title_index}:{cycle_index}",
+                                ),
+                            )
+                            for candidate in eligible
+                        )
                     candidates.extend(eligible)
         candidates.sort(key=lambda candidate: candidate.page_order)
         return tuple(candidates)
@@ -304,7 +378,7 @@ def _strict_cycles(
         period = candidate.period
         reset = previous_period is not None and (
             (previous_period <= 20 and period > title_period)
-            or (previous_period > title_period and period <= 20)
+            or (previous_period >= title_period and period <= 20)
         )
         if reset and current:
             cycles.append(tuple(current))

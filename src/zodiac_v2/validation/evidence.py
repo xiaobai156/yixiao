@@ -180,6 +180,7 @@ _LINE_EVIDENCE_PREFIXES = frozenset({"anchor-line", "author-line", "title-line"}
 _RANGE_EVIDENCE_PREFIXES = frozenset(
     {"article-range", "block-range", "post-range", "section-range"}
 )
+_TOPIC_PERIOD_PATTERN = re.compile(r"^\s*(?:第\s*)?(\d{2,4})(?=\s|期(?:\s|$)|$)")
 
 
 def _parse_evidence_index(prefix: str, value: str, line_count: int) -> int | None:
@@ -217,12 +218,26 @@ def _dynamic_record_matches(document_text: str, candidate: Candidate) -> bool:
     except (json.JSONDecodeError, TypeError):
         return False
     expected_raw = _normalize_space(candidate.raw_line)
+    topic_period_markers = [
+        item.partition(":")[2]
+        for item in candidate.evidence
+        if item.startswith("topic-period:")
+    ]
     for item in _json_objects(payload):
         raw_id = item.get("id")
         if raw_id is None or str(raw_id).strip() != candidate.record_id:
             continue
         draw = item.get("draw")
-        if isinstance(draw, bool) or not isinstance(draw, int) or draw != candidate.period:
+        if topic_period_markers:
+            if len(topic_period_markers) != 1 or not topic_period_markers[0].isdigit():
+                continue
+            if int(topic_period_markers[0]) != candidate.period:
+                continue
+            topic = item.get("topic")
+            topic_match = _TOPIC_PERIOD_PATTERN.match(topic) if isinstance(topic, str) else None
+            if topic_match is None or int(topic_match.group(1)) != candidate.period:
+                continue
+        elif isinstance(draw, bool) or not isinstance(draw, int) or draw != candidate.period:
             continue
         visible_lines = (
             _normalize_space(line)

@@ -37,11 +37,25 @@ class BrowserCapture:
 
 
 class BrowserRenderer(Protocol):
-    def capture(self, url: str, *, timeout: float) -> BrowserCapture: ...
+    def capture(
+        self,
+        url: str,
+        *,
+        timeout: float,
+        allowed_response_urls: Collection[str] = (),
+        allowed_response_origins: Collection[str] = (),
+    ) -> BrowserCapture: ...
 
 
 class PlaywrightBrowserRenderer:
-    def capture(self, url: str, *, timeout: float) -> BrowserCapture:
+    def capture(
+        self,
+        url: str,
+        *,
+        timeout: float,
+        allowed_response_urls: Collection[str] = (),
+        allowed_response_origins: Collection[str] = (),
+    ) -> BrowserCapture:
         try:
             from playwright.sync_api import sync_playwright
         except ImportError as exc:
@@ -53,6 +67,8 @@ class PlaywrightBrowserRenderer:
 
         captured: list[BrowserResponse] = []
         deadline = monotonic() + timeout
+        exact_response_urls = frozenset(allowed_response_urls)
+        response_origins = frozenset(allowed_response_origins)
 
         def remaining_milliseconds() -> int:
             seconds = deadline - monotonic()
@@ -74,12 +90,16 @@ class PlaywrightBrowserRenderer:
 
                 def record_response(response: object) -> None:
                     try:
+                        response_url = response.url  # type: ignore[attr-defined]
+                        response_identity = source_identity(response_url)
+                        if response_url not in exact_response_urls and response_identity.origin not in response_origins:
+                            return
                         content_type = response.header_value("content-type") or ""  # type: ignore[attr-defined]
                         if "json" not in content_type.lower():
                             return
                         captured.append(
                             BrowserResponse(
-                                response.url,  # type: ignore[attr-defined]
+                                response_url,
                                 int(response.status),  # type: ignore[attr-defined]
                                 content_type,
                                 response.text(),  # type: ignore[attr-defined]
@@ -128,17 +148,26 @@ def browser_documents(
     timeout: float = 20,
     max_chars: int = DEFAULT_MAX_BYTES,
     allowed_response_urls: Collection[str] = (),
+    allowed_response_origins: Collection[str] = (),
 ) -> SourceBundle:
     try:
         expected = source_identity(page_url)
+        exact_response_urls = frozenset(allowed_response_urls)
+        for response_url in exact_response_urls:
+            source_identity(response_url)
         allowed_origins = {expected.origin}
-        allowed_origins.update(source_identity(url).origin for url in allowed_response_urls)
-        capture = renderer.capture(page_url, timeout=timeout)
+        allowed_origins.update(source_identity(url).origin for url in allowed_response_origins)
+        capture = renderer.capture(
+            page_url,
+            timeout=timeout,
+            allowed_response_urls=exact_response_urls,
+            allowed_response_origins=allowed_origins,
+        )
         capture_identity = validate_final_url(page_url, capture.final_url)
-        if len(capture.html) > max_chars:
+        if len(capture.html.encode("utf-8")) > max_chars:
             raise SourceFetchError(
                 SourceFetchCode.TOO_LARGE,
-                f"浏览器正文超过 {max_chars} 字符",
+                f"浏览器正文超过 {max_chars} 字节",
                 url=page_url,
             )
     except SourceFetchError:
@@ -169,28 +198,40 @@ def browser_documents(
         except SourceIdentityError:
             rejected += 1
             continue
-        valid = (
+        eligible = (
             key not in seen
             and 200 <= response.status < 300
             and "json" in response.content_type.lower()
-            and response_identity.origin in allowed_origins
-            and (not expected.has_record_id or _response_matches_identity(response.url, response.body, expected))
+            and (response.url in exact_response_urls or response_identity.origin in allowed_origins)
         )
         seen.add(key)
-        if not valid:
+        if not eligible:
+            rejected += 1
+            continue
+        if len(response.body.encode("utf-8")) > max_chars:
+            raise SourceFetchError(
+                SourceFetchCode.TOO_LARGE,
+                f"浏览器接口响应超过 {max_chars} 字节",
+                url=response.url,
+            )
+        if expected.has_record_id and not _response_matches_identity(
+            response.url,
+            response.body,
+            expected,
+        ):
             rejected += 1
             continue
         accepted += 1
         documents.append(
-                SourceDocument(
+            SourceDocument(
                 response.body,
                 response.url,
                 DocumentType.JSON,
                 1,
-                    f"browser-response:{response.url}",
-                    len(documents),
-                    response_identity.topic_id or response_identity.article_id,
-                )
+                f"browser-response:{response.url}",
+                len(documents),
+                response_identity.topic_id or response_identity.article_id,
+            )
         )
     diagnostics = (
         "browser:200",

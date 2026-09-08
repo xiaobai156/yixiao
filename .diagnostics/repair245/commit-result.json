@@ -1,0 +1,46 @@
+{
+  "period": 245,
+  "updated": {
+    "澳门金手指": "虎",
+    "碁布星罗": "羊",
+    "宗政云裳": "马",
+    "连中谎言": "狗",
+    "寒武忌": "鼠"
+  },
+  "unrelated_cache_entries_unchanged": 552,
+  "normal_10_record_window_evictions": {
+    "宗政云裳": [
+      {
+        "period": 235,
+        "zodiac": "兔"
+      }
+    ],
+    "连中谎言": [
+      {
+        "period": 233,
+        "zodiac": "狗"
+      }
+    ],
+    "澳门金手指": [
+      {
+        "period": 235,
+        "zodiac": "鼠"
+      }
+    ],
+    "寒武忌": [],
+    "碁布星罗": [
+      {
+        "period": 235,
+        "zodiac": "羊"
+      }
+    ]
+  },
+  "hashes": {
+    "C:\\Users\\Administrator\\Desktop\\每天工具\\爬虫合集\\杀肖-V2\\sites.json": "4cce35c55c28fe366ec760b2b6a73d952e921c80d92a299769f5ff5f5e4d607d",
+    "C:\\Users\\Administrator\\Desktop\\每天工具\\爬虫合集\\杀肖-V2\\recent_10_cache.json": "c91cdfd83f2c8dfd661decdfe73eab1a4f14563c0716b898cb00d89cb7c4d648",
+    "C:\\Users\\Administrator\\Desktop\\每天工具\\爬虫合集\\七类数据统一归纳\\245期-肖.txt": "c73d6eb24bfc2a21440a856a7d54e571435cb841ca257ef9d1144c2a0af124a7",
+    "C:\\Users\\Administrator\\Desktop\\每天工具\\爬虫合集\\七类数据统一归纳\\245期-肖-新增.txt": "4cfacc58f86536fbcf6ccdd12fde11dc7e82f47137ad361896df3b7ba869bd2f",
+    "C:\\Users\\Administrator\\Desktop\\每天工具\\爬虫合集\\七类数据统一归纳失败\\245期-肖-失败.txt": "834f9ef0d2a0b888c60368854220b3b92778ce811e55893763f5ec8a91a2a463",
+    "C:\\Users\\Administrator\\Desktop\\每天工具\\爬虫合集\\七类数据统一归纳失败\\245期-肖-失败-新增.txt": "3c538e1bbc4db7182a761f09dc03490c191b6bea957f093dcbdee4e330684fce"
+  }
+}

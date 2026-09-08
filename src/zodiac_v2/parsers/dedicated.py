@@ -7,8 +7,15 @@ import re
 from typing import Protocol
 from urllib.parse import urlsplit
 
-from zodiac_v2.contracts import Candidate, DocumentType, SiteConfig, SourceBundle
-from zodiac_v2.parsers.common import TextLine, decoded_script_fragments, document_lines, normalize_space, text_lines
+from zodiac_v2.contracts import Candidate, Direction, DocumentType, SiteConfig, SourceBundle
+from zodiac_v2.parsers.common import (
+    TextLine,
+    decoded_script_fragments,
+    document_lines,
+    normalize_space,
+    scoped_blocks,
+    text_lines,
+)
 from zodiac_v2.parsers.families import (
     AnchoredSectionFamilyParser,
     AnchoredSectionSpec,
@@ -34,12 +41,14 @@ def _document_record_id(document) -> str | None:
         raw_id = payload.get("id")
         if isinstance(raw_id, (str, int)) and not isinstance(raw_id, bool) and str(raw_id).strip():
             return str(raw_id).strip()
-    match = re.search(r"/(?:article/(?:admin|manager)|api/proxy/(?:admin-articles|manager-articles))/([a-z0-9]+)(?:/|$)", document.final_url, re.IGNORECASE)
+    match = re.search(r"/(?:article/(?:admin|manager|lottery)|api/proxy/(?:admin-articles|manager-articles))/([a-z0-9]+)(?:/|$)", document.final_url, re.IGNORECASE)
     return match.group(1) if match else None
 
 PATTERN_SETS: dict[str, tuple[str, ...]] = {'1139adaae11e': ('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*〖\\s*盛世繁华\\s*〗\\s*[^期\\r\\n]*?绝杀①肖[^期\\r\\n]*?[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]',),
  '11ec50746468': ('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*《\\s*滔滔如财\\s*》\\s*[^期\\r\\n]*?绝杀①肖[^期\\r\\n]*?[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]',),
  '1499096f9117': ('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*铁杀一肖\\s*❁\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\\2){0,2}\\s*❁',),
+ '1b2d5142825d': ('(\\d{2,4})期【绝杀一肖】\\{([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\}',),
+ '223f1ef665ec': ('(\\d{2,4})期杀平特（3肖/2肖/1肖/1尾）\\s*杀一肖：([鼠牛虎兔龙蛇马羊猴鸡狗猪])',),
  '284ff014bc0f': ('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】',),
  '293d215e6b71': ('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[^期\\r\\n]*?致富大将[^期\\r\\n]*?绝杀(?:一|①)肖[^期\\r\\n]*?[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]',),
  '29e8867d6c32': ('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]',),
@@ -98,6 +107,7 @@ PATTERN_SETS: dict[str, tuple[str, ...]] = {'1139adaae11e': ('^第?\\s*(\\d{2,4}
  'd42fa3c9c766': ('第?\\s*(\\d{2,4})\\s*期\\s*[:：]?\\s*[【《『「〖]?\\s*祥风时雨\\s*[】》』」〗]?[^\\r\\n]{0,80}?绝杀(?:一|①)肖[^\\r\\n]{0,50}?[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开',),
  'd5257b10e4fa': ('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*〖绝杀一肖〗\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]',),
  'd6dc7b3c6bf0': ('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[^期\\r\\n]*?港澳神童[^期\\r\\n]*?绝杀(?:一|①)肖[^期\\r\\n]*?[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]',),
+ 'df4bda5b5057': ('(\\d{2,4})期[:：]禁固一肖【([鼠牛虎兔龙蛇马羊猴鸡狗猪])】',),
  'dd226b27489a': ('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[^期\\r\\n]*?马经乾坤[^期\\r\\n]*?绝杀(?:一|①)肖[^期\\r\\n]*?[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]',),
  'e4fe8fec3bfe': ('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[^期\\r\\n]*?六龙玩庄[^期\\r\\n]*?绝杀(?:一|①)肖[^期\\r\\n]*?[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]',),
  'eb57d04ab584': ('第?\\s*(\\d{2,4})\\s*期\\s*【澳门亡肖】\\s*《\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*》',),
@@ -109,6 +119,9 @@ PATTERN_SETS: dict[str, tuple[str, ...]] = {'1139adaae11e': ('^第?\\s*(\\d{2,4}
  'f5627854fd3b': ('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[^期\\r\\n]*?阿旺年华[^期\\r\\n]*?绝杀(?:一|①)肖[^期\\r\\n]*?[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]',),
  'f9d1956abcd0': ('第?\\s*(\\d{2,4})\\s*期[:：]?[^\\n]{0,50}?投怀送抱[^\\n]{0,30}?绝杀①肖[^\\n]{0,20}?[【《]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】》]',),
  'fc1ff5a3d08c': ('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【绝杀一肖】\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]',)}
+PATTERN_SETS['fc6ec1387dbe'] = (
+    r'(\d{2,4})期稳杀\(1\)肖【([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\2){2}】',
+)
 
 ANCHOR_ALIASES: dict[str, str] = {'吉祥熊蕊': '吉祥雄蕊',
  '妞妞女神': '妮妮女神',
@@ -121,12 +134,131 @@ ANCHOR_ALIASES: dict[str, str] = {'吉祥熊蕊': '吉祥雄蕊',
  '白大姐': '白小姐禁一肖',
  '白胜': '白 胜',
  '葵花宝典新': '葵花宝典',
- '投怀送抱新': '投怀送抱'}
+ '投怀送抱新': '投怀送抱',
+ '天长地久': '天长日久',
+ '总裁皇帝': '总载皇帝'}
+ANCHOR_ALIASES.update(
+    {
+        '千差万别': '精华区',
+        '神机图': '澳门神机图-组合20码',
+        '马会传真': '澳门马会传真『杀平专区』',
+        '主持人': '绝杀①肖',
+        '山海经': '澳门（绝杀一肖）',
+        '任我发': '任我发『绝杀一肖』',
+        '卢九': '49卢九【稳杀一肖】',
+        '横财富': '横财富-绝杀一肖',
+    }
+)
+
+DIRECTIONAL_CYCLE_REGEX_SITES = frozenset(
+    {
+        '炎炎夏日', '天女散花', '忧心如梦',
+        '短发豹猫', '桃色玫瑰', '故里春意', '风平浪静', '长长久久', '细雪探爱',
+        '花开花落', '欣欣向荣', '阳光小二', '夏侯跣一', '人君犹盂', '独挡天下',
+        '梵天静候', '中馈乏人', '绣闼雕甍', '急躁月会', '举枉措直', '饥不择食',
+        '李四', '张青', '讹以滋讹', '元宵十五', '祸中有福', '绝杀高手',
+        '保价邮件', '股掌之上', '如日中天', '游手好闲', '花团锦簇', '轰轰烈烈',
+        '天气晴朗', '踏踏实实', '鸟语花香', '时光隧道', '字译山海', '春风化雨',
+        '白驹过隙', '三顾茅庐', '森岛帆高', '兴云致雨', '沾沾自喜', '众说纷纭',
+        '纳污藏秽', '天气冷了', '吹毛求疵', '好学不厌',
+        '让他一会', '似水年华', '多彩码王', '富贵当头', '烟花寂凉',
+        '大无间道', '黑庄杀星', '宏图运彩', '财聚太子', '人间烟火',
+        '楚楚动人', '七彩使者', '福如东海', '品料财富', '奇缘小朵',
+        '燕语莺声', '南柯故人', '福星精品', '六合飞船', '桑榆暮景',
+        '秘决公司', '千年的梦', '神算天才', '冰肌莹彻', '总裁皇帝',
+        '绿草如茵', '翠色欲滴', '实力超群', '福星高照', '残阳半夏',
+        '大放光彩', '汪洋大海', '华夏九州', '四平八稳', '花好月圆',
+        '一出好戏', '真心诚意', '水天一色',
+        '绝杀一合', '三十六计', '深藏若虚', '凛冬沐雪', '军师彩报',
+        '天长日久', '东彩破庄', '福禄双全', '未曾忘你', '精品福星',
+        '千差万别', '碁布星罗', '嘟嘟哝哝', '延颈企踵', '埋头苦干', '高手资料',
+        '不绝于耳', '赤光旅行', '山川落笔', '奶香萌男', '爱情微凉',
+        '放声大笑', '爱里嚣张',
+        '临机制变', '峯回路转', '众星攒月', '傲慢少礼', '猪猪宝贝',
+        '名声狼藉', '东门盛自', '漳州怪哥', '绿叶成阴', '丰衣足食',
+        '跟者必赚', '白云孤飞', '龙腾虎跃', '状元红', '财富快车',
+        '一呼百应', '百依百顺', '附录吸血', '兰烬缀梦', '算法吟游',
+        '关心则乱', '九鹭非香', '电子宠物', '放虎归山', '四面楚歌', '宫车晏驾', '张廖握子',
+        '八面玲珑', '外强中干', '顾名思义', '旧岛听风', '情癌晚期',
+        '山海经', '任我发', '卢九', '横财富',
+    }
+)
 
 COMMON_PATTERN_ID = '86a7042b2c5a'
 PATTERN_SETS[COMMON_PATTERN_ID] = (*PATTERN_SETS[COMMON_PATTERN_ID], r'第?\s*(\d{2,4})\s*期[:：]?\s*[^\n]{0,80}?(?:绝杀|絕殺|稳杀|穩殺|禁|杀|殺)\s*①肖[^鼠牛虎兔龙蛇马羊猴鸡狗猪\n]{0,24}([鼠牛虎兔龙蛇马羊猴鸡狗猪])')
 
+PATTERN_SETS['0eaebf278301'] = (
+    r'(\d{2,4})期[:：]【绿叶成阴】【快杀一肖】\s*【([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\2){2}】',
+)
+
+PATTERN_SETS['4190f98ab361'] = (
+    r'(\d{2,4})期\s*【绝杀一肖】【([鼠牛虎兔龙蛇马羊猴鸡狗猪])肖】',
+)
+
+PATTERN_SETS['726050467c57'] = (
+    r'(\d{2,4})期[:：]稳杀一肖《([鼠牛虎兔龙蛇马羊猴鸡狗猪])》',
+)
+
 STRICT_ARTICLE_SPECS: dict[str, StrictArticleSpec] = {
+    '宗政云裳': StrictArticleSpec(
+        r'^杀肖区(\d{2,4})期:\s*宗政云裳「铁杀一肖」免费公开$',
+        r'^(\d{2,4})期铁杀一肖【([鼠牛虎兔龙蛇马羊猴鸡狗猪])\2{2}】开',
+        r'^宗政云裳\s+发表于',
+    ),
+    '男耕妇织': StrictArticleSpec(
+        r'^(\d{2,4})期:男耕妇织→原创【杀特一肖】已公開$',
+        r'^(\d{2,4})期：→【杀特一肖】→【([鼠牛虎兔龙蛇马羊猴鸡狗猪])】〓开：',
+        r'^作者:男耕妇织$',
+        directional_cycles=True,
+    ),
+    '小诸葛一': StrictArticleSpec(
+        r'^(\d{2,4})期:澳彩小诸葛【绝杀一肖】(?:～[^\s]+)?$',
+        r'^(\d{2,4})期：☛绝杀一肖☚【([鼠牛虎兔龙蛇马羊猴鸡狗猪])】',
+        directional_cycles=True,
+    ),
+    '小诸葛二': StrictArticleSpec(
+        r'^(\d{2,4})期:澳彩小诸葛【绝杀一肖】(?:～[^\s]+)?$',
+        r'^(\d{2,4})期:【绝杀一肖】【([鼠牛虎兔龙蛇马羊猴鸡狗猪])】',
+        directional_cycles=True,
+    ),
+    '荒诞不经': StrictArticleSpec(
+        r'^高手帖(\d{2,4})期【绝杀一肖】已更新$',
+        r'^(\d{2,4})期:绝杀1肖【([鼠牛虎兔龙蛇马羊猴鸡狗猪])】',
+        r'^作者:荒诞不经$',
+        directional_cycles=True,
+    ),
+    '轩辕虚兴': StrictArticleSpec(
+        r'^高手贴(\d{2,4})期:【绝杀一肖】$',
+        r'^(\d{2,4})期：绝杀1肖【([鼠牛虎兔龙蛇马羊猴鸡狗猪])】',
+        r'^作者:轩辕虚兴$',
+        directional_cycles=True,
+    ),
+    '推心置腹': StrictArticleSpec(
+        r'^高手\s+(\d{2,4})期【杀肖杀码】已公开$',
+        r'^(\d{2,4})期:【绝杀1肖码】【([鼠牛虎兔龙蛇马羊猴鸡狗猪])♥\d+】',
+        directional_cycles=True,
+    ),
+    '金瓯无缺': StrictArticleSpec(
+        r'^高手\s+(\d{2,4})期【绝杀一肖】已公开$',
+        r'^(\d{2,4})期：绝杀一肖\s*【([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\2){2}】',
+        directional_cycles=True,
+    ),
+    '学无止境': StrictArticleSpec(
+        r'^高手\s+(\d{2,4})期【综合杀料】已公开$',
+        r'^(\d{2,4})期杀【([鼠牛虎兔龙蛇马羊猴鸡狗猪])肖[.]\d+头[.]\d+尾[.]\S+行】',
+        directional_cycles=True,
+    ),
+    '艳绝千秋': StrictArticleSpec(
+        r'^绝杀料(\d{2,4})期:【精杀一肖】$',
+        r'^(\d{2,4})期精杀一肖【([鼠牛虎兔龙蛇马羊猴鸡狗猪])】',
+        r'^作者:艳绝千秋$',
+        directional_cycles=True,
+    ),
+    '决杀一肖': StrictArticleSpec(r'^\s*(\d{2,4})期[:：]?\s*【决杀一肖】已更新$', r'^\s*(\d{2,4})期(?:[^\n]*?T\d+\s+\d+\s*=\s*|杀\s*)([鼠牛虎兔龙蛇马羊猴鸡狗猪])', allow_pending_title=True),
+    '斩钉截铁': StrictArticleSpec(r'^\s*(\d{2,4})期[:：]?\s*\{斩钉截铁\}日进斗金【绝杀一肖】$', r'^\s*(\d{2,4})期[:：]?\s*【绝杀一肖】《([鼠牛虎兔龙蛇马羊猴鸡狗猪])》', r'^斩钉截铁\s+发表于'),
+    '励精图治': StrictArticleSpec(r'^精华资料(\d{2,4})期[:：]?内部提供【铁杀一肖】已公开信心100%$', r'^\s*(\d{2,4})期[:：]?\s*铁杀一肖❁([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\2){2}❁', r'^励精图治\s+发表于'),
+    '满堂绝杀': StrictArticleSpec(r'^\s*(\d{2,4})期[:：]?\s*【\s*绝杀一肖\s*】$', r'^\s*(\d{2,4})期(?:[^\n]*?T\d+\s+\d+\s*=\s*|杀\s*)([鼠牛虎兔龙蛇马羊猴鸡狗猪])'),
+    '劬劳之恩': StrictArticleSpec(r'^\s*(\d{2,4})期[:：]?劬劳之恩→【新毙杀⒈肖】←免费公开$', r'^\s*(\d{2,4})期〈劬劳之恩√毙杀⒈肖〉【([鼠牛虎兔龙蛇马羊猴鸡狗猪])】', r'^作者[:：]\s*劬劳之恩$'),
     '小聋人': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期.*?小龙人.*?干掉㊣一肖.*?已更新', '第?\\s*(\\d{2,4})\\s*期\\s*小龙人『干掉㊣一肖』杀\\s*[:：]?\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】'),
     '穷年尽气': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*穷年尽气【绝杀一肖】', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖〖\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\\2)*\\s*〗'),
     '意料之外': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【意料之外】（绝杀一肖）已公开', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*意料之外'),
@@ -137,7 +269,7 @@ STRICT_ARTICLE_SPECS: dict[str, StrictArticleSpec] = {
     '妄下雌黄': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?【绝杀一肖】', '第?\\s*(\\d{2,4})\\s*期\\s*绝杀一肖（\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*）', '作者[:：]\\s*妄下雌黄'),
     '无边无际': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【杀特一肖】无边无际', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*杀特一肖【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】'),
     '嘻嘻哈哈': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【绝杀一肖】', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*铁杀一肖【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*嘻嘻哈哈\\s*$'),
-    '金牌谜语': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【稳杀一肖】', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【稳杀一肖】【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】'),
+    '金牌谜语': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【稳杀一肖】', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【稳杀一肖】【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', directional_cycles=True),
     '白小姐禁一肖': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*49官网-【白小姐禁一肖】-长期发表', '第?\\s*(\\d{2,4})\\s*期\\s*禁一肖【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\\2)*\\s*】'),
     '踏雪无痕网': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*踏雪无痕网【精杀一肖】788840[a-z]\\.com(?:$|\\s)', '第?\\s*(\\d{2,4})\\s*期【精杀一肖】->\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*<-', '788840[a-z]\\.com\\s+发表于.*$'),
     '直播开奖': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[︰:：]?\\s*【绝杀一肖】\\s*☆☆祝您早日发财❀', '第?\\s*(\\d{2,4})\\s*期\\s*绝杀一肖\\s*[:：]?\\s*[【\\[]\\s*杀\\s*[:：]?\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*[开開]'),
@@ -148,7 +280,7 @@ STRICT_ARTICLE_SPECS: dict[str, StrictArticleSpec] = {
     '我的人生': StrictArticleSpec('(?:1)?(\\d{3})\\s*期[:：]?【我的人生☆绝杀一肖】', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*我的人生'),
     '驷马仰秣': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*驷马仰秣『绝杀一肖』', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【绝杀一肖】【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*驷马仰秣'),
     '是长是短': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?【绝杀一肖】', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*‡绝杀一肖‡【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*是长是短'),
-    '千王之王': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【千王之王】（绝杀一肖）已公开', '第?\\s*(\\d{2,4})\\s*期（绝杀一肖）[:：]?\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])肖'),
+    '千王之王': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【千王之王】（绝杀一肖）已公开', '第?\\s*(\\d{2,4})\\s*期（绝杀一肖）[:：]?\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])肖', directional_cycles=True),
     '推陈出新': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【杀肖杀码】\\s*$', '第?\\s*(\\d{2,4})\\s*期《杀肖杀码》☆\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*-{2,3}\\s*\\d+☆', '推陈出新\\s+发表于'),
     '前仆后继': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]\\s*前仆后继【绝杀一肖】\\s*$', '第?\\s*(\\d{2,4})\\s*期[:：]\\s*前仆后继【绝杀一肖】【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】'),
     '防晒情欲': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【绝杀一肖】稳稳稳\\s*$', '第?\\s*(\\d{2,4})\\s*期【绝杀一肖】【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '防晒情欲\\s+发表于'),
@@ -164,30 +296,37 @@ STRICT_ARTICLE_SPECS: dict[str, StrictArticleSpec] = {
     '鸡鸣狗盗': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【绝杀一肖】免费公开', '第?\\s*(\\d{2,4})\\s*期\\s*:\\s*♠绝杀一肖♠【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*鸡鸣狗盗'),
     '子书梨落': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]【绝杀一肖】准准准', '第?\\s*(\\d{2,4})\\s*期[:：]\\s*绝杀1肖【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '子书梨落\\s+发表于'),
     '一尘不染': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?一尘不染〖绝杀一肖〗166605[a-z]\\.com', '第?\\s*(\\d{2,4})\\s*期[:：]\\s*绝杀1肖【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*166605[a-z]\\.com'),
-    '六合兵团': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【六合兵团】（绝杀一肖）已公开', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖（\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*）', '作者[:：]\\s*六合兵团'),
+    '六合兵团': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【六合兵团】（绝杀一肖）已公开', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖（\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*）', '作者[:：]\\s*六合兵团', directional_cycles=True),
     '另眼看戏': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[:：]?\\s*[【\\[]?禁杀①肖[】\\]]?', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[【\\[]?绝杀一肖[】\\]]?\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]', '另眼看戏\\s+(?:发表于|作者)', allow_pending_title=True),
     '澳门宝码第一': StrictArticleSpec('^第?\\s*(\\d{2,4})\\s*期[:：]\\s*【\\s*稳杀一肖\\s*】\\s*不买也看看绝对赚$', '^第?\\s*(\\d{2,4})\\s*期[:：]\\s*稳杀一肖\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】\\s*[开開][^期]{0,24}(?:准|错)$'),
     '澳门宝码第二': StrictArticleSpec('^第?\\s*(\\d{2,4})\\s*期[:：]\\s*【\\s*绝杀一肖\\s*】\\s*超时代的六合世界$', '^第?\\s*(\\d{2,4})\\s*期[:：]\\s*绝杀一肖\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】\\s*[开開][^期]{0,24}(?:准|错)$'),
     '澳门宝码第三': StrictArticleSpec('^第?\\s*(\\d{2,4})\\s*期[:：]\\s*【\\s*绝杀一肖\\s*】\\s*创造[，,]\\s*六合界奇迹$', '^第?\\s*(\\d{2,4})\\s*期[:：]\\s*绝杀一肖\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】\\s*[开開][^期]{0,24}(?:准|错)$'),
     '白大姐': StrictArticleSpec('^第?\\s*(\\d{2,4})\\s*期\\s*【\\s*白小姐禁一肖\\s*】$', '^第?\\s*(\\d{2,4})\\s*期[:：]\\s*禁一肖\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】\\s*[开開][^期]{0,24}(?:准|错)$'),
-    '准杀一肖': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【\\s*准杀一肖\\s*】', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【\\s*准杀一肖\\s*】\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】\\s*[開开][:：]?', '发表于'),
+    '准杀一肖': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【\\s*准杀一肖\\s*】', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【\\s*准杀一肖\\s*】\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】\\s*[開开][:：]?', '发表于', directional_cycles=True),
     '忘川之畔': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[【\\[]\\s*绝杀一肖\\s*[】\\]]\\s*各显神通', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '忘川之畔.*(?:发表于|作者)'),
     '听天委命': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[:：]?\\s*[【\\[]\\s*精杀一肖\\s*[】\\]]', '第?\\s*(\\d{2,4})\\s*期\\s*精杀一肖\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '作者\\s*[:：]\\s*听天委命'),
     '群魔乱舞': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[:：]?\\s*[【\\[]\\s*绝杀一肖\\s*[】\\]]', '第?\\s*(\\d{2,4})\\s*期\\s*[:：]?\\s*绝杀1肖\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '作者\\s*[:：]\\s*群魔乱舞'),
-    '西东字宙': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[〖【]\\s*[\\u200b-\\u200d\\ufeff]*西东字宙\\s*[〗】]\\s*【\\s*绝杀一肖\\s*】', '第?\\s*(\\d{2,4})\\s*期\\s*[:：]?\\s*@?绝杀一肖‡\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '[\\u200b-\\u200d\\ufeff]*西东字宙\\s+发表于.*'),
+    '西东字宙': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[〖【]\\s*[\\u200b-\\u200d\\ufeff]*西东字宙\\s*[〗】]\\s*【\\s*绝杀一肖\\s*】', '第?\\s*(\\d{2,4})\\s*期\\s*[:：]?\\s*@?绝杀一肖‡\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '[\\u200b-\\u200d\\ufeff]*西东字宙\\s+发表于.*', directional_cycles=True),
     '黄大仙': StrictArticleSpec('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*黄大仙\\s*【\\s*绝杀一肖\\s*】\\s*稳赚不赔$', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*肖\\s*】\\s*开', allow_pending_title=True),
     '天天发财': StrictArticleSpec('^(?:网红帖\\s*)?第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【\\s*绝杀一肖\\s*】$', '第?\\s*(\\d{2,4})\\s*期\\s*【\\s*绝杀一肖\\s*】\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】\\s*开', '^作者\\s*[:：]\\s*天天发财$'),
-    '发财之道': StrictArticleSpec('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀高手\\s*【\\s*精杀一肖\\s*】\\s*发财之道$', '第?\\s*(\\d{2,4})\\s*期\\s*【\\s*精杀一肖\\s*】\\s*《\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*》\\s*开', '^绝杀高手\\s+发表于(?:\\s+.*)?$'),
+    '发财之道': StrictArticleSpec('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀高手\\s*【\\s*精杀一肖\\s*】\\s*发财之道$', '第?\\s*(\\d{2,4})\\s*期\\s*【\\s*精杀一肖\\s*】\\s*《\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*》\\s*开', '^绝杀高手\\s+发表于(?:\\s+.*)?$', directional_cycles=True),
     '精杀一肖': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[【\\[]\\s*精杀一肖\\s*[】\\]]', '第?\\s*(\\d{2,4})\\s*期\\s*精杀一肖\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '作者\\s*[:：]\\s*艳绝千秋'),
     '行走天下': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[【\\[]\\s*绝杀一肖\\s*[】\\]]', '第?\\s*(\\d{2,4})\\s*期\\s*[【\\[]\\s*杀一肖\\s*[】\\]]\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '作者\\s*[:：]\\s*行走天下'),
-    '门庭若市': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[【\\[]\\s*铁杀一肖\\s*[】\\]]\\s*稳赢策略', '第?\\s*(\\d{2,4})\\s*期\\s*[【\\[]\\s*铁杀一肖\\s*[】\\]]\\s*一\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '门庭若市\\s+发表于.*'),
-    '小小丸子': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*小小丸子\\s*【绝杀一肖】', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖\\s*[〖【]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\\2){0,2}\\s*[〗】]'),
+    '门庭若市': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[【\\[]\\s*铁杀一肖\\s*[】\\]]\\s*稳赢策略', '第?\\s*(\\d{2,4})\\s*期\\s*[【\\[]\\s*铁杀一肖\\s*[】\\]]\\s*一\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '门庭若市\\s+发表于.*', directional_cycles=True),
+    '小小丸子': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*小小丸子\\s*【绝杀一肖】', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖\\s*[〖【]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\\2){0,2}\\s*[〗】]', directional_cycles=True),
+    '天翻地覆': StrictArticleSpec(
+        r'^(\d{2,4})期[:：]?天翻地覆【绝杀一肖】已公开！$',
+        r'^(\d{2,4})期【绝杀一肖】【([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\2){2}】(?:开[:：]?.*)?$',
+        r'^天翻地覆\s+发表于',
+        directional_cycles=True,
+    ),
     '小村春光': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[【\\[]\\s*绝杀一肖\\s*[】\\]]\\s*〓\\s*天天中奖', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*小村春光\\s*🕯\\s*绝杀一肖\\s*🕯\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '作者\\s*[:：]\\s*小村春光'),
     '六合稳杀': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[【\\[]\\s*稳杀一肖\\s*[】\\]]', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[【\\[]\\s*稳杀一肖\\s*[】\\]]\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*[开開]', allow_pending_title=True),
     '高风亮节': StrictArticleSpec(
         '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*高风亮节[\\u200b-\\u200d\\ufeff]*\\s*【绝杀肖尾】',
         '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【绝杀1肖1尾】\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*♥\\s*\\d+尾\\s*】',
         '作者[:：]\\s*高风亮节[\\u200b-\\u200d\\ufeff]*',
+        directional_cycles=True,
     ),
     '阿拉搓克': StrictArticleSpec(
         r'\[绝杀一肖\]\s*(\d{2,4})\s*期[:：]?\s*【\s*阿拉搓克\s*━\s*手机论坛\s*】',
@@ -203,6 +342,7 @@ STRICT_ARTICLE_SPECS: dict[str, StrictArticleSpec] = {
         r'\[绝杀一肖\]\s*(\d{2,4})\s*期[:：]?\s*【\s*雷猴烧酒\s*━\s*手机论坛\s*】',
         r'第?\s*(\d{2,4})\s*期[:：]?\s*☛绝杀一肖☚\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*】\s*开',
         r'作者[:：]\s*雷猴烧酒',
+        directional_cycles=True,
     ),
     '智能铁杀': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[【\\[]\\s*铁杀一肖\\s*[】\\]]', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*铁杀一肖\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*[开開]'),
     '赛码会': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[【\\[]\\s*精杀一肖\\s*[】\\]]\\s*谨记网址', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*精杀一肖\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开'),
@@ -210,10 +350,35 @@ STRICT_ARTICLE_SPECS: dict[str, StrictArticleSpec] = {
     '二本万利': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*一本万利\\s*[【\\[]\\s*绝杀一肖\\s*[】\\]]', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[≮<]\\s*绝杀一肖\\s*[≯>]\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开'),
     '妞头码面': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【精杀一肖】\\s*牛头马面', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【精杀一肖】\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】\\s*开'),
     '浅浅一笑': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*浅浅一笑《精杀一肖》已更新', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*精杀一肖\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\\2){2}\\s*】\\s*开'),
-    '乘风转舵': StrictArticleSpec('杀料专区\\s*(\\d{2,4})\\s*期[:：]?\\s*【绝杀一肖】', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*☛绝杀一肖☚\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】\\s*开', '乘风转舵\\s*发表于'),
+    '乘风转舵': StrictArticleSpec('杀料专区\\s*(\\d{2,4})\\s*期[:：]?\\s*【绝杀一肖】', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*☛绝杀一肖☚\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】\\s*开', '乘风转舵\\s*发表于', directional_cycles=True),
 }
 
 ANCHORED_SECTION_SPECS: dict[str, AnchoredSectionSpec] = {
+    '财富快车': AnchoredSectionSpec(
+        r'^『禁止一肖』$',
+        r'^(\d{2,4})期:禁止一肖【([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\2){2}】',
+        r'^财富快车$',
+    ),
+    '绿叶成阴': AnchoredSectionSpec(
+        r'^作者:绿叶成阴$',
+        r'^(\d{2,4})期:【绿叶成阴】【快杀一肖】\s*【([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\2){2}】',
+        record_window_lines=2,
+    ),
+    '山海经': AnchoredSectionSpec(
+        r'^澳门（绝杀一肖）$',
+        r'^(\d{2,4})期：绝杀1肖【([鼠牛虎兔龙蛇马羊猴鸡狗猪])】',
+        r'^澳门（稳杀一波）$',
+    ),
+    '卢九': AnchoredSectionSpec(
+        r'^49卢九【稳杀一肖】$',
+        r'^(\d{2,4})期:稳杀一肖《([鼠牛虎兔龙蛇马羊猴鸡狗猪])》',
+        r'^49卢九【三尾防三尾】$',
+    ),
+    '横财富': AnchoredSectionSpec(
+        r'^横财富-绝杀一肖$',
+        r'^(\d{2,4})期★精杀特一肖【([鼠牛虎兔龙蛇马羊猴鸡狗猪])】',
+        r'^澳门横财富域名',
+    ),
     '何仙姑': AnchoredSectionSpec(
         r'绝杀一肖\s*984440c[.]com',
         r'(?<!\d)(\d{2,4})\s*期\s*杀一肖\s*[:：]?\s*[【\[]\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[】\]]',
@@ -341,7 +506,6 @@ class MacauNamedArticleParser:
                     all_candidates.extend(candidates)
         all_candidates.sort(key=lambda candidate: candidate.page_order)
         return tuple(all_candidates)
-
 
 class A828797NamedArticleParser:
     _specs = {
@@ -561,6 +725,13 @@ class TopicArticleCycleParser:
 
 
 class XinzhuForumParser:
+    _section_title = re.compile(r"^\s*★\s*绝禁一肖\s*★\s*$")
+    _any_section_title = re.compile(r"^\s*★[^★]{1,40}★\s*$")
+    _semantic_row = re.compile(
+        r"^\s*(\d{2,4})\s*期\s*[:：]\s*绝禁一肖\s*"
+        r"[╠【\[]\s*(?P<zodiac>[鼠牛虎兔龙蛇马羊猴鸡狗猪])(?P=zodiac){2}\s*[╣】\]]"
+        r".*$"
+    )
     _item = re.compile(
         r"<div\b[^>]*onclick\s*=\s*['\"][^'\"]*tabTuku07ToggleItemsV22\(\s*(\d+)\s*,[^)]*\)"
         r"[^'\"]*['\"][^>]*>(.*?)</div>",
@@ -646,7 +817,7 @@ class XinzhuForumParser:
         end = next_marker if next_marker is not None else min(len(lines), position + 12)
         return start, max(position + 1, end)
 
-    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+    def _parse_legacy(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
         all_candidates: list[Candidate] = []
         for document in bundle.documents:
             document_source_lines = tuple(line.text for line in document_lines(document))
@@ -724,6 +895,46 @@ class XinzhuForumParser:
         return tuple(all_candidates)
 
 
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        all_candidates: list[Candidate] = []
+        for document in bundle.documents:
+            lines = document_lines(document)
+            for title_index, line in enumerate(lines):
+                if self._section_title.fullmatch(line.text) is None:
+                    continue
+                section_end = next(
+                    (
+                        index
+                        for index in range(title_index + 1, len(lines))
+                        if self._any_section_title.fullmatch(lines[index].text) is not None
+                    ),
+                    len(lines),
+                )
+                for index in range(title_index + 1, section_end):
+                    raw_line = normalize_space(lines[index].text)
+                    match = self._semantic_row.fullmatch(raw_line)
+                    if match is None:
+                        continue
+                    all_candidates.append(
+                        Candidate(
+                            int(match.group(1)),
+                            match.group(2),
+                            raw_line,
+                            document.source_id,
+                            document.page_order * 1_000_000 + index,
+                            (
+                                "column:绝禁一肖",
+                                f"title-line:{title_index}",
+                                "title-text:★绝禁一肖★",
+                                f"block-range:{title_index}-{section_end}",
+                            ),
+                            record_id=document.record_id,
+                        )
+                    )
+        all_candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(all_candidates)
+
+
 class GongzhengchuTableParser:
     _headers = ("期数", "杀一肖", "杀半波", "杀一尾", "杀一头", "开奖结果")
     _period = re.compile(r"^(\d{2,4})\s*期$")
@@ -793,7 +1004,7 @@ class KaijiangFacaiTableParser:
     _row = re.compile(r"<tr\b[^>]*>(.*?)</tr>", re.IGNORECASE | re.DOTALL)
     _cell = re.compile(r"<t[dh]\b[^>]*>(.*?)</t[dh]>", re.IGNORECASE | re.DOTALL)
     _period = re.compile(r"^(\d{2,4})\s*期$")
-    _zodiac = re.compile(r"^([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*肖$")
+    _zodiac = re.compile(r"^([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\s*肖)?$")
 
     @staticmethod
     def _cell_text(value: str) -> str:
@@ -831,7 +1042,10 @@ class KaijiangFacaiTableParser:
             return ()
         all_candidates: list[Candidate] = []
         for document in bundle.documents:
-            if document.document_type is not DocumentType.HTML or not self._same_endpoint(site, document):
+            if (
+                document.document_type not in {DocumentType.HTML, DocumentType.BROWSER}
+                or not self._same_endpoint(site, document)
+            ):
                 continue
             source_lines = document_lines(document)
             source_cursor = 0
@@ -950,9 +1164,12 @@ class MacauCaixianzhiTableParser:
             return ()
         all_candidates: list[Candidate] = []
         for document in bundle.documents:
-            if document.document_type is not DocumentType.SCRIPT:
+            if document.document_type is DocumentType.SCRIPT:
+                fragments = decoded_script_fragments(document.text, preserve_duplicates=True)
+            elif document.document_type is DocumentType.BROWSER:
+                fragments = (document.text,)
+            else:
                 continue
-            fragments = decoded_script_fragments(document.text, preserve_duplicates=True)
             source_lines = document_lines(document)
             for fragment_index, fragment in enumerate(fragments):
                 container_match = self._container.search(fragment)
@@ -1172,6 +1389,22 @@ def _json_field_line_offset(value: dict[str, object], field: str) -> int:
 
 
 class UserForumPostParser:
+    _semantic_topic_periods = {
+        "连中谎言": re.compile(r"^\s*(\d{2,4})(?:\s+(?:重头来过|粉丝看就好|杀肖只能参考))?\s*$"),
+        "请叫我菲菲": re.compile(r"^\s*(\d{2,4})\s*$"),
+    }
+    _inline_history_sites = frozenset(
+        {
+            "青云子",
+            "福禄寿喜财",
+            "高亢毛栗",
+            "分心猫咪",
+            "寒武忌",
+            "捡料糊口的曾白温",
+            "钟哥割",
+        }
+    )
+    _cycle_inline_history_sites = frozenset({"高亢毛栗", "分心猫咪"})
     _first_record_sites = frozenset(
         {
             "私人活动",
@@ -1192,6 +1425,16 @@ class UserForumPostParser:
         "吉祥熊蕊": "吉祥雄蕊",
     }
     _topic_patterns = {
+        "高亢毛栗": re.compile(r"^\s*绝杀一肖\s*$"),
+        "分心猫咪": re.compile(r"^\s*【\s*绝杀一肖\s*】\s*$"),
+        "王木木儿涂涂": re.compile(r"^\s*🍻干杯朋友🍻\s*$"),
+        "暴躁骨衬": re.compile(r"^\s*绝杀一肖\s*$"),
+        "妮最可爱": re.compile(r"^\s*大吉大利\s*$"),
+        "朱红山峰": re.compile(r"^\s*绝杀一肖\s*$"),
+        "鼓舞木料": re.compile(r"^\s*绝杀一肖\s*$"),
+        "强烈电视": re.compile(r"^\s*绝杀一肖\s*$"),
+        "利尿金花": re.compile(r"^\s*绝杀一肖\s*$"),
+        "困难戒指": re.compile(r"^\s*绝杀一肖\s*$"),
         "私人活动": re.compile(r"^\s*绝杀一肖\s*$"),
         "鼓舞诬陷": re.compile(r"^\s*必杀一肖\s*$"),
         "不幸风": re.compile(r"^\s*绝杀一肖\s*$"),
@@ -1208,12 +1451,26 @@ class UserForumPostParser:
         "神之一杀": re.compile(r"杀一肖"),
         "福禄寿喜财": re.compile(r"^\s*\d{2,4}\s*期\s*$"),
         "幸运特码": re.compile(r"^\s*\d{2,4}\s*$"),
-        "青云子": re.compile(r"资料杀一肖"),
-        "连中谎言": re.compile(r"^\s*\d{2,4}\s+重头来过\s*$"),
+        "青云子": re.compile(r"^\s*(?:资料杀一肖|六肖中特)\s*$"),
+        "连中谎言": re.compile(r"^\s*\d{2,4}(?:\s+(?:重头来过|粉丝看就好|杀肖只能参考))?\s*$"),
         "请叫我菲菲": re.compile(r"^\s*\d{2,4}\s*$"),
         "钟哥啊": re.compile(r"稳杀一肖"),
+        "幸运尘客": re.compile(r"^\s*挑战一下杀肖"),
+        "寒武忌": re.compile(r"^\s*\d{2,4}\s+澳门风云\s*$"),
+        "捡料糊口的曾白温": re.compile(r"^\s*杀一肖\s*$"),
+        "钟哥割": re.compile(r"^\s*杀肖\s*$"),
     }
     _record_patterns = {
+        "高亢毛栗": re.compile(r"(?<!\d)(\d{2,4})\s*期[:：]?\s*绝杀一肖\s*▼\s*杀\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*▼"),
+        "分心猫咪": re.compile(r"(?<!\d)(\d{2,4})\s*期[:：]?\s*【\s*绝杀一肖\s*】\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*】"),
+        "王木木儿涂涂": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*杀\s*☞\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"),
+        "暴躁骨衬": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*绝杀一肖\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*】"),
+        "妮最可爱": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*♥?\s*绝杀一肖\s*[—-]+\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[—-]+"),
+        "朱红山峰": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*绝杀一肖\s*《\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*》"),
+        "鼓舞木料": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*绝杀一肖\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*】"),
+        "强烈电视": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*绝杀一肖\s*《\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*》"),
+        "利尿金花": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*精杀一肖\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*】"),
+        "困难戒指": re.compile(r"(?<!\d)(\d{2,4})\s*期[:：]?\s*【\s*绝杀一肖\s*】\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*】"),
         "私人活动": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*[:：]?\s*绝杀\s*①肖\s*❁\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\2){2}\s*❁"),
         "鼓舞诬陷": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*必\s*杀\s*一肖\s*⦥\s*[|｜]\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[|｜]\s*⦤"),
         "不幸风": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*[:：]?\s*绝杀\s*1\s*肖\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*】"),
@@ -1230,11 +1487,107 @@ class UserForumPostParser:
         "神之一杀": re.compile(r"(?<!\d)(\d{2,4})\s*(?:期)?\s*杀\s*[（(]\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[）)]"),
         "福禄寿喜财": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*杀\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"),
         "幸运特码": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*[:：]?\s*杀\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"),
-        "青云子": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*杀\s*《\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*》"),
-        "连中谎言": re.compile(r"(?<!\d)(\d{2,4})\s*绝杀一肖\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"),
+        "青云子": re.compile(r"(?<!\d)(\d{2,4})\s*(?:期|四)\s*杀\s*《\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*》"),
+        "连中谎言": re.compile(r"(?<!\d)(\d{2,4})\s*(?:绝杀一肖|杀)\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\s*开)?"),
         "请叫我菲菲": re.compile(r"(?<!\d)(\d{2,4})\s*杀\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"),
         "钟哥啊": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*杀\s*[:：]?\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"),
+        "幸运尘客": re.compile(
+            r"(?<!\d)<\s*(\d{2,4})\s*>\s*杀\s*[-—]{2,}\s*"
+            r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
+        ),
+        "寒武忌": re.compile(
+            r"(?<!\d)(\d{2,4})\s*期\s*[:：〗]?\s*"
+            r"(?:杀(?:肖)?(?:\s*[<＜〈《✦])?|✦\s*杀)\s*"
+            r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
+            r"(?=\s*(?:[>＞〉》✦√✓✕✖×❌（(]|$))"
+        ),
+        "捡料糊口的曾白温": re.compile(
+            r"(?<!\d)(\d{2,4})\s*(?:期|起)\s*[:：]\s*杀\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
+        ),
+        "钟哥割": re.compile(
+            r"(?<!\d)(\d{2,4})\s*杀\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
+        ),
     }
+
+    def select_source(
+        self,
+        site: SiteConfig,
+        bundle: SourceBundle,
+        target_period: int,
+    ) -> SourceBundle | None:
+        if site.name not in {"福禄寿喜财", "连中谎言"}:
+            return None
+        target_candidates = tuple(
+            candidate
+            for candidate in self.parse(site, bundle)
+            if candidate.period == target_period and candidate.record_id is not None
+        )
+        record_ids = {candidate.record_id for candidate in target_candidates}
+        if len(record_ids) > 1:
+            zodiacs = {candidate.zodiac for candidate in target_candidates}
+            if len(zodiacs) != 1 or site.direction is Direction.LEFT:
+                return None
+            selected_candidate = (
+                target_candidates[0]
+                if site.direction is Direction.TOP
+                else target_candidates[-1]
+            )
+            record_ids = {selected_candidate.record_id}
+        if len(record_ids) != 1:
+            return None
+        expected_user_match = re.search(
+            r"/users/(\d+)(?:/|$)",
+            urlsplit(site.url).path + "/" + urlsplit(site.url).fragment,
+        )
+        if expected_user_match is None:
+            return None
+        expected_user_id = int(expected_user_match.group(1))
+        selected: list[tuple[dict[str, object], object]] = []
+        for document in bundle.documents:
+            if document.document_type is not DocumentType.JSON:
+                continue
+            response_match = re.search(
+                r"/api/v1/users/(\d+)/forums(?:[/?]|$)",
+                urlsplit(document.final_url).path,
+            )
+            if response_match is None or int(response_match.group(1)) != expected_user_id:
+                continue
+            try:
+                rows = json.loads(document.text)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(rows, list):
+                continue
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                record_id = row.get("id")
+                if str(record_id).strip() not in record_ids:
+                    continue
+                selected.append((row, document))
+        if len(selected) != 1:
+            return None
+        row, source = selected[0]
+        record_id = str(row["id"]).strip()
+        selected_user = row.get("user")
+        if not isinstance(selected_user, dict) or not isinstance(selected_user.get("nickname"), str):
+            return None
+        projected_row = dict(row)
+        projected_row["authorNickname"] = selected_user["nickname"]
+        selected_document = type(source)(
+            json.dumps([projected_row], ensure_ascii=False, separators=(",", ":")),
+            source.final_url,
+            DocumentType.JSON,
+            source.priority,
+            f"user:{expected_user_id}:record:{record_id}",
+            0,
+            record_id,
+        )
+        return SourceBundle(
+            (selected_document,),
+            (*bundle.diagnostics, f"user-forum-parser-target:{target_period}", f"user-forum-record:{record_id}"),
+            scan_complete=True,
+        )
 
     def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
         topic_pattern = self._topic_patterns.get(site.name)
@@ -1264,7 +1617,9 @@ class UserForumPostParser:
                 row_line_starts.append(document_line_offset)
                 document_line_offset += _json_line_count(row)
             document_candidates: list[Candidate] = []
-            record_ids_by_draw: dict[int, set[str]] = {}
+            record_ids_by_period: dict[int, set[str]] = {}
+            values_by_period: dict[int, set[str]] = {}
+            semantic_topic_period_pattern = self._semantic_topic_periods.get(site.name)
             for row_index, row in enumerate(rows):
                 if not isinstance(row, dict) or row.get("status") != "published":
                     continue
@@ -1292,7 +1647,12 @@ class UserForumPostParser:
                     or not isinstance(content, str)
                 ):
                     continue
-                record_ids_by_draw.setdefault(draw, set()).add(record_id_text)
+                semantic_period = draw
+                if semantic_topic_period_pattern is not None:
+                    topic_period_match = semantic_topic_period_pattern.fullmatch(topic)
+                    if topic_period_match is None:
+                        continue
+                    semantic_period = int(topic_period_match.group(1))
                 record_matches = [
                     (line_index, line, match)
                     for line_index, line in enumerate(text_lines(content))
@@ -1300,50 +1660,102 @@ class UserForumPostParser:
                 ]
                 if not record_matches:
                     continue
-                if site.name in self._first_record_sites:
+                inline_history = site.name in self._inline_history_sites and (
+                    site.direction is Direction.LEFT or site.name in {"福禄寿喜财", "寒武忌"}
+                ) or (
+                    site.name == "连中谎言" and topic.strip().endswith("杀肖只能参考")
+                )
+                if inline_history:
+                    selected_matches = record_matches
+                    if site.name in self._cycle_inline_history_sites:
+                        current_cycle = []
+                        previous_period = None
+                        for item in record_matches:
+                            item_period = int(item[2].group(1))
+                            if (
+                                previous_period is not None
+                                and previous_period <= 20
+                                and item_period > draw
+                            ):
+                                break
+                            current_cycle.append(item)
+                            previous_period = item_period
+                        selected_matches = current_cycle
+                elif site.name in self._first_record_sites:
                     line_index, line, match = record_matches[0]
                     if int(match.group(1)) != draw:
                         continue
+                    selected_matches = [(line_index, line, match)]
                 else:
                     draw_match = next(
                         (
                             (line_index, line, match)
                             for line_index, line, match in record_matches
-                            if int(match.group(1)) == draw
+                            if int(match.group(1)) == semantic_period
                         ),
                         None,
                     )
                     if draw_match is None:
                         continue
-                    line_index, line, match = draw_match
-                document_candidates.append(
-                    Candidate(
-                        draw,
-                        match.group(2),
-                        line.text,
-                        document.source_id,
-                        document.page_order * 1_000_000
-                        + row_line_starts[row_index]
-                        + _json_field_line_offset(row, "content")
-                        + line_index,
-                        (
-                            f"heading:forum-draw:{draw}",
-                            f"post:{record_id_text}",
-                            f"record-cycle:{record_id_text}",
-                            f"record-offset:{match.start()}",
-                            f"post-range:{row_line_starts[row_index]}-"
-                            f"{row_line_starts[row_index] + _json_line_count(row)}",
-                        ),
-                        record_id=record_id_text,
-                    )
+                    selected_matches = [draw_match]
+                record_ids_by_period.setdefault(semantic_period, set()).add(record_id_text)
+                values_by_period.setdefault(semantic_period, set()).update(
+                    match.group(2)
+                    for _line_index, _line, match in selected_matches
+                    if int(match.group(1)) == semantic_period
                 )
-            ambiguous_draws = {
-                draw for draw, record_ids in record_ids_by_draw.items() if len(record_ids) > 1
+                for line_index, line, match in selected_matches:
+                    period = int(match.group(1)) if inline_history else semantic_period
+                    anchor = (
+                        "anchor:杀"
+                        if site.name == "福禄寿喜财"
+                        else f"section:{normalize_space(topic)}"
+                        if inline_history
+                        else f"heading:forum-draw:{draw}"
+                    )
+                    anchor_line_evidence = (
+                        (
+                            "anchor-line:"
+                            f"{row_line_starts[row_index] + _json_field_line_offset(row, 'topic')}"
+                        ),
+                    ) if inline_history and site.name != "福禄寿喜财" else ()
+                    period_evidence = (
+                        (f"topic-period:{semantic_period}",)
+                        if not inline_history and semantic_topic_period_pattern is not None and semantic_period != draw
+                        else ()
+                    )
+                    document_candidates.append(
+                        Candidate(
+                            period,
+                            match.group(2),
+                            line.text,
+                            document.source_id,
+                            document.page_order * 1_000_000
+                            + row_line_starts[row_index]
+                            + _json_field_line_offset(row, "content")
+                            + line_index,
+                            (
+                                anchor,
+                                *anchor_line_evidence,
+                                *period_evidence,
+                                f"post:{record_id_text}",
+                                f"record-cycle:{record_id_text}",
+                                f"record-offset:{match.start()}",
+                                f"post-range:{row_line_starts[row_index]}-"
+                                f"{row_line_starts[row_index] + _json_line_count(row)}",
+                            ),
+                            record_id=record_id_text,
+                        )
+                    )
+            ambiguous_periods = {
+                period
+                for period, record_ids in record_ids_by_period.items()
+                if len(record_ids) > 1 and len(values_by_period.get(period, ())) != 1
             }
             candidates.extend(
                 candidate
                 for candidate in document_candidates
-                if candidate.period not in ambiguous_draws
+                if candidate.period not in ambiguous_periods
             )
         candidates.sort(key=lambda candidate: candidate.page_order)
         return tuple(candidates)
@@ -1519,8 +1931,301 @@ class MacauJinshouzhiParser:
         return tuple(all_candidates)
 
 
+class YizhixiaArticleParser:
+    """Parse 一只狎's fixed article block and its descending history."""
+
+    _page_url = "https://4.48kk49.com:1888/Article/ar_content/id/1480/tid/82.html"
+    _title = re.compile(r"^(?P<title_period>\d{2,4})期\s*[:：]\s*一只狎经原创《绝杀一肖》$")
+    _record = re.compile(
+        r"^(\d{2,4})期\s+原创绝杀一肖\s*[:：]\s*【\s*"
+        r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*】(?:\s+.*)?$"
+    )
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if (
+            site.name != "一只狎"
+            or site.article_keyword != "一只狎"
+            or site.url.rstrip("/") != self._page_url
+        ):
+            return ()
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            if document.document_type not in {DocumentType.HTML, DocumentType.BROWSER}:
+                continue
+            if document.final_url.rstrip("/") != self._page_url:
+                continue
+            if document.record_id != "1480":
+                continue
+            lines = document_lines(document)
+            title_matches = [
+                (index, line, match)
+                for index, line in enumerate(lines)
+                if (match := self._title.fullmatch(line.text)) is not None
+            ]
+            if len(title_matches) != 1:
+                continue
+            title_index, title_line, title_match = title_matches[0]
+            title_period = title_match.group("title_period")
+            end_index = next(
+                (
+                    index
+                    for index in range(title_index + 1, len(lines))
+                    if lines[index].text.startswith(("上一篇", "下一篇"))
+                ),
+                len(lines),
+            )
+            records: list[tuple[int, str, str, int]] = []
+            for index in range(title_index + 1, end_index):
+                match = self._record.fullmatch(lines[index].text)
+                if match is None:
+                    continue
+                records.append((int(match.group(1)), match.group(2), lines[index].text, index))
+            if not records:
+                continue
+            candidates.extend(
+                Candidate(
+                    period,
+                    zodiac,
+                    raw_line,
+                    document.source_id,
+                    document.page_order * 1_000_000 + line_index,
+                    (
+                        "title-semantic:一只狎经原创绝杀一肖",
+                        f"title-line:{title_index}",
+                        f"title-period:{title_period}",
+                        f"title-text:{normalize_space(title_line.text)}",
+                        f"article-range:{title_index}-{end_index}",
+                        f"record-offset:{line_index}",
+                        "field:绝杀一肖",
+                        "source-type:html",
+                    ),
+                    record_id=document.record_id,
+                )
+                for period, zodiac, raw_line, line_index in records
+            )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
+class ArContentPeriodArticleParser:
+    """Parse semantic article titles and their same-block period records."""
+
+    _title = re.compile(
+        r"^(\d{2,4})期\s*[:：]\s*(?P<label>.*?)"
+        r"(?:【\s*(?P<square>[^【】]*肖[^【】]*)\s*】"
+        r"|\[\s*(?P<bracket>[^\[\]]*肖[^\[\]]*)\s*\]"
+        r"|『\s*(?P<corner>[^『』]*肖[^『』]*)\s*』)"
+        r".*$"
+    )
+    _record = re.compile(
+        r"^(\d{2,4})期\s+(?P<field>.+?)\s*[:：]\s*【\s*"
+        r"(?P<zodiac>[鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*】(?P<tail>.*)$"
+    )
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if site.article_keyword is None:
+            return ()
+        first_document = next(iter(bundle.documents), None)
+        expected_id = _document_record_id(first_document) if first_document is not None else None
+        if expected_id is None:
+            expected_id = re.search(r"/id/(\d+)(?:/|$)", site.url, re.IGNORECASE)
+            expected_id = expected_id.group(1) if expected_id is not None else None
+        if expected_id is None:
+            return ()
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            if document.document_type not in {DocumentType.HTML, DocumentType.BROWSER}:
+                continue
+            if document.record_id != expected_id:
+                continue
+            if document.final_url.rstrip("/") != site.url.rstrip("/"):
+                continue
+            lines = document_lines(document)
+            title_matches = [
+                (index, match)
+                for index, line in enumerate(lines)
+                if (match := self._title.fullmatch(line.text)) is not None
+                and site.article_keyword in normalize_space(line.text)
+            ]
+            if len(title_matches) != 1:
+                continue
+            title_index, title_match = title_matches[0]
+            field = normalize_space(
+                title_match.group("square")
+                or title_match.group("bracket")
+                or title_match.group("corner")
+                or ""
+            )
+            end_index = next(
+                (
+                    index
+                    for index in range(title_index + 1, len(lines))
+                    if lines[index].text.startswith(("上一篇", "下一篇"))
+                ),
+                len(lines),
+            )
+            records: list[tuple[int, str, str, str, int, bool]] = []
+            for index in range(title_index + 1, end_index):
+                match = self._record.fullmatch(lines[index].text)
+                if match is None:
+                    continue
+                record_field = normalize_space(match.group("field"))
+                incomplete = any(marker in match.group("tail") for marker in ("??", "？？"))
+                records.append(
+                    (
+                        int(match.group(1)),
+                        record_field,
+                        match.group("zodiac"),
+                        lines[index].text,
+                        index,
+                        incomplete,
+                    )
+                )
+            if not records:
+                continue
+            record_field = records[0][1]
+            records = [record for record in records if record[1] == record_field]
+            title_period = int(title_match.group(1))
+            candidates.extend(
+                Candidate(
+                    period,
+                    zodiac,
+                    raw_line,
+                    document.source_id,
+                    document.page_order * 1_000_000 + line_index,
+                    (
+                        f"title-semantic:{site.article_keyword}",
+                        f"title-field:{field}",
+                        f"title-line:{title_index}",
+                        f"title-period:{title_period}",
+                        f"title-text:{normalize_space(lines[title_index].text)}",
+                        f"article-range:{title_index}-{end_index}",
+                        f"record-offset:{line_index}",
+                        f"field:{record_field}",
+                        f"record-field:{record_field}",
+                        f"record-status:{'incomplete' if incomplete else 'complete'}",
+                        "source-type:html",
+                    ),
+                    record_id=document.record_id,
+                )
+                for period, _record_field, zodiac, raw_line, line_index, incomplete in records
+            )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
+class ArContentVariantParser:
+    """Parse the explicitly registered single-zodiac ar_content variants."""
+
+    _title = re.compile(r"^(\d{2,4})期\s*[:：]\s*(?P<text>.+)$")
+    _record = re.compile(
+        r"^(\d{2,4})期\s+(?P<field>.+?)\s*[:：]\s*【\s*"
+        r"(?P<zodiac>[鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*】(?P<tail>.*)$"
+    )
+    _semantic = re.compile(r"(?:肖|生肖|动物)")
+    _anchors = {
+        "鬼谷子必中": "鬼谷子必中",
+        "满堂红": "满㊣堂㊣红",
+        "精选供料": "九龙禁肖",
+        "百大姐每期": "百大姐杀肖",
+        "蓝月亮": "蓝月亮",
+        "鬼5洞人": "鬼谷洞人",
+        "黄大仙救世网": "黄大仙㊣救世网",
+    }
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        expected_keyword = self._anchors.get(site.name)
+        if expected_keyword is None or site.article_keyword != expected_keyword:
+            return ()
+        first_document = next(iter(bundle.documents), None)
+        expected_id = _document_record_id(first_document) if first_document is not None else None
+        if expected_id is None:
+            expected_match = re.search(r"/id/(\d+)(?:/|$)", site.url, re.IGNORECASE)
+            expected_id = expected_match.group(1) if expected_match is not None else None
+        if expected_id is None:
+            return ()
+
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            if document.document_type not in {DocumentType.HTML, DocumentType.BROWSER}:
+                continue
+            if document.record_id != expected_id or document.final_url.rstrip("/") != site.url.rstrip("/"):
+                continue
+            lines = document_lines(document)
+            title_matches = [
+                (index, match)
+                for index, line in enumerate(lines)
+                if (match := self._title.fullmatch(line.text)) is not None
+                and expected_keyword in normalize_space(match.group("text"))
+                and self._record.fullmatch(line.text) is None
+            ]
+            if len(title_matches) != 1:
+                continue
+            title_index, title_match = title_matches[0]
+            end_index = next(
+                (
+                    index
+                    for index in range(title_index + 1, len(lines))
+                    if lines[index].text.startswith(("上一篇", "下一篇"))
+                ),
+                len(lines),
+            )
+            records: list[tuple[int, str, str, str, int, bool]] = []
+            for index in range(title_index + 1, end_index):
+                match = self._record.fullmatch(lines[index].text)
+                if match is None:
+                    continue
+                record_field = normalize_space(match.group("field"))
+                records.append(
+                    (
+                        int(match.group(1)),
+                        record_field,
+                        match.group("zodiac"),
+                        lines[index].text,
+                        index,
+                        any(marker in match.group("tail") for marker in ("??", "？？")),
+                    )
+                )
+            title_text = normalize_space(lines[title_index].text)
+            if (
+                not records
+                or self._semantic.search(title_text) is None
+                and self._semantic.search(records[0][1]) is None
+            ):
+                continue
+            record_field = records[0][1]
+            records = [record for record in records if record[1] == record_field]
+            candidates.extend(
+                Candidate(
+                    period,
+                    zodiac,
+                    raw_line,
+                    document.source_id,
+                    document.page_order * 1_000_000 + line_index,
+                    (
+                        f"variant-anchor:{expected_keyword}",
+                        f"title-semantic:{expected_keyword}",
+                        f"title-line:{title_index}",
+                        f"title-period:{title_match.group(1)}",
+                        f"title-text:{title_text}",
+                        f"article-range:{title_index}-{end_index}",
+                        f"record-offset:{line_index}",
+                        f"field:{record_field}",
+                        f"record-field:{record_field}",
+                        f"record-status:{'incomplete' if incomplete else 'complete'}",
+                        "source-type:html",
+                    ),
+                    record_id=document.record_id,
+                )
+                for period, _record_field, zodiac, raw_line, line_index, incomplete in records
+            )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
 class TtssPeriodArticleParser:
     _title = re.compile(r"^(\d{2,4})期\s*[:：]\s*(.+)$")
+    _script_title = re.compile(r"(?<!\d)(\d{2,4})期\s*(?:[:：]\s*)?(.+)$")
     _record = re.compile(
         r"^(\d{2,4})期.*?[：:]\s*[【\[]\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[】\]]"
     )
@@ -1530,8 +2235,11 @@ class TtssPeriodArticleParser:
         r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[】\]]"
     )
     _script_record = re.compile(
-        r"^(\d{2,4})期\s*[:：].*?[\u3016【\[]\s*绝杀(?:一|①)肖\s*[\u3017】\]]\s*"
+        r"^(\d{2,4})期\s*[:：]?\s*.*?"
+        r"(?:[\u3016【\[]\s*)?绝杀(?:一|①)肖\s*(?:[\u3017】\]]\s*)?"
+        r"(?:[\u3016【\[]\s*)?"
         r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
+        r"(?:\s*[\u3017】\]])?"
     )
 
     @staticmethod
@@ -1646,7 +2354,7 @@ class TtssPeriodArticleParser:
         title_candidates = [
             (index, match)
             for index, line in enumerate(lines[:author_index])
-            if (match := self._title.fullmatch(line.text)) is not None
+            if (match := self._script_title.search(line.text)) is not None
             and site.article_keyword in match.group(2)
         ]
         if len(title_candidates) != 1:
@@ -1751,11 +2459,284 @@ class TtssPeriodArticleParser:
         return tuple(candidates)
 
 
+class GushouBandaoCycleParser:
+    _record = re.compile(
+        r"^\s*(\d{2,4})期[:：]?\s*必杀一肖\s*【\s*"
+        r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*】?"
+    )
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            lines = document_lines(document)
+            for block_index, (start, block) in enumerate(scoped_blocks(lines, site.name)):
+                records: list[tuple[int, str, str, int, int]] = []
+                for offset, line in enumerate(block):
+                    match = self._record.search(line.text)
+                    if match is None:
+                        continue
+                    records.append(
+                        (
+                            int(match.group(1).lstrip("0") or "0"),
+                            match.group(2),
+                            line.text,
+                            start + offset,
+                            match.start(1),
+                        )
+                    )
+                cycles: list[list[tuple[int, str, str, int, int]]] = []
+                current: list[tuple[int, str, str, int, int]] = []
+                previous_period: int | None = None
+                for record in records:
+                    period = record[0]
+                    if (
+                        previous_period is not None
+                        and previous_period >= 300
+                        and period <= 20
+                        and current
+                    ):
+                        cycles.append(current)
+                        current = []
+                    current.append(record)
+                    previous_period = period
+                if current:
+                    cycles.append(current)
+                if not cycles:
+                    continue
+                cycle = cycles[-1]
+                cycle_start = cycle[0][3]
+                cycle_end = cycle[-1][3] + 1
+                evidence = (
+                    f"anchor:{site.name}",
+                    f"anchor-line:{start}",
+                    f"block:{block_index}",
+                    f"block-range:{start}-{start + len(block)}",
+                    f"record-cycle:{len(cycles) - 1}",
+                    f"cycle-range:{cycle_start}-{cycle_end}",
+                )
+                candidates.extend(
+                    Candidate(
+                        period,
+                        zodiac,
+                        raw_line,
+                        document.source_id,
+                        document.page_order * 1_000_000 + line_index,
+                        (*evidence, f"record-offset:{match_offset}"),
+                        record_id=document.record_id,
+                    )
+                    for period, zodiac, raw_line, line_index, match_offset in cycle
+                )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
+class MoranBeihuanCycleParser:
+    """Parse 墨染悲欢's authored article and keep yearly record cycles separate."""
+
+    _site_name = "墨染悲欢"
+    _invisible = re.compile(r"[\u200b-\u200d\ufeff]")
+    _title = re.compile(
+        r"^第?\s*(\d{1,4})\s*期\s*〖\s*墨染悲欢\s*〗\s*"
+        r"[【\[]\s*绝杀一肖\s*[】\]](?:.*)?$"
+    )
+    _any_title = re.compile(
+        r"^第?\s*\d{1,4}\s*期\s*〖[^〗]+〗\s*[【\[][^】\]]+[】\]](?:.*)?$"
+    )
+    _author = re.compile(r"^墨染悲欢\s+发表于(?:\s+.*)?$")
+    _record = re.compile(
+        r"^0*(\d{1,4})\s*期\s*[:：]\s*‡\s*绝杀一肖\s*‡\s*"
+        r"[【\[]\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[】\]](?:.*)?$"
+    )
+
+    @classmethod
+    def _semantic_text(cls, value: str) -> str:
+        return cls._invisible.sub("", normalize_space(value))
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if site.name != self._site_name:
+            return ()
+
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            if document.document_type is not DocumentType.SCRIPT:
+                continue
+            lines = document_lines(document)
+            semantic_lines = tuple(self._semantic_text(line.text) for line in lines)
+            title_matches = [
+                (index, match)
+                for index, line in enumerate(semantic_lines)
+                if (match := self._title.fullmatch(line)) is not None
+            ]
+            if len(title_matches) != 1:
+                continue
+            title_index, title_match = title_matches[0]
+            author_index = next(
+                (
+                    index
+                    for index in range(title_index + 1, min(len(lines), title_index + 4))
+                    if self._author.fullmatch(semantic_lines[index]) is not None
+                ),
+                None,
+            )
+            if author_index is None:
+                continue
+
+            records: list[tuple[int, str, str, int, int]] = []
+            block_end = len(lines)
+            for index in range(author_index + 1, len(lines)):
+                semantic_line = semantic_lines[index]
+                if (
+                    self._any_title.fullmatch(semantic_line) is not None
+                    or self._author.fullmatch(semantic_line) is not None
+                    or semantic_line.startswith(("上一篇", "下一篇"))
+                ):
+                    block_end = index
+                    break
+                match = self._record.fullmatch(semantic_line)
+                if match is None:
+                    continue
+                records.append(
+                    (
+                        int(match.group(1).lstrip("0") or "0"),
+                        match.group(2),
+                        lines[index].text,
+                        index,
+                        match.start(1),
+                    )
+                )
+            if not records:
+                continue
+
+            cycle_number = 0
+            previous_period: int | None = None
+            for period, zodiac, raw_line, line_index, offset in records:
+                if previous_period is not None and period < previous_period:
+                    cycle_number += 1
+                previous_period = period
+                evidence = (
+                    "title-text:墨染悲欢",
+                    f"title-period:{int(title_match.group(1).lstrip('0') or '0')}",
+                    f"title-line:{title_index}",
+                    "author:墨染悲欢",
+                    f"author-line:{author_index}",
+                    f"article-range:{title_index}-{block_end}",
+                    f"section-range:{author_index + 1}-{block_end}",
+                    f"record-cycle:{cycle_number}",
+                    "source-type:script",
+                    "field:绝杀一肖",
+                    f"record-offset:{offset}",
+                )
+                candidates.append(
+                    Candidate(
+                        period,
+                        zodiac,
+                        raw_line,
+                        document.source_id,
+                        document.page_order * 1_000_000 + line_index,
+                        evidence,
+                        record_id=document.record_id,
+                    )
+                )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
+class GuangdongTitleAuthorCycleParser:
+    """Parse 广东把而's semantic title block and its descending record cycle."""
+
+    _title = re.compile(
+        r"^第?\s*(\d{2,4})\s*期\s*[:：]?\s*[【\[]\s*杀掉一肖\s*[】\]](?:.*)?$",
+        re.IGNORECASE,
+    )
+    _record = re.compile(
+        r"^第?\s*(\d{2,4})\s*期\s*[（(]\s*必杀一肖\s*[）)]\s*"
+        r"[【\[]\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[】\]]"
+    )
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            if document.document_type is not DocumentType.SCRIPT:
+                continue
+            lines = document_lines(document)
+            title_matches = [
+                (index, match)
+                for index, line in enumerate(lines)
+                if (match := self._title.fullmatch(line.text)) is not None
+            ]
+            if len(title_matches) != 1:
+                continue
+            title_index, title_match = title_matches[0]
+            title_period = int(title_match.group(1).lstrip("0") or "0")
+
+            records: list[tuple[int, str, str, int, int]] = []
+            for index in range(title_index + 1, len(lines)):
+                line = lines[index].text
+                if index > title_index and (
+                    self._title.fullmatch(line) or line.startswith(("上一篇", "下一篇"))
+                ):
+                    break
+                match = self._record.match(line)
+                if match is not None:
+                    records.append(
+                        (
+                            int(match.group(1).lstrip("0") or "0"),
+                            match.group(2),
+                            line,
+                            index,
+                            match.start(1),
+                        )
+                    )
+            start = next(
+                (index for index, record in enumerate(records) if record[0] == title_period),
+                None,
+            )
+            if start is None:
+                continue
+
+            cycle = [records[start]]
+            for record in records[start + 1 :]:
+                if record[0] != cycle[-1][0] - 1:
+                    break
+                cycle.append(record)
+            cycle_start = cycle[0][3]
+            cycle_end = cycle[-1][3] + 1
+            evidence_base = (
+                "title-semantic:杀掉一肖",
+                f"title-period:{title_period}",
+                f"title-text:{normalize_space(lines[title_index].text)}",
+                f"title-line:{title_index}",
+                f"article-range:{title_index}-{cycle_end}",
+                f"section-range:{cycle_start}-{cycle_end}",
+                "record-cycle:0",
+                "source-type:script",
+                "field:必杀一肖",
+            )
+            candidates.extend(
+                Candidate(
+                    period,
+                    zodiac,
+                    raw_line,
+                    document.source_id,
+                    document.page_order * 1_000_000 + line_index,
+                    (*evidence_base, f"record-offset:{offset}"),
+                    record_id=document.record_id,
+                )
+                for period, zodiac, raw_line, line_index, offset in cycle
+            )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
 def parser_entries() -> tuple[tuple[str, Parser], ...]:
     entries: list[tuple[str, Parser]] = [
         (
             f"regex.{identifier}",
-            RegexFamilyParser(patterns, anchor_aliases=ANCHOR_ALIASES),
+            RegexFamilyParser(
+                patterns,
+                anchor_aliases=ANCHOR_ALIASES,
+                directional_cycle_sites=DIRECTIONAL_CYCLE_REGEX_SITES,
+            ),
         )
         for identifier, patterns in PATTERN_SETS.items()
     ]
@@ -1773,11 +2754,15 @@ def parser_entries() -> tuple[tuple[str, Parser], ...]:
             ),
             (
                 "special.guangdong_title_author",
-                TitleAuthorParser(
-                    r"第?\s*(\d{2,4})\s*期.*?(94245[a-g]\.com)",
-                    r"第?\s*(\d{2,4})\s*期[:：]?[^\n]{0,20}?必杀一肖[^鼠牛虎兔龙蛇马羊猴鸡狗猪\n]{0,12}"
-                    r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])",
-                ),
+                GuangdongTitleAuthorCycleParser(),
+            ),
+            (
+                "special.moran_beihuan_cycle",
+                MoranBeihuanCycleParser(),
+            ),
+            (
+                "special.gushou_bandao_cycle",
+                GushouBandaoCycleParser(),
             ),
             ("special.macau_jinshouzhi", MacauJinshouzhiParser()),
             ("special.macau_named_article", MacauNamedArticleParser()),
@@ -1787,6 +2772,9 @@ def parser_entries() -> tuple[tuple[str, Parser], ...]:
             ("special.xinzhu_forum", XinzhuForumParser()),
             ("special.macau_caixianzhi_table", MacauCaixianzhiTableParser()),
             ("special.kaijiang_facai_table", KaijiangFacaiTableParser()),
+            ("special.yizhixia_article", YizhixiaArticleParser()),
+            ("special.ar_content_period_article", ArContentPeriodArticleParser()),
+            ("special.ar_content_variant_article", ArContentVariantParser()),
             ("special.ttss_period_article", TtssPeriodArticleParser()),
             ("special.jinhutang_table", JinhutangTableParser()),
             ("special.gongzhengchu_table", GongzhengchuTableParser()),

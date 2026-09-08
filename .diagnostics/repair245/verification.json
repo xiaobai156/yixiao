@@ -1,0 +1,52 @@
+[
+  {
+    "site": "澳门金手指",
+    "period": 245,
+    "zodiac": "虎",
+    "negative_checks": {
+      "244": false,
+      "246": false,
+      "999": false
+    }
+  },
+  {
+    "site": "宗政云裳",
+    "period": 245,
+    "zodiac": "马",
+    "negative_checks": {
+      "244": false,
+      "246": false,
+      "999": false
+    }
+  },
+  {
+    "site": "连中谎言",
+    "period": 245,
+    "zodiac": "狗",
+    "negative_checks": {
+      "244": false,
+      "246": false,
+      "999": false
+    }
+  },
+  {
+    "site": "寒武忌",
+    "period": 245,
+    "zodiac": "鼠",
+    "negative_checks": {
+      "244": false,
+      "246": false,
+      "999": false
+    }
+  },
+  {
+    "site": "碁布星罗",
+    "period": 245,
+    "zodiac": "羊",
+    "negative_checks": {
+      "244": false,
+      "246": false,
+      "999": false
+    }
+  }
+]

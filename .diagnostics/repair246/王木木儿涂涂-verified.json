@@ -1,0 +1,21 @@
+{
+  "site": {
+    "name": "王木木儿涂涂",
+    "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/202661",
+    "direction": "bottom",
+    "section": "新增的站点",
+    "parser_id": "special.user_forum_post",
+    "source_policy": "api_then_http",
+    "api_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/202661/forums?per_page=20",
+    "article_keyword": null,
+    "embedded_max_bytes": null
+  },
+  "target_period": 246,
+  "candidate": null,
+  "documents": [],
+  "failure_code": "source_identity",
+  "reason": "用户 202661 的接口未找到指定 246期帖子",
+  "writable": false,
+  "validation_receipt": null,
+  "validation_token": null
+}

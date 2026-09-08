@@ -1,16 +1,22 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Collection
+import os
+import threading
+from collections.abc import Collection, Iterable
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from zodiac_v2.contracts import Direction, SiteConfig, SiteSection
+from zodiac_v2.contracts import Direction, SiteConfig, SiteSection, WritePermit
+from zodiac_v2.source.documents import same_source_identity
 
 
 class ConfigError(ValueError):
     pass
+
+
+_CONFIG_WRITE_LOCK = threading.Lock()
 
 
 _ALLOWED_FIELDS = frozenset(
@@ -24,6 +30,7 @@ _ALLOWED_FIELDS = frozenset(
         "source_policy",
         "api_url",
         "article_keyword",
+        "embedded_max_bytes",
     }
 )
 _DIRECTION_ALIASES = {
@@ -134,6 +141,16 @@ def load_sites(
             if not isinstance(article_keyword_value, str) or not article_keyword_value.strip():
                 raise ConfigError(f"第 {index} 个站点的 article_keyword 必须是非空字符串")
             article_keyword = article_keyword_value.strip()
+        embedded_max_bytes_value = item.get("embedded_max_bytes")
+        embedded_max_bytes = None
+        if embedded_max_bytes_value is not None:
+            if (
+                isinstance(embedded_max_bytes_value, bool)
+                or not isinstance(embedded_max_bytes_value, int)
+                or embedded_max_bytes_value <= 0
+            ):
+                raise ConfigError(f"第 {index} 个站点的 embedded_max_bytes 必须是正整数")
+            embedded_max_bytes = embedded_max_bytes_value
         if source_policy == "http_period_keyword_article" and article_keyword is None:
             raise ConfigError(f"第 {index} 个站点的期数关键字详情策略缺少 article_keyword")
         identity = (name, url, direction, section)
@@ -153,7 +170,69 @@ def load_sites(
                 source_policy,
                 api_url,
                 article_keyword,
+                embedded_max_bytes,
             )
         )
 
     return tuple(sites)
+
+
+def append_site_configs(path: Path, sites: Iterable[SiteConfig], *, permit: WritePermit) -> tuple[SiteConfig, ...]:
+    """Atomically append formally authorized, already-validated site configs."""
+
+    permit.require_formal_single(permit.target_period)
+    candidates = tuple(sites)
+    if not candidates:
+        raise ConfigError("正式新增没有可写入的站点")
+    with _CONFIG_WRITE_LOCK:
+        raw = _read_json(path)
+        if not isinstance(raw, list):
+            raise ConfigError("站点配置根节点必须是数组")
+        existing_names = {
+            item.get("name", "").strip()
+            for item in raw
+            if isinstance(item, dict) and isinstance(item.get("name"), str)
+        }
+        existing_urls = tuple(
+            item.get("url", "").strip()
+            for item in raw
+            if isinstance(item, dict) and isinstance(item.get("url"), str)
+        )
+        appended: list[dict[str, object]] = []
+        candidate_urls: list[str] = []
+        for site in candidates:
+            if site.name in existing_names:
+                raise ConfigError(f"正式新增站名重名：{site.name}")
+            if any(
+                same_source_identity(site.url, existing_url)
+                for existing_url in (*existing_urls, *candidate_urls)
+            ):
+                raise ConfigError(f"正式新增 URL/topic 重复：{site.url}")
+            entry: dict[str, object] = {
+                "name": site.name,
+                "pick": site.direction.value,
+                "url": site.url,
+                "section": site.section.value,
+                "parser_id": site.parser_id,
+                "source_policy": site.source_policy,
+            }
+            if site.api_url is not None:
+                entry["api_url"] = site.api_url
+            if site.article_keyword is not None:
+                entry["article_keyword"] = site.article_keyword
+            if site.embedded_max_bytes is not None:
+                entry["embedded_max_bytes"] = site.embedded_max_bytes
+            appended.append(entry)
+            existing_names.add(site.name)
+            candidate_urls.append(site.url)
+        updated = [*raw, *appended]
+        temporary = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+        try:
+            with temporary.open("w", encoding="utf-8", newline="\n") as handle:
+                handle.write(json.dumps(updated, ensure_ascii=False, indent=2) + "\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, path)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return candidates

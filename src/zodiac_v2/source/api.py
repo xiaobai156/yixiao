@@ -15,8 +15,12 @@ from zodiac_v2.source.http import (
     fetch_http_document,
 )
 
-_ARTICLE_PAGE_PATTERN = re.compile(r"^/article/(admin|manager)/([a-z0-9]+)(?:/|$)", re.IGNORECASE)
+_ARTICLE_PAGE_PATTERN = re.compile(
+    r"^/article/(admin|manager|lottery)/([a-z0-9]+)(?:/|$)",
+    re.IGNORECASE,
+)
 _USER_FORUM_API_PATTERN = re.compile(r"(?:^|/)api/v1/users/(\d+)/forums(?:/|$)", re.IGNORECASE)
+_TOPIC_PERIOD_PATTERN = re.compile(r"^\s*(?:第\s*)?(\d{2,4})(?=\s|期(?:\s|$)|$)")
 
 
 def derived_article_api_urls(page_url: str) -> tuple[str, ...]:
@@ -26,11 +30,16 @@ def derived_article_api_urls(page_url: str) -> tuple[str, ...]:
     if match is None:
         return ()
     kind, article_id = match.groups()
-    alternate = "manager" if kind.lower() == "admin" else "admin"
+    normalized_kind = kind.lower()
+    api_kinds = (
+        ("manager", "admin")
+        if normalized_kind == "lottery"
+        else (normalized_kind, "manager" if normalized_kind == "admin" else "admin")
+    )
     origin = f"{parsed.scheme}://{parsed.netloc}"
-    return (
-        f"{origin}/api/proxy/{kind.lower()}-articles/{article_id}",
-        f"{origin}/api/proxy/{alternate}-articles/{article_id}",
+    return tuple(
+        f"{origin}/api/proxy/{api_kind}-articles/{article_id}"
+        for api_kind in api_kinds
     )
 
 
@@ -77,13 +86,22 @@ def bind_user_forum_target(
             user = row.get("user")
             topic = row.get("topic")
             content = row.get("content")
+            topic_period_match = (
+                _TOPIC_PERIOD_PATTERN.match(topic) if isinstance(topic, str) else None
+            )
+            topic_period = int(topic_period_match.group(1)) if topic_period_match is not None else None
+            period_matches = (
+                topic_period == target_period
+                if topic_period is not None
+                else draw == target_period
+            )
             if (
                 row.get("status") != "published"
                 or isinstance(record_id, bool)
                 or not isinstance(record_id, (str, int))
                 or not str(record_id).strip()
                 or isinstance(draw, bool)
-                or draw != target_period
+                or not period_matches
                 or row.get("user_id") != int(expected.user_id)
                 or not isinstance(user, dict)
                 or user.get("id") != int(expected.user_id)

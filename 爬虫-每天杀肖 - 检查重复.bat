@@ -1,5 +1,6 @@
 @echo off
 chcp 65001 >nul
+setlocal
 pushd "%~dp0" || (
   echo ERROR: cannot enter project directory "%~dp0"
   pause
@@ -11,6 +12,7 @@ python -X utf8 -c "import zodiac_v2.cli" >nul 2>nul || (
   echo ERROR: cannot import zodiac_v2.cli
   echo CWD=%CD%
   echo PYTHONPATH=%PYTHONPATH%
+  popd
   pause
   exit /b 1
 )
@@ -18,8 +20,14 @@ set "PERIOD="
 set /p PERIOD=Input period: 
 if not defined PERIOD (
   echo ERROR: period is required.
+  popd
   pause
   exit /b 1
 )
 python -X utf8 -m zodiac_v2.cli duplicate --period "%PERIOD%" --periods 10
+set "RC=%ERRORLEVEL%"
+popd
+echo.
+if not "%RC%"=="0" echo ERROR: duplicate check exited with code %RC%.
 pause
+exit /b %RC%

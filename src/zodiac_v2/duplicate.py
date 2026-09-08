@@ -44,7 +44,11 @@ def find_duplicate_matches(
     minimum_consecutive_periods: int = 3,
     exclude_identity: CacheIdentity | None = None,
 ) -> tuple[DuplicateMatch, ...]:
-    """Compare one candidate sequence with explicitly supplied recent-cache records."""
+    """Compare one candidate sequence with explicitly supplied recent-cache records.
+
+    Missing periods always break a run; they must never be bridged into a
+    seemingly consecutive duplicate sequence.
+    """
     if isinstance(minimum_consecutive_periods, bool) or minimum_consecutive_periods <= 0:
         raise ValueError("判重所需连续期数必须是正整数")
     candidate_groups = _records_by_identity(candidate_records)

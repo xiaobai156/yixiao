@@ -35,6 +35,21 @@ class ParserRegistry:
             raise RegistryError(f"站点 {site.name} 未绑定已注册解析器：{site.parser_id}") from exc
         return parser.parse(site, bundle)
 
+    def select_source(
+        self,
+        site: SiteConfig,
+        bundle: SourceBundle,
+        target_period: int,
+    ) -> SourceBundle | None:
+        try:
+            parser = self._parsers[site.parser_id]
+        except KeyError as exc:
+            raise RegistryError(f"站点 {site.name} 未绑定已注册解析器：{site.parser_id}") from exc
+        selector = getattr(parser, "select_source", None)
+        if not callable(selector):
+            return None
+        return selector(site, bundle, target_period)
+
 
 def build_registry() -> ParserRegistry:
     from zodiac_v2.parsers.dedicated import parser_entries
