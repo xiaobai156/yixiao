@@ -64,6 +64,9 @@ def build_parser() -> argparse.ArgumentParser:
     _common(retry)
     retry.add_argument("--period", "--issue", type=_period, required=True)
     retry.add_argument("--retry-errors", type=Path, action="append", required=True)
+    retry.add_argument("--formal", action="store_true", help="验证通过后正式更新 TXT 和缓存")
+    retry.add_argument("--success-dir", type=Path, default=DEFAULT_SUCCESS_DIR)
+    retry.add_argument("--failure-dir", type=Path, default=DEFAULT_FAILURE_DIR)
 
     duplicate = commands.add_parser("duplicate", help="仅使用 recent_10_cache.json 判重")
     _common(duplicate)
@@ -207,8 +210,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         text = "\n".join(path.read_text(encoding="utf-8") for path in args.retry_errors)
         selected = sites_from_failure_text(text, sites)
         reports = repair_sites(scraper, selected, args.period)
-        _print_results(tuple(report.result for report in reports))
-        print("限定复抓为只读验证，未写缓存或正式 TXT")
+        results = tuple(report.result for report in reports)
+        if args.command == "retry" and args.formal:
+            results = commit_formal_single(
+                results,
+                cache_path=args.cache_file,
+                paths=output_paths(args.period, args.success_dir, args.failure_dir),
+                permit=WritePermit.formal_single(args.period),
+            )
+        else:
+            print("限定复抓为只读验证，未写缓存或正式 TXT")
+        _print_results(results)
         return 0
     if args.command == "duplicate":
         return _run_duplicate(args, load_recent_cache(args.cache_file))
