@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import re
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from html import unescape
 from pathlib import Path
 from time import monotonic
 from typing import Protocol
+from urllib.parse import urlsplit
 
 from zodiac_v2.cache import (
     load_recent_cache_for_commit,
@@ -36,8 +40,10 @@ from zodiac_v2.source.documents import (
     discover_content_documents,
     discover_named_topic_documents,
     discover_period_keyword_links,
+    source_identity,
 )
 from zodiac_v2.source.http import (
+    DEFAULT_MAX_BYTES,
     EMBEDDED_MAX_BYTES,
     HttpTransport,
     SourceFetchCode,
@@ -45,12 +51,17 @@ from zodiac_v2.source.http import (
     default_http_transport,
     fetch_http_document,
 )
-from zodiac_v2.validation.conflicts import validate_candidates
+from zodiac_v2.validation.conflicts import _active_candidates, validate_candidates
 
 DEFAULT_SITE_TIMEOUT = 60.0
 HTTP_CONSENSUS_ATTEMPTS = 5
 HTTP_CONSENSUS_CONFIRMATIONS = 2
 CACHE_SUCCESS_RATE_PERCENT = 85
+CONTENT_CDN_ORIGINS = tuple(
+    f"https://xia{index:02}.cosds.{domain}"
+    for domain in ("ahsccn.com", "aohjifv.com")
+    for index in range(1, 7)
+)
 
 
 class SourceGateway(Protocol):
@@ -96,7 +107,25 @@ class DefaultSourceGateway:
         self.renderer = renderer or PlaywrightBrowserRenderer()
 
     def http(self, site: SiteConfig, timeout: float) -> SourceBundle:
-        parent = fetch_http_document(self.transport, site.url, timeout=timeout, identity_url=site.url)
+        configured_url = urlsplit(site.url)
+        network_url = configured_url._replace(fragment="").geturl()
+        parent = fetch_http_document(
+            self.transport,
+            network_url,
+            timeout=timeout,
+            identity_url=network_url,
+        )
+        if configured_url.fragment:
+            document_url = urlsplit(parent.final_url)._replace(fragment=configured_url.fragment).geturl()
+            parent = SourceDocument(
+                parent.text,
+                document_url,
+                parent.document_type,
+                parent.priority,
+                parent.source_id,
+                parent.page_order,
+                configured_url.fragment,
+            )
         return SourceBundle((parent,), ("http:200", "scan_complete:0"), scan_complete=False)
 
     def embedded(self, site: SiteConfig, bundle: SourceBundle, timeout: float) -> SourceBundle:
@@ -107,7 +136,11 @@ class DefaultSourceGateway:
                 scan_complete=True,
             )
         parent = bundle.documents[0]
-        resources = discover_content_documents(parent.text, parent.final_url)
+        resources = discover_content_documents(
+            parent.text,
+            parent.final_url,
+            allowed_origins=CONTENT_CDN_ORIGINS,
+        )
         if not resources:
             return SourceBundle(
                 bundle.documents,
@@ -115,6 +148,7 @@ class DefaultSourceGateway:
                 scan_complete=True,
             )
         deadline = monotonic() + timeout
+        max_bytes = site.embedded_max_bytes or EMBEDDED_MAX_BYTES
 
         def fetch(resource):
             document = fetch_http_document(
@@ -126,14 +160,19 @@ class DefaultSourceGateway:
                     site.url,
                     "内容文档取源总超时",
                 ),
-                max_bytes=EMBEDDED_MAX_BYTES,
+                max_bytes=max_bytes,
                 document_type=resource.document_type,
                 page_order=resource.page_order + 1,
             )
             _remaining_budget(deadline, timeout, site.url, "内容文档取源总超时")
             return document
 
-        return collect_content_documents(parent, resources, fetch)
+        return collect_content_documents(
+            parent,
+            resources,
+            fetch,
+            allowed_origins=CONTENT_CDN_ORIGINS,
+        )
 
     def named_topic(self, site: SiteConfig, bundle: SourceBundle, timeout: float) -> SourceBundle:
         resources = []
@@ -153,6 +192,8 @@ class DefaultSourceGateway:
             )
         deadline = monotonic() + timeout
         documents = []
+        scan_complete = True
+        truncation_diagnostics: list[str] = []
         for resource in resources:
             detail = fetch_http_document(
                 self.transport,
@@ -169,6 +210,12 @@ class DefaultSourceGateway:
                 SourceBundle((detail,), ("named-topic:200", "scan_complete:0"), scan_complete=False),
                 remaining,
             )
+            scan_complete = scan_complete and enriched.scan_complete
+            truncation_diagnostics.extend(
+                diagnostic
+                for diagnostic in enriched.diagnostics
+                if diagnostic.startswith("content_truncated:")
+            )
             documents.extend(
                 SourceDocument(
                     item.text,
@@ -183,8 +230,12 @@ class DefaultSourceGateway:
             )
         return SourceBundle(
             tuple(documents),
-            (f"named-topic:200:{len(documents)}", "scan_complete:1"),
-            scan_complete=True,
+            (
+                f"named-topic:200:{len(documents)}",
+                *tuple(dict.fromkeys(truncation_diagnostics)),
+                f"scan_complete:{int(scan_complete)}",
+            ),
+            scan_complete=scan_complete,
         )
 
     def period_keyword_article(
@@ -214,13 +265,15 @@ class DefaultSourceGateway:
                     "同栏目分页超过安全上限 10 页",
                     url=site.url,
                 )
-            article_urls, page_urls = discover_period_keyword_links(
+            article_urls, page_urls, has_target_period_articles = discover_period_keyword_links(
                 document.text,
                 document.final_url,
                 target_period,
                 site.article_keyword,
             )
             matches.extend(article_urls)
+            if not has_target_period_articles:
+                continue
             for page_url in page_urls:
                 if page_url in seen_pages:
                     continue
@@ -271,7 +324,13 @@ class DefaultSourceGateway:
 
     def browser(self, site: SiteConfig, timeout: float) -> SourceBundle:
         allowed = (site.api_url,) if site.api_url else ()
-        return browser_documents(self.renderer, site.url, timeout=timeout, allowed_response_urls=allowed)
+        return browser_documents(
+            self.renderer,
+            site.url,
+            timeout=timeout,
+            max_chars=site.embedded_max_bytes or DEFAULT_MAX_BYTES,
+            allowed_response_urls=allowed,
+        )
 
     def article_api(self, site: SiteConfig, timeout: float) -> tuple[SourceBundle, ...]:
         urls = derived_article_api_urls(site.url)
@@ -316,8 +375,122 @@ def _failure_code(error: SourceFetchError) -> FailureCode:
     return FailureCode.NETWORK
 
 
+def _bundle_is_empty_shell(bundle: SourceBundle) -> bool:
+    if not bundle.documents:
+        return True
+    for document in bundle.documents:
+        if document.document_type is DocumentType.JSON:
+            try:
+                payload = json.loads(document.text)
+            except json.JSONDecodeError:
+                return False
+            if payload not in (None, {}, []):
+                return False
+            continue
+        without_code = re.sub(r"(?is)<(?:script|style)\b[^>]*>.*?</(?:script|style)>", " ", document.text)
+        visible = unescape(re.sub(r"(?s)<[^>]+>", " ", without_code))
+        if visible.strip():
+            return False
+    return True
+
+
+def _article_api_bundle(
+    site: SiteConfig,
+    documents: tuple[SourceDocument, ...],
+) -> SourceBundle | None:
+    expected_id = source_identity(site.url).article_id
+    if expected_id is None:
+        raise SourceFetchError(
+            SourceFetchCode.SOURCE_IDENTITY,
+            "动态文章 URL 缺少文章 ID",
+            url=site.url,
+        )
+    canonical_records: dict[str, tuple[dict[str, object], SourceDocument]] = {}
+    for document in documents:
+        try:
+            payload = json.loads(document.text)
+        except json.JSONDecodeError as exc:
+            raise SourceFetchError(
+                SourceFetchCode.SOURCE_IDENTITY,
+                "文章 API 返回非可信 JSON，禁止浏览器兜底",
+                url=site.url,
+            ) from exc
+        if payload in (None, {}, []):
+            continue
+        rows = payload if isinstance(payload, list) else [payload]
+        if not all(isinstance(row, dict) for row in rows):
+            raise SourceFetchError(
+                SourceFetchCode.SOURCE_IDENTITY,
+                "文章 API 记录容器非法，禁止浏览器兜底",
+                url=site.url,
+            )
+        for row in rows:
+            raw_id = row.get("id")
+            if (
+                isinstance(raw_id, bool)
+                or not isinstance(raw_id, (str, int))
+                or not str(raw_id).strip()
+            ):
+                raise SourceFetchError(
+                    SourceFetchCode.SOURCE_IDENTITY,
+                    f"文章 API 非空记录缺少合法 ID（来源 {document.source_id}），禁止浏览器兜底",
+                    url=site.url,
+                )
+            if str(raw_id).strip() != expected_id:
+                raise SourceFetchError(
+                    SourceFetchCode.SOURCE_IDENTITY,
+                    f"文章 API 返回错误文章 ID {str(raw_id).strip()}，预期 {expected_id}"
+                    f"（来源 {document.source_id}），禁止浏览器兜底",
+                    url=site.url,
+                )
+            canonical = json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            canonical_records.setdefault(canonical, (row, document))
+    if not canonical_records:
+        return None
+    if len(canonical_records) != 1:
+        raise SourceFetchError(
+            SourceFetchCode.SOURCE_IDENTITY,
+            f"文章 API 的 URL 文章 ID {expected_id} 出现冲突记录，禁止浏览器兜底",
+            url=site.url,
+        )
+    record, source_document = next(iter(canonical_records.values()))
+    body_fields = tuple(record.get(field) for field in ("content", "body", "html", "text") if field in record)
+    if any(value is not None and not isinstance(value, str) for value in body_fields):
+        raise SourceFetchError(
+            SourceFetchCode.SOURCE_IDENTITY,
+            f"文章 API 的 URL 文章 ID {expected_id} 正文字段非法，禁止浏览器兜底",
+            url=site.url,
+        )
+    if any(isinstance(value, str) and value.strip() for value in body_fields):
+        selected_document = SourceDocument(
+            json.dumps(record, ensure_ascii=False, separators=(",", ":")),
+            source_document.final_url,
+            DocumentType.JSON,
+            source_document.priority,
+            source_document.source_id,
+            0,
+            expected_id,
+        )
+        return SourceBundle(
+            (selected_document,),
+            ("derived-api:unique-target", "scan_complete:1"),
+            scan_complete=True,
+        )
+    if body_fields:
+        return None
+    raise SourceFetchError(
+        SourceFetchCode.SOURCE_IDENTITY,
+        f"文章 API 的 URL 文章 ID {expected_id} 正文字段非法，禁止浏览器兜底",
+        url=site.url,
+    )
+
+
 class ScrapeService:
-    def __init__(self, gateway: SourceGateway, registry: BoundParser | ParserRegistry) -> None:
+    def __init__(
+        self,
+        gateway: SourceGateway,
+        registry: BoundParser | ParserRegistry,
+    ) -> None:
         self.gateway = gateway
         self.registry = registry
 
@@ -394,17 +567,22 @@ class ScrapeService:
             site.source_policy,
             site.api_url,
             site.article_keyword,
+            site.embedded_max_bytes,
+        )
+        candidates = _active_candidates(
+            tuple(self.registry.parse(history_site, bundle)),
+            site.direction,
         )
         results: list[ScrapeResult] = []
         for period in selected_periods:
-            extracted = self._evaluate(history_site, period, bundle, RunMode.READ_ONLY)
-            if extracted.ok and extracted.candidate is not None:
+            decision = validate_candidates(history_site, bundle, candidates, period)
+            if decision.ok and decision.candidate is not None:
                 results.append(
                     ScrapeResult.success(
                         site,
                         period,
-                        extracted.candidate,
-                        extracted.documents,
+                        decision.candidate,
+                        bundle.documents,
                         writable=False,
                     )
                 )
@@ -413,9 +591,9 @@ class ScrapeService:
                     ScrapeResult.failure(
                         site,
                         period,
-                        extracted.failure_code or FailureCode.OTHER,
-                        extracted.reason,
-                        extracted.documents,
+                        decision.failure_code or FailureCode.OTHER,
+                        decision.reason,
+                        bundle.documents,
                     )
                 )
         return tuple(results)
@@ -424,6 +602,10 @@ class ScrapeService:
         if site.source_policy == "api_then_http":
             return self.gateway.api_then_http(site, timeout)
         if site.source_policy == "browser_user":
+            return self.gateway.browser(site, timeout)
+        if site.source_policy == "browser":
+            return self.gateway.browser(site, timeout)
+        if site.source_policy == "http_then_browser" and urlsplit(site.url).fragment:
             return self.gateway.browser(site, timeout)
         if site.source_policy in {
             "http_documents",
@@ -564,21 +746,68 @@ class ScrapeService:
         try:
             if site.source_policy == "http_consensus":
                 return self._http_consensus(site, target_period, mode, remaining)
-            try:
-                bundle = self._fetch(site, remaining())
-            except SourceFetchError:
-                if site.source_policy != "http_then_browser":
-                    raise
-                bundle = self.gateway.browser(site, remaining())
+            article_urls = derived_article_api_urls(site.url)
+            if site.source_policy == "http_then_browser" and article_urls:
+                article_bundles = self.gateway.article_api(site, remaining())
+                article_documents = tuple(
+                    document
+                    for article_bundle in article_bundles
+                    for document in article_bundle.documents
+                )
+                documents = article_documents
+                remaining()
+                target_bundle = _article_api_bundle(site, article_documents) if article_documents else None
+                if target_bundle is not None:
+                    documents = target_bundle.documents
+                    result = self._evaluate(site, target_period, target_bundle, mode)
+                    remaining()
+                    return result
+                browser_bundle = self.gateway.browser(site, remaining())
+                documents = browser_bundle.documents
+                remaining()
+                result = self._evaluate(site, target_period, browser_bundle, mode)
+                remaining()
+                return result
+            bundle = self._fetch(site, remaining())
             if site.source_policy == "http_period_keyword_article":
                 bundle = self.gateway.period_keyword_article(site, bundle, target_period, remaining())
+            if (
+                site.source_policy == "api_then_http"
+                and article_urls
+                and "api:200" in bundle.diagnostics
+            ):
+                target_bundle = _article_api_bundle(site, bundle.documents)
+                if target_bundle is None:
+                    raise SourceFetchError(
+                        SourceFetchCode.SOURCE_IDENTITY,
+                        "文章 API 唯一目标记录正文为空，当前策略不允许浏览器兜底",
+                        url=site.url,
+                )
+                bundle = target_bundle
+            if site.source_policy == "http_then_browser" and not bundle.scan_complete:
+                bundle = self.gateway.embedded(site, bundle, remaining())
+                remaining()
             if site.source_policy in {"api_then_http", "browser_user"}:
-                bundle = bind_user_forum_target(site.url, bundle, target_period)
+                selector = getattr(self.registry, "select_source", None)
+                selected_bundle = (
+                    selector(site, bundle, target_period)
+                    if callable(selector)
+                    else None
+                )
+                bundle = (
+                    selected_bundle
+                    if selected_bundle is not None
+                    else bind_user_forum_target(site.url, bundle, target_period)
+                )
             documents = bundle.documents
             result = self._evaluate(site, target_period, bundle, mode)
             remaining()
             if site.source_policy in {"http_documents", "http_named_topic"}:
-                if not result.ok and result.failure_code is not FailureCode.DEDICATED_PARSER_MISS:
+                if (
+                    bundle.scan_complete
+                    and not result.ok
+                    and result.failure_code is not FailureCode.DEDICATED_PARSER_MISS
+                ):
                     return result
                 embedded_bundle = self.gateway.embedded(site, bundle, remaining())
                 remaining()
@@ -605,32 +834,13 @@ class ScrapeService:
                 return result
             if site.source_policy != "http_then_browser":
                 return result
-            article_bundles = self.gateway.article_api(site, remaining())
-            article_documents = tuple(
-                document
-                for article_bundle in article_bundles
-                for document in article_bundle.documents
-            )
-            remaining()
-            if article_documents:
-                article_result = self._evaluate(
-                    site,
-                    target_period,
-                    SourceBundle(
-                        article_documents,
-                        ("derived-api:combined", "scan_complete:1"),
-                        scan_complete=True,
-                    ),
-                    mode,
-                )
+            if urlsplit(site.url).fragment:
+                return result
+            if _bundle_is_empty_shell(bundle):
+                browser_bundle = self.gateway.browser(site, remaining())
                 remaining()
-                if article_result.failure_code is not FailureCode.DEDICATED_PARSER_MISS:
-                    return article_result
-            browser_bundle = self.gateway.browser(site, remaining())
-            remaining()
-            browser_result = self._evaluate(site, target_period, browser_bundle, mode)
-            remaining()
-            return browser_result
+                return self._evaluate(site, target_period, browser_bundle, mode)
+            return result
         except SourceFetchError as exc:
             return ScrapeResult.failure(
                 site,
@@ -738,6 +948,7 @@ def commit_formal_single(
     cache_path: Path,
     paths: OutputPaths,
     permit: WritePermit,
+    existing_success_extra_names: Iterable[str] = (),
 ) -> tuple[ScrapeResult, ...]:
     permit.require_formal_single(permit.target_period)
     materialized = tuple(results)
@@ -758,7 +969,14 @@ def commit_formal_single(
             if result.validation_receipt != expected_receipt:
                 raise PermissionError("抓取结果缺少有效统一验证回执")
     final_tuple = tuple(materialized)
-    write_output_payloads(build_output_payloads(final_tuple, paths), permit)
+    write_output_payloads(
+        build_output_payloads(
+            final_tuple,
+            paths,
+            existing_success_extra_names=existing_success_extra_names,
+        ),
+        permit,
+    )
 
     successful_results = tuple(result for result in final_tuple if result.ok)
     if not successful_results:

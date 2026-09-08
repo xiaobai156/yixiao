@@ -4,10 +4,11 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Protocol
 
-from zodiac_v2.cache import cache_records
-from zodiac_v2.contracts import CacheRecord, RunMode, ScrapeResult, SiteConfig, SiteSection
+from zodiac_v2.cache import cache_records, validate_cache_data
+from zodiac_v2.contracts import CacheRecord, FailureCode, RunMode, ScrapeResult, SiteConfig
 from zodiac_v2.duplicate import DuplicateMatch, find_duplicate_matches
 from zodiac_v2.services.scrape import cache_record_from_result
+from zodiac_v2.source.documents import same_source_identity
 
 
 class SiteScraper(Protocol):
@@ -22,15 +23,26 @@ class OnboardingDecision:
     duplicate_matches: tuple[DuplicateMatch, ...]
 
 
+_HISTORICAL_ABSENCE_CODES = frozenset(
+    {FailureCode.PERIOD, FailureCode.DEDICATED_PARSER_MISS}
+)
+
+
 def _configuration_conflicts(candidate: SiteConfig, existing: Iterable[SiteConfig]) -> tuple[str, ...]:
+    sites = tuple(existing)
+    candidate_name = candidate.name.strip()
+    name_conflicts = tuple(
+        f"站名重名：{candidate_name} 已对应 {site.url}"
+        for site in sites
+        if site.name.strip() == candidate_name
+    )
+    if name_conflicts:
+        return tuple(dict.fromkeys(name_conflicts))
+
     reasons: list[str] = []
-    for site in existing:
-        if site.name == candidate.name:
-            reasons.append(f"站名重名：{candidate.name} 已对应 {site.url}")
-        if site.url == candidate.url:
+    for site in sites:
+        if same_source_identity(site.url, candidate.url):
             reasons.append(f"URL/topic 重复：{candidate.url} 已属于 {site.name}")
-    if candidate.section is not SiteSection.NEW:
-        reasons.append("新增站点必须属于新增的站点分类")
     return tuple(dict.fromkeys(reasons))
 
 
@@ -41,24 +53,43 @@ def validate_new_site(
     recent_cache_data: object,
     periods: Iterable[int],
     *,
-    required_periods: int = 10,
+    allow_short_history: bool = False,
 ) -> OnboardingDecision:
     conflicts = _configuration_conflicts(candidate, existing_sites)
     if conflicts:
         return OnboardingDecision(False, conflicts, (), ())
     selected_periods = tuple(dict.fromkeys(periods))
-    if len(selected_periods) != required_periods:
+    if not selected_periods:
         return OnboardingDecision(
             False,
-            (f"近10期有效数据不足：需要 {required_periods} 期，实际 {len(selected_periods)} 期",),
+            ("新增站点验收没有提供期数基准",),
             (),
             (),
         )
-    expected_periods = tuple(range(selected_periods[0], selected_periods[0] - required_periods, -1))
-    if selected_periods != expected_periods:
+    try:
+        validated_cache = validate_cache_data(recent_cache_data)
+    except ValueError as exc:
+        return OnboardingDecision(False, (f"正式近10期判重未完成：{exc}",), (), ())
+    latest_period = validated_cache.get("latest_period")
+    if not isinstance(latest_period, int):
+        return OnboardingDecision(False, ("正式近10期缓存缺少 latest_period",), (), ())
+    allowed_baselines = {latest_period}
+    if latest_period > 1:
+        allowed_baselines.add(latest_period - 1)
+    if selected_periods[0] not in allowed_baselines:
         return OnboardingDecision(
             False,
-            ("近10期历史必须按连续期号倒序提供，缺失期不得跨越拼接",),
+            (
+                f"新增站点验收基准期只允许正式缓存最新{latest_period}期"
+                f"或上一期{latest_period - 1}期",
+            ),
+            (),
+            (),
+        )
+    if selected_periods != tuple(sorted(selected_periods, reverse=True)):
+        return OnboardingDecision(
+            False,
+            ("新增站点验收期数必须按倒序提供",),
             (),
             (),
         )
@@ -88,15 +119,34 @@ def validate_new_site(
             results,
             (),
         )
-    failed = tuple(result for result in results if not result.ok)
-    if failed:
-        reasons = tuple(f"{result.target_period}期：{result.reason}" for result in failed)
+    unavailable = tuple(
+        result
+        for result in results
+        if not result.ok and result.failure_code not in _HISTORICAL_ABSENCE_CODES
+    )
+    if unavailable:
+        reasons = tuple(f"{result.target_period}期：{result.reason}" for result in unavailable)
         return OnboardingDecision(False, reasons, results, ())
-    candidate_records: tuple[CacheRecord, ...] = tuple(cache_record_from_result(result) for result in results)
-    try:
-        baseline_records = cache_records(recent_cache_data)
-    except ValueError as exc:
-        return OnboardingDecision(False, (f"正式近10期判重未完成：{exc}",), results, ())
+    candidate_records: tuple[CacheRecord, ...] = tuple(
+        cache_record_from_result(result)
+        for result in results
+        if result.ok and result.candidate is not None
+    )
+    if not candidate_records:
+        return OnboardingDecision(
+            False,
+            ("候选站没有任何有效期号，重复检测未完成",),
+            results,
+            (),
+        )
+    if len(candidate_records) < 10 and not allow_short_history:
+        return OnboardingDecision(
+            False,
+            (f"候选站只有{len(candidate_records)}期有效历史，默认准入要求10期",),
+            results,
+            (),
+        )
+    baseline_records = cache_records(validated_cache)
     if not baseline_records:
         return OnboardingDecision(
             False,
@@ -109,7 +159,7 @@ def validate_new_site(
     if not candidate_periods & baseline_periods:
         return OnboardingDecision(
             False,
-            ("正式近10期缓存与候选站没有共同期号，重复检测未完成",),
+            ("正式缓存与候选站没有共同已有期号，重复检测未完成",),
             results,
             (),
         )
@@ -124,8 +174,8 @@ def validate_new_site(
         reasons = tuple(
             reason
             for value, reason in (
-                (suspected, f"连续3至5期相同，疑似重复，暂停人工审核：{suspected}"),
-                (confirmed, f"连续6期及以上相同，确定重复，禁止加入：{confirmed}"),
+                (suspected, f"共同已有期号中3至5期相同，疑似重复，暂停人工审核：{suspected}"),
+                (confirmed, f"共同已有期号中6期及以上相同，确定重复，禁止加入：{confirmed}"),
             )
             if value
         )
