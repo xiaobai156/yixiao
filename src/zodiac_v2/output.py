@@ -268,7 +268,10 @@ def _format_success_rows(
         [
             "",
             "生肖次数排行榜",
-            *(f"{zodiac} {counter[zodiac]}次" for zodiac in sorted(counter, key=lambda item: (-counter[item], ZODIAC_ORDER.index(item))),),
+            *(
+                f"{zodiac} {counter[zodiac]}次"
+                for zodiac in sorted(counter, key=lambda item: (-counter[item], ZODIAC_ORDER.index(item)))
+            ),
             "",
             "前一期失败统计",
             "无",
