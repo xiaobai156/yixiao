@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Collection, Iterable
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
@@ -11,12 +11,20 @@ from zodiac_v2.contracts import DocumentType, SourceBundle, SourceDocument
 
 _TOPIC_PATTERN = re.compile(r"(?:^|/)topic/(\d+)(?:\.html)?(?:/|$)", re.IGNORECASE)
 _USER_PATTERN = re.compile(r"(?:^|/)users/(\d+)(?:/|$)", re.IGNORECASE)
-_ARTICLE_PATTERN = re.compile(r"(?:^|/)article/(?:admin|manager)/([a-z0-9]+)(?:/|$)", re.IGNORECASE)
+_ARTICLE_PATTERN = re.compile(
+    r"(?:^|/)article/(?:admin|manager|lottery)/([a-z0-9]+)(?:/|$)",
+    re.IGNORECASE,
+)
+_AR_CONTENT_PATTERN = re.compile(r"(?:^|/)article/ar_content/id/(\d+)(?:/|$)", re.IGNORECASE)
 _ARTICLE_API_PATTERN = re.compile(
     r"(?:^|/)api/proxy/(?:admin-articles|manager-articles)/([a-z0-9]+)(?:/|$)",
     re.IGNORECASE,
 )
 _DYNAMIC_SCRIPT_SOURCE_PATTERN = re.compile(r"\bsrc\s*=\s*['\"]([^'\"<>]+)", re.IGNORECASE)
+_NON_TEXT_ASSET_SUFFIXES = (
+    ".avif", ".bmp", ".gif", ".ico", ".jpeg", ".jpg", ".png", ".svg", ".webp",
+    ".mp3", ".mp4", ".ogg", ".wav", ".woff", ".woff2",
+)
 
 
 class SourceIdentityError(ValueError):
@@ -61,7 +69,11 @@ def source_identity(url: str) -> SourceIdentity:
     parsed = urlsplit(url)
     topic_match = _TOPIC_PATTERN.search(searchable)
     user_match = _USER_PATTERN.search(searchable)
-    article_match = _ARTICLE_PATTERN.search(searchable) or _ARTICLE_API_PATTERN.search(searchable)
+    article_match = (
+        _ARTICLE_PATTERN.search(searchable)
+        or _AR_CONTENT_PATTERN.search(searchable)
+        or _ARTICLE_API_PATTERN.search(searchable)
+    )
     query_article_id = None
     if parsed.path.lower().endswith("/article.aspx"):
         values = parse_qs(parsed.query).get("id", ())
@@ -73,6 +85,39 @@ def source_identity(url: str) -> SourceIdentity:
         user_id=user_match.group(1) if user_match else None,
         article_id=article_match.group(1) if article_match else query_article_id,
     )
+
+
+def same_source_identity(first_url: str, second_url: str) -> bool:
+    """Compare canonical source identity without treating query noise as a new record."""
+    try:
+        first = source_identity(first_url)
+        second = source_identity(second_url)
+    except SourceIdentityError:
+        return first_url.strip() == second_url.strip()
+    if first.origin != second.origin:
+        return False
+    identifiers = (
+        (first.topic_id, second.topic_id),
+        (first.user_id, second.user_id),
+        (first.article_id, second.article_id),
+    )
+    if any(left is not None or right is not None for left, right in identifiers):
+        return any(left is not None and left == right for left, right in identifiers)
+    first_parsed = urlsplit(first_url)
+    second_parsed = urlsplit(second_url)
+    first_key = (
+        first.origin,
+        first_parsed.path.rstrip("/") or "/",
+        first_parsed.query,
+        first_parsed.fragment.rstrip("/"),
+    )
+    second_key = (
+        second.origin,
+        second_parsed.path.rstrip("/") or "/",
+        second_parsed.query,
+        second_parsed.fragment.rstrip("/"),
+    )
+    return first_key == second_key
 
 
 def _require_matching_ids(expected: SourceIdentity, actual: SourceIdentity) -> None:
@@ -89,6 +134,12 @@ def validate_final_url(requested_url: str, final_url: str) -> SourceIdentity:
     actual = source_identity(final_url)
     if actual.origin != expected.origin:
         raise SourceIdentityError(f"最终 URL 与请求 URL 不同源：{expected.origin} != {actual.origin}")
+    expected_fragment = urlsplit(requested_url).fragment
+    actual_fragment = urlsplit(final_url).fragment
+    if expected_fragment and actual_fragment != expected_fragment:
+        raise SourceIdentityError(
+            f"最终 URL fragment 边界不匹配：{expected_fragment!r} != {actual_fragment!r}"
+        )
     _require_matching_ids(expected, actual)
     return actual
 
@@ -138,10 +189,17 @@ def structured_body_matches_identity(body: str, identity: SourceIdentity) -> boo
 
 
 class _EmbeddedParser(HTMLParser):
-    def __init__(self, base_url: str, *, content_only: bool = False) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        *,
+        content_only: bool = False,
+        allowed_origins: Collection[str] = (),
+    ) -> None:
         super().__init__(convert_charrefs=True)
         self.base_url = base_url
         self.content_only = content_only
+        self.allowed_origins = frozenset(allowed_origins)
         self.resources: list[DiscoveredDocument] = []
         self.seen: set[str] = set()
 
@@ -154,12 +212,16 @@ class _EmbeddedParser(HTMLParser):
             return
         url = urljoin(self.base_url, source.strip())
         try:
-            source_identity(url)
-            if self.content_only:
-                if not _is_content_document(self.base_url, url, document_type):
-                    return
-            else:
-                validate_related_url(self.base_url, url, require_matching_id=False)
+            base = source_identity(self.base_url)
+            related = source_identity(url)
+            if related.origin != base.origin and related.origin not in self.allowed_origins:
+                return
+            if self.content_only and not _is_content_document(
+                self.base_url,
+                url,
+                document_type,
+            ):
+                return
         except SourceIdentityError:
             return
         if url in self.seen:
@@ -221,6 +283,8 @@ def _is_content_document(base_url: str, url: str, document_type: DocumentType) -
     path = parsed.path.lower()
     if document_type is DocumentType.IFRAME:
         return path.startswith("/main/bbs/")
+    if path.endswith(_NON_TEXT_ASSET_SUFFIXES):
+        return False
     base_host = (urlsplit(base_url).hostname or "").lower()
     return (
         "/upload/script/" in path
@@ -231,16 +295,29 @@ def _is_content_document(base_url: str, url: str, document_type: DocumentType) -
     )
 
 
-def discover_content_documents(html: str, base_url: str) -> tuple[DiscoveredDocument, ...]:
+def discover_content_documents(
+    html: str,
+    base_url: str,
+    *,
+    allowed_origins: Collection[str] = (),
+) -> tuple[DiscoveredDocument, ...]:
     source_identity(base_url)
-    parser = _EmbeddedParser(base_url, content_only=True)
+    normalized_origins = frozenset(source_identity(url).origin for url in allowed_origins)
+    parser = _EmbeddedParser(
+        base_url,
+        content_only=True,
+        allowed_origins=normalized_origins,
+    )
     normalized = html.replace("\\'", "'").replace('\\"', '"')
     parser.feed(normalized)
     parser.close()
     for source in _DYNAMIC_SCRIPT_SOURCE_PATTERN.findall(normalized):
         url = urljoin(base_url, source.strip())
         try:
-            source_identity(url)
+            base = source_identity(base_url)
+            related = source_identity(url)
+            if related.origin != base.origin and related.origin not in normalized_origins:
+                continue
         except SourceIdentityError:
             continue
         if url in parser.seen or not _is_content_document(base_url, url, DocumentType.SCRIPT):
@@ -272,6 +349,7 @@ class _PeriodKeywordLinkParser(HTMLParser):
         self.keyword = re.sub(r"\s+", " ", keyword).strip()
         self.article_urls: list[str] = []
         self.page_urls: list[str] = []
+        self.has_target_period_article = False
         self._href: str | None = None
         self._parts: list[str] = []
         base = urlsplit(base_url)
@@ -303,12 +381,10 @@ class _PeriodKeywordLinkParser(HTMLParser):
         query = parse_qs(parsed.query)
         if parsed.path.lower().endswith("/article.aspx"):
             article_ids = query.get("id", ())
-            if (
-                self.period_prefix.search(text)
-                and self.keyword in text
-                and len(article_ids) == 1
-                and article_ids[0].isdigit()
-            ):
+            valid_article = len(article_ids) == 1 and article_ids[0].isdigit()
+            if self.period_prefix.search(text) and valid_article:
+                self.has_target_period_article = True
+            if self.period_prefix.search(text) and self.keyword in text and valid_article:
                 self.article_urls.append(url)
             return
         if parsed.path.lower() != self._base_path:
@@ -325,14 +401,14 @@ def discover_period_keyword_links(
     base_url: str,
     period: int,
     keyword: str,
-) -> tuple[tuple[str, ...], tuple[str, ...]]:
+) -> tuple[tuple[str, ...], tuple[str, ...], bool]:
     source_identity(base_url)
     if not keyword.strip():
         raise ValueError("文章关键字不能为空")
     parser = _PeriodKeywordLinkParser(base_url, period, keyword)
     parser.feed(html)
     parser.close()
-    return tuple(parser.article_urls), tuple(parser.page_urls)
+    return tuple(parser.article_urls), tuple(parser.page_urls), parser.has_target_period_article
 
 
 def collect_embedded_documents(
@@ -377,6 +453,7 @@ def collect_content_documents(
     *,
     max_depth: int = 3,
     max_documents: int = 64,
+    allowed_origins: Collection[str] = (),
 ) -> SourceBundle:
     queue = [(resource, 0) for resource in resources]
     documents = [parent]
@@ -399,7 +476,11 @@ def collect_content_documents(
                 fetched.record_id,
             )
         )
-        nested_resources = discover_content_documents(fetched.text, fetched.final_url)
+        nested_resources = discover_content_documents(
+            fetched.text,
+            fetched.final_url,
+            allowed_origins=allowed_origins,
+        )
         if depth + 1 >= max_depth:
             depth_truncated = depth_truncated or bool(nested_resources)
             continue

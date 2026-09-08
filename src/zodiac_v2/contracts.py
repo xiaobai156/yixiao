@@ -119,7 +119,8 @@ def _optional_record_id(value: str | None, field: str = "record_id") -> str | No
 
 def _infer_source_record_id(url: str) -> str | None:
     match = re.search(
-        r"/(?:topic/|article/(?:admin|manager)/|api/proxy/(?:admin-articles|manager-articles)/)([a-z0-9]+)",
+        r"/(?:topic/|article/(?:admin|manager|lottery)/|article/ar_content/id/|"
+        r"api/proxy/(?:admin-articles|manager-articles)/)([a-z0-9]+)",
         url,
         re.IGNORECASE,
     )
@@ -136,6 +137,7 @@ class SiteConfig:
     source_policy: str
     api_url: str | None = None
     article_keyword: str | None = None
+    embedded_max_bytes: int | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "name", _required_text(self.name, "name"))
@@ -154,6 +156,15 @@ class SiteConfig:
                 "article_keyword",
                 _required_text(self.article_keyword, "article_keyword"),
             )
+        if (
+            self.embedded_max_bytes is not None
+            and (
+                isinstance(self.embedded_max_bytes, bool)
+                or not isinstance(self.embedded_max_bytes, int)
+                or self.embedded_max_bytes <= 0
+            )
+        ):
+            raise ValueError("embedded_max_bytes 必须是正整数或 None")
 
     @property
     def identity(self) -> tuple[str, str, Direction, SiteSection]:
@@ -257,6 +268,7 @@ def build_validation_receipt(
             "parser_id": site.parser_id,
             "source_policy": site.source_policy,
             "article_keyword": site.article_keyword,
+            "embedded_max_bytes": site.embedded_max_bytes,
         },
         "target_period": target_period,
         "candidate": {
