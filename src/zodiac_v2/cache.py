@@ -9,6 +9,7 @@ from collections.abc import Iterable, Mapping
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from zodiac_v2.contracts import ZODIACS, CacheRecord, Direction, SiteSection, WritePermit
 
@@ -107,8 +108,23 @@ def _validated_records(site: Mapping[str, object]) -> list[tuple[int, str]]:
             evidence_sha256 = str(value.get("evidence_sha256") or "").strip()
             if not source_id or not source_url:
                 raise ValueError(f"record_provenance {period} 缺少来源身份")
+            parsed_source = urlsplit(source_url)
+            if (
+                parsed_source.scheme not in {"http", "https"}
+                or not parsed_source.netloc
+                or parsed_source.username
+                or parsed_source.password
+            ):
+                raise ValueError(f"record_provenance {period} 的 source_url 非法")
             if re.fullmatch(r"[0-9a-fA-F]{64}", evidence_sha256) is None:
                 raise ValueError(f"record_provenance {period} 的 evidence_sha256 非法")
+            raw_record_id = value.get("record_id")
+            if raw_record_id is not None and (
+                isinstance(raw_record_id, bool)
+                or not isinstance(raw_record_id, (str, int))
+                or not str(raw_record_id).strip()
+            ):
+                raise ValueError(f"record_provenance {period} 的 record_id 非法")
     return records
 
 
@@ -289,7 +305,7 @@ def cache_records(data: object) -> tuple[CacheRecord, ...]:
         for period, zodiac in _validated_records(site):
             proof = _proof(site, period)
             if proof is None:
-                continue
+                raise ValueError(f"缓存目录 {identity[0]} {period}期缺少完整来源证明，判重拒绝继续")
             output.append(CacheRecord(*identity, period, zodiac, *proof))
     return tuple(output)
 
@@ -408,6 +424,10 @@ def backfill_recent_cache_records(
             )
         records_by_period[target_period] = record.zodiac
         kept = sorted(records_by_period, reverse=True)[:CACHE_WINDOW]
+        if target_period not in kept:
+            raise ValueError(
+                f"缓存回填目标 {record.name} {target_period}期已超出当前近{CACHE_WINDOW}期窗口，未写入缓存"
+            )
         site["records"] = [
             {"period": period, "zodiac": records_by_period[period]} for period in kept
         ]

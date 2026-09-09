@@ -60,6 +60,10 @@ class DocumentType(StrEnum):
 
 class FailureCode(StrEnum):
     NETWORK = "network"
+    HTTP_STATUS = "http_status"
+    BROWSER_UNAVAILABLE = "browser_unavailable"
+    BROWSER_CAPTURE = "browser_capture"
+    PARSER_ERROR = "parser_error"
     PERIOD = "period"
     DIRECTION = "direction"
     ANCHOR = "anchor"

@@ -58,6 +58,16 @@ def _positive_timeout(value: str) -> float:
     return result
 
 
+def _positive_bytes(value: str) -> int:
+    try:
+        result = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("字节上限必须为正整数") from exc
+    if result <= 0:
+        raise argparse.ArgumentTypeError("字节上限必须为正整数")
+    return result
+
+
 def _common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--sites-file", type=Path, default=Path("sites.json"))
     parser.add_argument("--cache-file", type=Path, default=Path("recent_10_cache.json"))
@@ -94,6 +104,8 @@ def build_parser() -> argparse.ArgumentParser:
     onboard.add_argument("--name", required=True)
     onboard.add_argument("--url", required=True)
     onboard.add_argument("--api-url")
+    onboard.add_argument("--article-keyword")
+    onboard.add_argument("--embedded-max-bytes", type=_positive_bytes)
     onboard.add_argument(
         "--pick",
         choices=(Direction.TOP.value, Direction.BOTTOM.value),
@@ -224,7 +236,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         _print_results(results)
         return 0
     if args.command in {"retry", "repair"}:
-        text = "\n".join(path.read_text(encoding="utf-8") for path in args.retry_errors)
+        text = "\n".join(path.read_text(encoding="utf-8-sig") for path in args.retry_errors)
         selected = sites_from_failure_text(text, sites)
         if not selected:
             print("失败清单没有匹配到任何站点，未抓取、未写入")
@@ -252,6 +264,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.parser_id,
             args.source_policy,
             args.api_url,
+            args.article_keyword,
+            args.embedded_max_bytes,
         )
         data = load_recent_cache(args.cache_file)
         periods = tuple(range(args.period, max(0, args.period - 10), -1))
