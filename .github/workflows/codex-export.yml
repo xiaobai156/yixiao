@@ -1,0 +1,33 @@
+name: Codex worktree export
+on:
+  push:
+    branches: [codex/yixiao-final-hardening-20260909]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yixiao-worktree
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            src
+            tests
+            pyproject.toml
+            AGENTS.md
+            .gitignore
+            .gitattributes
+            sites.json
+            archived_sites.json
+            recent_10_cache.json
+            所有站点.json
+            爬虫-每天杀肖.bat
+            爬虫-每天杀肖 - 检查重复.bat
+            .github/workflows/review-validation.yml
