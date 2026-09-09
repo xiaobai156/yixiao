@@ -33,7 +33,12 @@ from zodiac_v2.contracts import (
 from zodiac_v2.output import OutputPaths, build_output_payloads, write_output_payloads
 from zodiac_v2.parsers.common import decoded_script_fragments
 from zodiac_v2.parsers.registry import ParserRegistry
-from zodiac_v2.source.api import bind_user_forum_target, derived_article_api_urls, fetch_api_then_page
+from zodiac_v2.source.api import (
+    bind_user_forum_target,
+    derived_article_api_urls,
+    fetch_api_then_page,
+    fetch_user_forum_api,
+)
 from zodiac_v2.source.browser import BrowserRenderer, PlaywrightBrowserRenderer, browser_documents
 from zodiac_v2.source.documents import (
     collect_content_documents,
@@ -79,6 +84,8 @@ class SourceGateway(Protocol):
     def api_then_http(self, site: SiteConfig, timeout: float) -> SourceBundle: ...
 
     def browser(self, site: SiteConfig, timeout: float) -> SourceBundle: ...
+
+    def browser_user(self, site: SiteConfig, timeout: float) -> SourceBundle: ...
 
     def article_api(self, site: SiteConfig, timeout: float) -> tuple[SourceBundle, ...]: ...
 
@@ -308,6 +315,15 @@ class DefaultSourceGateway:
             timeout=timeout,
             max_chars=site.embedded_max_bytes or DEFAULT_MAX_BYTES,
             allowed_response_urls=allowed,
+        )
+
+    def browser_user(self, site: SiteConfig, timeout: float) -> SourceBundle:
+        return fetch_user_forum_api(
+            self.transport,
+            page_url=site.url,
+            timeout=timeout,
+            max_bytes=site.embedded_max_bytes or EMBEDDED_MAX_BYTES,
+            per_page=100,
         )
 
     def article_api(self, site: SiteConfig, timeout: float) -> tuple[SourceBundle, ...]:
@@ -588,6 +604,9 @@ class ScrapeService:
         if site.source_policy == "api_then_http":
             return self.gateway.api_then_http(site, timeout)
         if site.source_policy == "browser_user":
+            direct_user_api = getattr(self.gateway, "browser_user", None)
+            if callable(direct_user_api):
+                return direct_user_api(site, timeout)
             return self.gateway.browser(site, timeout)
         if site.source_policy == "browser":
             return self.gateway.browser(site, timeout)

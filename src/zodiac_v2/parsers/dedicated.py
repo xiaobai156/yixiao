@@ -152,6 +152,7 @@ ANCHOR_ALIASES.update(
 
 DIRECTIONAL_CYCLE_REGEX_SITES = frozenset(
     {
+        '不幸蒂芥', '息息相关',
         '炎炎夏日', '天女散花', '忧心如梦',
         '短发豹猫', '桃色玫瑰', '故里春意', '风平浪静', '长长久久', '细雪探爱',
         '花开花落', '欣欣向荣', '阳光小二', '夏侯跣一', '人君犹盂', '独挡天下',
@@ -1515,25 +1516,7 @@ class UserForumPostParser:
         bundle: SourceBundle,
         target_period: int,
     ) -> SourceBundle | None:
-        if site.name not in {"福禄寿喜财", "连中谎言"}:
-            return None
-        target_candidates = tuple(
-            candidate
-            for candidate in self.parse(site, bundle)
-            if candidate.period == target_period and candidate.record_id is not None
-        )
-        record_ids = {candidate.record_id for candidate in target_candidates}
-        if len(record_ids) > 1:
-            zodiacs = {candidate.zodiac for candidate in target_candidates}
-            if len(zodiacs) != 1 or site.direction is Direction.LEFT:
-                return None
-            selected_candidate = (
-                target_candidates[0]
-                if site.direction is Direction.TOP
-                else target_candidates[-1]
-            )
-            record_ids = {selected_candidate.record_id}
-        if len(record_ids) != 1:
+        if site.direction is Direction.LEFT:
             return None
         expected_user_match = re.search(
             r"/users/(\d+)(?:/|$)",
@@ -1542,7 +1525,9 @@ class UserForumPostParser:
         if expected_user_match is None:
             return None
         expected_user_id = int(expected_user_match.group(1))
-        selected: list[tuple[dict[str, object], object]] = []
+
+        matching_rows: list[tuple[dict[str, object], object]] = []
+        seen_rows: dict[str, str] = {}
         for document in bundle.documents:
             if document.document_type is not DocumentType.JSON:
                 continue
@@ -1562,20 +1547,45 @@ class UserForumPostParser:
                 if not isinstance(row, dict):
                     continue
                 record_id = row.get("id")
-                if str(record_id).strip() not in record_ids:
+                if (
+                    isinstance(record_id, bool)
+                    or not isinstance(record_id, (str, int))
+                    or not str(record_id).strip()
+                ):
                     continue
-                selected.append((row, document))
-        if len(selected) != 1:
+                record_id_text = str(record_id).strip()
+                row_json = json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                previous = seen_rows.get(record_id_text)
+                if previous is not None:
+                    if previous != row_json:
+                        return None
+                    continue
+                seen_rows[record_id_text] = row_json
+
+                selected_user = row.get("user")
+                if not isinstance(selected_user, dict) or not isinstance(selected_user.get("nickname"), str):
+                    continue
+                projected_row = dict(row)
+                projected_row["authorNickname"] = selected_user["nickname"]
+                row_document = type(document)(
+                    json.dumps([projected_row], ensure_ascii=False, separators=(",", ":")),
+                    document.final_url,
+                    DocumentType.JSON,
+                    document.priority,
+                    f"user:{expected_user_id}:record:{record_id_text}",
+                    0,
+                    record_id_text,
+                )
+                row_bundle = SourceBundle((row_document,), bundle.diagnostics, scan_complete=True)
+                if any(candidate.period == target_period for candidate in self.parse(site, row_bundle)):
+                    matching_rows.append((projected_row, document))
+
+        if not matching_rows:
             return None
-        row, source = selected[0]
+        row, source = matching_rows[0] if site.direction is Direction.TOP else matching_rows[-1]
         record_id = str(row["id"]).strip()
-        selected_user = row.get("user")
-        if not isinstance(selected_user, dict) or not isinstance(selected_user.get("nickname"), str):
-            return None
-        projected_row = dict(row)
-        projected_row["authorNickname"] = selected_user["nickname"]
         selected_document = type(source)(
-            json.dumps([projected_row], ensure_ascii=False, separators=(",", ":")),
+            json.dumps([row], ensure_ascii=False, separators=(",", ":")),
             source.final_url,
             DocumentType.JSON,
             source.priority,
@@ -1585,7 +1595,12 @@ class UserForumPostParser:
         )
         return SourceBundle(
             (selected_document,),
-            (*bundle.diagnostics, f"user-forum-parser-target:{target_period}", f"user-forum-record:{record_id}"),
+            (
+                *bundle.diagnostics,
+                f"user-forum-parser-target:{target_period}",
+                f"user-forum-record:{record_id}",
+                f"user-forum-position:{site.direction.value}",
+            ),
             scan_complete=True,
         )
 
