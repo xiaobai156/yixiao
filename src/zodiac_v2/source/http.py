@@ -15,6 +15,7 @@ from urllib.request import Request, urlopen
 
 import requests
 import truststore
+from requests.adapters import HTTPAdapter
 
 from zodiac_v2.contracts import DocumentType, SourceDocument, StrEnum
 from zodiac_v2.source.documents import SourceIdentityError, source_identity, validate_final_url
@@ -103,6 +104,20 @@ class UrllibTransport:
         return result
 
 
+class _SystemTrustAdapter(HTTPAdapter):
+    def __init__(self, ssl_context: ssl.SSLContext) -> None:
+        self.ssl_context = ssl_context
+        super().__init__()
+
+    def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
+        pool_kwargs["ssl_context"] = self.ssl_context
+        return super().init_poolmanager(connections, maxsize, block=block, **pool_kwargs)
+
+    def proxy_manager_for(self, proxy, **proxy_kwargs):
+        proxy_kwargs["ssl_context"] = self.ssl_context
+        return super().proxy_manager_for(proxy, **proxy_kwargs)
+
+
 class RequestsTransport:
     def __init__(
         self,
@@ -112,9 +127,11 @@ class RequestsTransport:
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
         ),
         insecure_tls_hosts: frozenset[str] | set[str] = frozenset(),
+        ssl_context: ssl.SSLContext | None = None,
     ) -> None:
         self.user_agent = user_agent
         self.insecure_tls_hosts = frozenset(host.lower() for host in insecure_tls_hosts)
+        self.ssl_context = ssl_context or truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
     def _request(
         self,
@@ -127,6 +144,7 @@ class RequestsTransport:
         if not verify:
             raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "禁止关闭 TLS 证书验证", url=url)
         with requests.Session() as session:
+            session.mount("https://", _SystemTrustAdapter(self.ssl_context))
             session.headers.update(
                 {
                     "User-Agent": self.user_agent,

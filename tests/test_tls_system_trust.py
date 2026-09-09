@@ -5,7 +5,7 @@ import ssl
 import truststore
 
 from zodiac_v2.source import http as http_module
-from zodiac_v2.source.http import UrllibTransport
+from zodiac_v2.source.http import RequestsTransport, UrllibTransport
 
 
 class _Response:
@@ -58,3 +58,10 @@ def test_urllib_transport_keeps_explicit_verified_context(monkeypatch):
     assert captured["context"] is explicit
     assert explicit.verify_mode == ssl.CERT_REQUIRED
     assert explicit.check_hostname is True
+
+
+def test_requests_transport_uses_verified_system_trust_context():
+    transport = RequestsTransport()
+    assert isinstance(transport.ssl_context, truststore.SSLContext)
+    assert transport.ssl_context.verify_mode == ssl.CERT_REQUIRED
+    assert transport.ssl_context.check_hostname is True
