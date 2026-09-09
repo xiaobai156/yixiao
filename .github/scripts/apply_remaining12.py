@@ -28,7 +28,7 @@ text = text.replace(
 # preserved and rejected later by validate_candidates.
 class_start = text.index("class UserForumPostParser:")
 select_start = text.index("    def select_source(\n", class_start)
-parse_start = text.index("\n    def parse(\n", select_start)
+parse_start = text.index("\n    def parse(", select_start)
 new_selector = '''    def select_source(
         self,
         site: SiteConfig,
