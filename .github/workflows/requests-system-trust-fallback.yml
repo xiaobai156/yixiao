@@ -1,0 +1,126 @@
+name: Requests system trust fallback validation
+
+on:
+  push:
+    branches:
+      - codex/requests-system-trust-fallback-20260909
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Apply requests system trust adapter
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('src/zodiac_v2/source/http.py')
+          text = path.read_text(encoding='utf-8')
+          old = 'import requests\nimport truststore\n'
+          new = 'import requests\nimport truststore\nfrom requests.adapters import HTTPAdapter\n'
+          assert old in text
+          text = text.replace(old, new, 1)
+          marker = '\n\nclass RequestsTransport:\n'
+          adapter = '''
+
+          class _SystemTrustAdapter(HTTPAdapter):
+              def __init__(self, ssl_context: ssl.SSLContext) -> None:
+                  self.ssl_context = ssl_context
+                  super().__init__()
+
+              def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
+                  pool_kwargs["ssl_context"] = self.ssl_context
+                  return super().init_poolmanager(connections, maxsize, block=block, **pool_kwargs)
+
+              def proxy_manager_for(self, proxy, **proxy_kwargs):
+                  proxy_kwargs["ssl_context"] = self.ssl_context
+                  return super().proxy_manager_for(proxy, **proxy_kwargs)
+          '''.replace('\n          ', '\n')
+          assert marker in text
+          text = text.replace(marker, adapter + marker, 1)
+          old = '''        insecure_tls_hosts: frozenset[str] | set[str] = frozenset(),
+              ) -> None:
+                  self.user_agent = user_agent
+                  self.insecure_tls_hosts = frozenset(host.lower() for host in insecure_tls_hosts)
+          '''.replace('\n          ', '\n')
+          new = '''        insecure_tls_hosts: frozenset[str] | set[str] = frozenset(),
+                  ssl_context: ssl.SSLContext | None = None,
+              ) -> None:
+                  self.user_agent = user_agent
+                  self.insecure_tls_hosts = frozenset(host.lower() for host in insecure_tls_hosts)
+                  self.ssl_context = ssl_context or truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+          '''.replace('\n          ', '\n')
+          assert old in text
+          text = text.replace(old, new, 1)
+          old = '        with requests.Session() as session:\n            session.headers.update(\n'
+          new = '        with requests.Session() as session:\n            session.mount("https://", _SystemTrustAdapter(self.ssl_context))\n            session.headers.update(\n'
+          assert old in text
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          path = Path('tests/test_tls_system_trust.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('from zodiac_v2.source.http import UrllibTransport', 'from zodiac_v2.source.http import RequestsTransport, UrllibTransport', 1)
+          text += '''
+
+          def test_requests_transport_uses_verified_system_trust_context():
+              transport = RequestsTransport()
+              assert isinstance(transport.ssl_context, truststore.SSLContext)
+              assert transport.ssl_context.verify_mode == ssl.CERT_REQUIRED
+              assert transport.ssl_context.check_hostname is True
+          '''.replace('\n          ', '\n')
+          path.write_text(text, encoding='utf-8')
+      - name: Install project
+        run: python -m pip install -e ".[dev]"
+      - name: Install Chromium
+        run: python -m playwright install chromium
+      - name: Compile
+        run: python -m compileall -q src tests
+      - name: Fatal checks
+        run: python -m ruff check src tests --select E9,F63,F7,F82
+      - name: Full regression
+        run: python -m pytest -q
+      - name: Probe requests fallback against xia02
+        shell: python
+        run: |
+          from zodiac_v2.source.http import RequestsTransport
+          url = 'https://xia02.cosds.aohjifv.com/upload/script/09/78fe91c75f5dfe7c.js'
+          result = RequestsTransport().request(url, timeout=30, max_bytes=8_000_000)
+          print('REQUESTS_XIA02', result.status, len(result.body), result.final_url)
+          assert result.status == 200
+      - name: Retest xia02 affected sites 252 read-only
+        shell: python
+        run: |
+          from pathlib import Path
+          from zodiac_v2.cli import SOURCE_POLICIES
+          from zodiac_v2.config import load_sites
+          from zodiac_v2.contracts import RunMode
+          from zodiac_v2.parsers.registry import build_registry
+          from zodiac_v2.services.scrape import DefaultSourceGateway, ScrapeService
+          registry = build_registry()
+          sites = load_sites(Path('sites.json'), parser_ids=registry.parser_ids, source_policies=SOURCE_POLICIES)
+          selected = tuple(site for site in sites if site.name in {'鸡鸣狗盗','水果奶奶咯'})
+          results = ScrapeService(DefaultSourceGateway(), registry).scrape_sites(selected, 252, RunMode.READ_ONLY, timeout=60, workers=2)
+          for result in results:
+              print('RETEST', result.site.name, 'OK' if result.ok else 'FAIL', result.candidate.zodiac if result.ok else result.failure_code.value, '' if result.ok else result.reason)
+          assert len(results) == 2
+          assert all(result.ok for result in results)
+      - name: Confirm production files unchanged
+        run: git diff --exit-code -- sites.json recent_10_cache.json archived_sites.json
+      - name: Commit validated files
+        shell: pwsh
+        run: |
+          git config user.name "xiaobai156"
+          git config user.email "234583912@qq.com"
+          git add src/zodiac_v2/source/http.py tests/test_tls_system_trust.py
+          git commit -m "fix: use system trust in requests fallback"
+          git push origin HEAD:${{ github.ref_name }}
