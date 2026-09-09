@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import io
 import re
+import ssl
 import warnings
 from dataclasses import dataclass
 from http.client import IncompleteRead
@@ -13,6 +14,7 @@ from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 import requests
+import truststore
 
 from zodiac_v2.contracts import DocumentType, SourceDocument, StrEnum
 from zodiac_v2.source.documents import SourceIdentityError, source_identity, validate_final_url
@@ -71,13 +73,19 @@ class HttpTransport(Protocol):
 
 
 class UrllibTransport:
-    def __init__(self, *, user_agent: str = "Mozilla/5.0 ZodiacV2/1.0") -> None:
+    def __init__(
+        self,
+        *,
+        user_agent: str = "Mozilla/5.0 ZodiacV2/1.0",
+        ssl_context: ssl.SSLContext | None = None,
+    ) -> None:
         self.user_agent = user_agent
+        self.ssl_context = ssl_context or truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
     def request(self, url: str, *, timeout: float, max_bytes: int) -> HttpResponse:
         request = Request(url, headers={"User-Agent": self.user_agent, "Accept-Encoding": "gzip"})
         try:
-            with urlopen(request, timeout=timeout) as response:
+            with urlopen(request, timeout=timeout, context=self.ssl_context) as response:
                 body = response.read(max_bytes + 1)
                 result = HttpResponse(
                     int(response.status),

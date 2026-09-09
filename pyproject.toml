@@ -7,7 +7,7 @@ name = "zodiac-v2"
 version = "0.1.0"
 description = "Modular zodiac site scraper"
 requires-python = ">=3.10"
-dependencies = ["requests>=2.31", "playwright>=1.61,<2", "filelock>=3.15,<4"]
+dependencies = ["requests>=2.31", "playwright>=1.61,<2", "filelock>=3.15,<4", "truststore>=0.10,<1"]
 
 [project.scripts]
 zodiac-v2 = "zodiac_v2.cli:main"
