@@ -238,7 +238,7 @@ def test_fulu_bottom_selects_last_post_when_same_period_value_matches() -> None:
     assert decision.candidate.zodiac == "龙"
 
 
-def test_fulu_does_not_select_between_different_same_period_values() -> None:
+def test_fulu_bottom_selects_last_post_when_same_period_values_differ() -> None:
     first = _row(
         record_id=15886292,
         user_id=154933,
@@ -257,11 +257,13 @@ def test_fulu_does_not_select_between_different_same_period_values() -> None:
     )
     parser = UserForumPostParser()
 
-    assert parser.select_source(
+    selected = parser.select_source(
         _site("福禄寿喜财", 154933),
         _bundle(154933, first, second),
         238,
-    ) is None
+    )
+    assert selected is not None
+    assert selected.documents[0].record_id == "15886257"
 
 
 def test_lianzhong_selects_valid_fans_post_and_ignores_cancel_post() -> None:
@@ -622,3 +624,30 @@ def test_241_special_user_sites_are_formal_existing_sites_with_cache_and_output(
     assert "牛 捡料糊口的曾白温" in success
     assert "马 钟哥割" in success
     assert not any(name in failure for name in names)
+
+
+def test_zhonggea_top_selects_first_same_period_post_when_values_differ() -> None:
+    first = _row(
+        record_id=15975717,
+        user_id=179590,
+        name="钟哥啊",
+        draw=252,
+        topic="稳杀一肖",
+        content="251期杀：兔✔️<div>252期杀：鼠（以这个为准）</div>",
+    )
+    second = _row(
+        record_id=15972916,
+        user_id=179590,
+        name="钟哥啊",
+        draw=252,
+        topic="稳杀一肖",
+        content="251期杀：兔✔️<div>252期杀：牛</div>",
+    )
+    site = _site("钟哥啊", 179590, direction=Direction.TOP)
+    parser = UserForumPostParser()
+    selected = parser.select_source(site, _bundle(179590, first, second), 252)
+    assert selected is not None
+    assert selected.documents[0].record_id == "15975717"
+    decision = validate_candidates(site, selected, parser.parse(site, selected), 252)
+    assert decision.ok and decision.candidate is not None
+    assert decision.candidate.zodiac == "鼠"

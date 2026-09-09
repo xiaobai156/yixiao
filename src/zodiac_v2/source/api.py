@@ -43,6 +43,48 @@ def derived_article_api_urls(page_url: str) -> tuple[str, ...]:
     )
 
 
+def derived_user_forum_api_url(page_url: str, *, per_page: int = 100) -> str | None:
+    if isinstance(per_page, bool) or not isinstance(per_page, int) or not 1 <= per_page <= 100:
+        raise ValueError("per_page 必须是 1 到 100 的整数")
+    identity = source_identity(page_url)
+    if identity.user_id is None:
+        return None
+    parsed = urlsplit(page_url)
+    api_url = f"{parsed.scheme}://{parsed.netloc}/api/v1/users/{identity.user_id}/forums?per_page={per_page}"
+    validate_related_url(page_url, api_url, require_matching_id=True)
+    return api_url
+
+
+def fetch_user_forum_api(
+    transport: HttpTransport,
+    *,
+    page_url: str,
+    timeout: float = 20,
+    max_bytes: int = DEFAULT_MAX_BYTES,
+    per_page: int = 100,
+) -> SourceBundle:
+    api_url = derived_user_forum_api_url(page_url, per_page=per_page)
+    if api_url is None:
+        raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "用户主页 URL 缺少用户 ID", url=page_url)
+    try:
+        document = fetch_http_document(
+            transport,
+            api_url,
+            timeout=timeout,
+            max_bytes=max_bytes,
+            document_type=DocumentType.JSON,
+            source_id=f"user-api:{source_identity(page_url).user_id}",
+        )
+        validate_related_url(page_url, document.final_url, require_matching_id=True)
+    except SourceIdentityError as exc:
+        raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, str(exc), url=api_url) from exc
+    return SourceBundle(
+        (document,),
+        (f"user-api:200:per_page={per_page}", "scan_complete:1"),
+        scan_complete=True,
+    )
+
+
 def bind_user_forum_target(
     page_url: str,
     bundle: SourceBundle,
