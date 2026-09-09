@@ -9,7 +9,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from zodiac_v2.contracts import Direction, SiteConfig, SiteSection, WritePermit
-from zodiac_v2.source.documents import same_source_identity, source_identity
+from zodiac_v2.source.documents import same_source_identity, source_identity_key
 from zodiac_v2.storage import locked_paths
 
 
@@ -90,11 +90,56 @@ def _read_json(path: Path) -> object:
 
 def _source_group_key(url: str) -> tuple[object, ...]:
     """Index the exact equivalence used by same_source_identity in one pass."""
-    identity = source_identity(url)
-    if identity.has_record_id:
-        return identity.origin, "record", identity.topic_id, identity.user_id, identity.article_id
-    parsed = urlsplit(url)
-    return identity.origin, "page", parsed.path.rstrip("/") or "/", parsed.query, parsed.fragment.rstrip("/")
+    return source_identity_key(url)
+
+
+def _validate_policy_fields(site: SiteConfig, label: str) -> None:
+    if site.source_policy == "http_period_keyword_article" and site.article_keyword is None:
+        raise ConfigError(f"{label}的期数关键字详情策略缺少 article_keyword")
+    if site.source_policy == "api_then_http" and site.api_url is None:
+        raise ConfigError(f"{label}的 api_then_http 策略缺少 api_url")
+
+
+def _site_from_entry(item: object, index: int) -> SiteConfig:
+    if not isinstance(item, dict):
+        raise ConfigError(f"第 {index} 个站点必须是对象")
+    unknown = sorted(set(item) - _ALLOWED_FIELDS)
+    if unknown:
+        raise ConfigError(f"第 {index} 个站点包含未知字段：{', '.join(unknown)}")
+    name = _text(item, "name", index)
+    url = _url(_text(item, "url", index), "url", index)
+    direction = _direction(item, index)
+    section = _section(item.get("section"), index)
+    parser_id = _text(item, "parser_id", index)
+    source_policy = _text(item, "source_policy", index)
+    api_url_value = item.get("api_url")
+    api_url = None
+    if api_url_value is not None:
+        if not isinstance(api_url_value, str) or not api_url_value.strip():
+            raise ConfigError(f"第 {index} 个站点的 api_url 必须是非空字符串")
+        api_url = _url(api_url_value.strip(), "api_url", index)
+    article_keyword_value = item.get("article_keyword")
+    article_keyword = None
+    if article_keyword_value is not None:
+        if not isinstance(article_keyword_value, str) or not article_keyword_value.strip():
+            raise ConfigError(f"第 {index} 个站点的 article_keyword 必须是非空字符串")
+        article_keyword = article_keyword_value.strip()
+    embedded_max_bytes_value = item.get("embedded_max_bytes")
+    embedded_max_bytes = None
+    if embedded_max_bytes_value is not None:
+        if (
+            isinstance(embedded_max_bytes_value, bool)
+            or not isinstance(embedded_max_bytes_value, int)
+            or embedded_max_bytes_value <= 0
+        ):
+            raise ConfigError(f"第 {index} 个站点的 embedded_max_bytes 必须是正整数")
+        embedded_max_bytes = embedded_max_bytes_value
+    site = SiteConfig(
+        name, url, direction, section, parser_id, source_policy,
+        api_url, article_keyword, embedded_max_bytes,
+    )
+    _validate_policy_fields(site, f"第 {index} 个站点")
+    return site
 
 
 def load_sites(
@@ -112,54 +157,18 @@ def load_sites(
     names: set[str] = set()
     identities: set[tuple[str, str, Direction, SiteSection]] = set()
     for index, item in enumerate(raw, start=1):
-        if not isinstance(item, dict):
-            raise ConfigError(f"第 {index} 个站点必须是对象")
-        unknown = sorted(set(item) - _ALLOWED_FIELDS)
-        if unknown:
-            raise ConfigError(f"第 {index} 个站点包含未知字段：{', '.join(unknown)}")
-        name = _text(item, "name", index)
-        url = _url(_text(item, "url", index), "url", index)
-        direction = _direction(item, index)
-        section = _section(item.get("section"), index)
-        parser_id = _text(item, "parser_id", index)
-        source_policy = _text(item, "source_policy", index)
-        if parser_id not in known_parsers:
-            raise ConfigError(f"第 {index} 个站点使用未知解析器：{parser_id}")
-        if source_policy not in known_policies:
-            raise ConfigError(f"第 {index} 个站点使用未知取源策略：{source_policy}")
-        api_url_value = item.get("api_url")
-        api_url = None
-        if api_url_value is not None:
-            if not isinstance(api_url_value, str) or not api_url_value.strip():
-                raise ConfigError(f"第 {index} 个站点的 api_url 必须是非空字符串")
-            api_url = _url(api_url_value.strip(), "api_url", index)
-        article_keyword_value = item.get("article_keyword")
-        article_keyword = None
-        if article_keyword_value is not None:
-            if not isinstance(article_keyword_value, str) or not article_keyword_value.strip():
-                raise ConfigError(f"第 {index} 个站点的 article_keyword 必须是非空字符串")
-            article_keyword = article_keyword_value.strip()
-        embedded_max_bytes_value = item.get("embedded_max_bytes")
-        embedded_max_bytes = None
-        if embedded_max_bytes_value is not None:
-            if (
-                isinstance(embedded_max_bytes_value, bool)
-                or not isinstance(embedded_max_bytes_value, int)
-                or embedded_max_bytes_value <= 0
-            ):
-                raise ConfigError(f"第 {index} 个站点的 embedded_max_bytes 必须是正整数")
-            embedded_max_bytes = embedded_max_bytes_value
-        if source_policy == "http_period_keyword_article" and article_keyword is None:
-            raise ConfigError(f"第 {index} 个站点的期数关键字详情策略缺少 article_keyword")
-        identity = (name, url, direction, section)
-        if identity in identities:
-            raise ConfigError(f"第 {index} 个站点存在重复身份：{identity}")
-        if name in names:
-            raise ConfigError(f"第 {index} 个站点存在重复站名：{name}")
-        names.add(name)
-        identities.add(identity)
-        sites.append(SiteConfig(name, url, direction, section, parser_id, source_policy,
-                                api_url, article_keyword, embedded_max_bytes))
+        site = _site_from_entry(item, index)
+        if site.parser_id not in known_parsers:
+            raise ConfigError(f"第 {index} 个站点使用未知解析器：{site.parser_id}")
+        if site.source_policy not in known_policies:
+            raise ConfigError(f"第 {index} 个站点使用未知取源策略：{site.source_policy}")
+        if site.identity in identities:
+            raise ConfigError(f"第 {index} 个站点存在重复身份：{site.identity}")
+        if site.name in names:
+            raise ConfigError(f"第 {index} 个站点存在重复站名：{site.name}")
+        names.add(site.name)
+        identities.add(site.identity)
+        sites.append(site)
     by_source: dict[tuple[object, ...], list[SiteConfig]] = {}
     for site in sites:
         group = by_source.setdefault(_source_group_key(site.url), [])
@@ -180,23 +189,20 @@ def append_site_configs(path: Path, sites: Iterable[SiteConfig], *, permit: Writ
         raw = _read_json(path)
         if not isinstance(raw, list):
             raise ConfigError("站点配置根节点必须是数组")
-        existing_names = {
-            item.get("name", "").strip()
-            for item in raw
-            if isinstance(item, dict) and isinstance(item.get("name"), str)
-        }
-        existing_urls = tuple(
-            item.get("url", "").strip()
-            for item in raw
-            if isinstance(item, dict) and isinstance(item.get("url"), str)
-        )
+        existing_sites = tuple(_site_from_entry(item, index) for index, item in enumerate(raw, start=1))
+        existing_names = {site.name for site in existing_sites}
         appended: list[dict[str, object]] = []
-        candidate_urls: list[str] = []
+        candidate_sites: list[SiteConfig] = []
         for site in candidates:
+            _validate_policy_fields(site, f"正式新增站点 {site.name}")
             if site.name in existing_names:
                 raise ConfigError(f"正式新增站名重名：{site.name}")
-            if any(same_source_identity(site.url, existing_url) for existing_url in (*existing_urls, *candidate_urls)):
-                raise ConfigError(f"正式新增 URL/topic 重复：{site.url}")
+            conflict = next(
+                (other for other in (*existing_sites, *candidate_sites) if same_business_source(site, other)),
+                None,
+            )
+            if conflict is not None:
+                raise ConfigError(f"正式新增 URL/topic 重复：{site.url} 已属于 {conflict.name}")
             entry: dict[str, object] = {
                 "name": site.name, "pick": site.direction.value, "url": site.url,
                 "section": site.section.value, "parser_id": site.parser_id,
@@ -210,7 +216,7 @@ def append_site_configs(path: Path, sites: Iterable[SiteConfig], *, permit: Writ
                 entry["embedded_max_bytes"] = site.embedded_max_bytes
             appended.append(entry)
             existing_names.add(site.name)
-            candidate_urls.append(site.url)
+            candidate_sites.append(site)
         updated = [*raw, *appended]
         temporary = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
         try:

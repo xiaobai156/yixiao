@@ -48,9 +48,12 @@ class PlaywrightBrowserRenderer:
     def capture(self, url: str, *, timeout: float, allowed_response_urls: Collection[str] = (),
                 allowed_response_origins: Collection[str] = ()) -> BrowserCapture:
         try:
-            from playwright.sync_api import sync_playwright
+            from importlib import import_module
+            playwright_api = import_module("playwright.sync_api")
         except ImportError as exc:
             raise SourceFetchError(SourceFetchCode.BROWSER_UNAVAILABLE, 'Playwright 未安装', url=url) from exc
+        sync_playwright = playwright_api.sync_playwright
+        playwright_timeout = getattr(playwright_api, 'TimeoutError', TimeoutError)
         origins = {source_identity(item).origin for item in allowed_response_origins}
         deadline = monotonic() + timeout
         if not _BROWSER_SLOTS.acquire(timeout=max(0, timeout)):
@@ -116,8 +119,16 @@ class PlaywrightBrowserRenderer:
                     response = page.goto(url, wait_until='domcontentloaded', timeout=remaining_milliseconds())
                     if response is not None and not 200 <= response.status < 300:
                         raise SourceFetchError(SourceFetchCode.HTTP_STATUS, f'浏览器页面 HTTP {response.status}', url=url, status=response.status)
-                    # Timeout is incomplete capture, never a fabricated scan_complete=1.
-                    page.wait_for_load_state('networkidle', timeout=remaining_milliseconds())
+                    # Polling/WebSocket pages may never become network-idle.  DOMContentLoaded
+                    # is already proven; network-idle is only a bounded settle hint, not a
+                    # correctness prerequisite.  A short final settle lets response handlers
+                    # drain without turning a healthy polling page into a false network failure.
+                    try:
+                        page.wait_for_load_state('networkidle', timeout=min(3_000, remaining_milliseconds()))
+                    except playwright_timeout:
+                        settle = min(500, remaining_milliseconds())
+                        if hasattr(page, 'wait_for_timeout'):
+                            page.wait_for_timeout(settle)
                     if errors:
                         raise errors[0]
                     html = page.content()

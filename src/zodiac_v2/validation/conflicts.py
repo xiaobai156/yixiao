@@ -261,6 +261,7 @@ def validate_period_presence(site, bundle, candidates, target_period):
         candidate for group in grouped.values()
         for candidate in _active_candidates(tuple(group), site.direction)
         if candidate.period == target_period
+        and "record-status:incomplete" not in candidate.evidence
     )
     if not matched:
         return ValidationDecision.failure(FailureCode.PERIOD, f"候选中未找到指定 {target_period}期")

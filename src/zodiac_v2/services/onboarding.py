@@ -5,10 +5,10 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from zodiac_v2.cache import cache_records, validate_cache_data
+from zodiac_v2.config import same_business_source
 from zodiac_v2.contracts import CacheRecord, FailureCode, RunMode, ScrapeResult, SiteConfig
 from zodiac_v2.duplicate import DuplicateMatch, find_duplicate_matches
 from zodiac_v2.services.scrape import cache_record_from_result
-from zodiac_v2.source.documents import same_source_identity
 
 
 class SiteScraper(Protocol):
@@ -41,7 +41,7 @@ def _configuration_conflicts(candidate: SiteConfig, existing: Iterable[SiteConfi
 
     reasons: list[str] = []
     for site in sites:
-        if same_source_identity(site.url, candidate.url):
+        if same_business_source(candidate, site):
             reasons.append(f"URL/topic 重复：{candidate.url} 已属于 {site.name}")
     return tuple(dict.fromkeys(reasons))
 

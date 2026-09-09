@@ -5,7 +5,7 @@ import re
 from collections.abc import Callable, Collection, Iterable
 from dataclasses import dataclass
 from html.parser import HTMLParser
-from urllib.parse import parse_qs, urljoin, urlsplit
+from urllib.parse import parse_qs, parse_qsl, urljoin, urlsplit
 
 from zodiac_v2.contracts import DocumentType, SourceBundle, SourceDocument
 
@@ -20,6 +20,18 @@ _ARTICLE_API_PATTERN = re.compile(
     r"(?:^|/)api/proxy/(?:admin-articles|manager-articles)/([a-z0-9]+)(?:/|$)",
     re.IGNORECASE,
 )
+_STATIC_ARTICLE_PATTERN = re.compile(
+    r"(?:^|/)(art_zhuanqu|art_gsb|bbs)/([a-z0-9]+)(?:\.html)?(?:/|$)",
+    re.IGNORECASE,
+)
+_QUERY_TOPIC_KEYS = {"topic.php": "id", "read.php": "tid"}
+_QUERY_ARTICLE_KEYS = {
+    "article.aspx": ("id", "article-aspx"),
+    "bbs.aspx": ("id", "bbs-aspx"),
+    "gsb.aspx": ("id", "gsb-aspx"),
+    "gsb1.aspx": ("id", "gsb1-aspx"),
+}
+_DEFAULT_DOCUMENTS = frozenset({"index.html", "index.htm", "index.php", "index.aspx", "default.html", "default.htm", "default.aspx"})
 _DYNAMIC_SCRIPT_SOURCE_PATTERN = re.compile(r"\bsrc\s*=\s*['\"]([^'\"<>]+)", re.IGNORECASE)
 _NON_TEXT_ASSET_SUFFIXES = (
     ".avif", ".bmp", ".gif", ".ico", ".jpeg", ".jpg", ".png", ".svg", ".webp",
@@ -37,6 +49,7 @@ class SourceIdentity:
     topic_id: str | None = None
     user_id: str | None = None
     article_id: str | None = None
+    record_kind: str | None = None
 
     @property
     def has_record_id(self) -> bool:
@@ -64,63 +77,103 @@ def _origin(url: str) -> tuple[str, str]:
     return f"{scheme}://{hostname}:{normalized_port}", parsed.path + "/" + parsed.fragment
 
 
+def _single_query_value(parsed, key: str) -> str | None:
+    values = parse_qs(parsed.query, keep_blank_values=True).get(key, ())
+    if len(values) != 1:
+        return None
+    value = values[0].strip()
+    return value or None
+
+
+def _canonical_path(path: str) -> str:
+    normalized = path or "/"
+    if normalized != "/":
+        normalized = normalized.rstrip("/") or "/"
+    basename = normalized.rsplit("/", 1)[-1].lower()
+    if basename in _DEFAULT_DOCUMENTS:
+        parent = normalized.rsplit("/", 1)[0]
+        return parent or "/"
+    return normalized
+
+
+def _canonical_locator(url: str) -> tuple[str, tuple[tuple[str, str], ...], str]:
+    parsed = urlsplit(url)
+    return (
+        _canonical_path(parsed.path),
+        tuple(sorted(parse_qsl(parsed.query, keep_blank_values=True))),
+        parsed.fragment.rstrip("/"),
+    )
+
+
 def source_identity(url: str) -> SourceIdentity:
     origin, searchable = _origin(url)
     parsed = urlsplit(url)
+    path_name = parsed.path.rstrip("/").rsplit("/", 1)[-1].lower()
     topic_match = _TOPIC_PATTERN.search(searchable)
     user_match = _USER_PATTERN.search(searchable)
-    article_match = (
-        _ARTICLE_PATTERN.search(searchable)
-        or _AR_CONTENT_PATTERN.search(searchable)
-        or _ARTICLE_API_PATTERN.search(searchable)
-    )
+    dynamic_article_match = _ARTICLE_PATTERN.search(searchable)
+    ar_content_match = _AR_CONTENT_PATTERN.search(searchable)
+    article_api_match = _ARTICLE_API_PATTERN.search(searchable)
+    static_article_match = _STATIC_ARTICLE_PATTERN.search(searchable)
+    query_topic_id = _single_query_value(parsed, _QUERY_TOPIC_KEYS[path_name]) if path_name in _QUERY_TOPIC_KEYS else None
     query_article_id = None
-    if parsed.path.lower().endswith("/article.aspx"):
-        values = parse_qs(parsed.query).get("id", ())
-        if len(values) == 1 and values[0].isdigit():
-            query_article_id = values[0]
+    query_article_kind = None
+    if path_name in _QUERY_ARTICLE_KEYS:
+        key, query_article_kind = _QUERY_ARTICLE_KEYS[path_name]
+        query_article_id = _single_query_value(parsed, key)
+
+    article_id = None
+    record_kind = None
+    if dynamic_article_match is not None:
+        article_id = dynamic_article_match.group(1)
+        record_kind = "dynamic-article"
+    elif article_api_match is not None:
+        article_id = article_api_match.group(1)
+        record_kind = "dynamic-article"
+    elif ar_content_match is not None:
+        article_id = ar_content_match.group(1)
+        record_kind = "ar-content"
+    elif static_article_match is not None:
+        record_kind = static_article_match.group(1).lower()
+        article_id = static_article_match.group(2)
+    elif query_article_id is not None:
+        article_id = query_article_id
+        record_kind = query_article_kind
+
+    topic_id = topic_match.group(1) if topic_match else query_topic_id
+    if topic_id is not None:
+        record_kind = "topic"
+    if user_match is not None:
+        record_kind = "user"
     return SourceIdentity(
         origin=origin,
-        topic_id=topic_match.group(1) if topic_match else None,
+        topic_id=topic_id,
         user_id=user_match.group(1) if user_match else None,
-        article_id=article_match.group(1) if article_match else query_article_id,
+        article_id=article_id,
+        record_kind=record_kind,
     )
+
+
+def source_identity_key(url: str) -> tuple[object, ...]:
+    identity = source_identity(url)
+    if identity.has_record_id:
+        return identity.origin, "record", identity.record_kind, identity.topic_id, identity.user_id, identity.article_id
+    return identity.origin, "page", *_canonical_locator(url)
 
 
 def same_source_identity(first_url: str, second_url: str) -> bool:
-    """Compare canonical source identity without treating query noise as a new record."""
+    """Compare the complete canonical source boundary, not just one matching component."""
     try:
-        first = source_identity(first_url)
-        second = source_identity(second_url)
+        return source_identity_key(first_url) == source_identity_key(second_url)
     except SourceIdentityError:
         return first_url.strip() == second_url.strip()
-    if first.origin != second.origin:
-        return False
-    identifiers = (
-        (first.topic_id, second.topic_id),
-        (first.user_id, second.user_id),
-        (first.article_id, second.article_id),
-    )
-    if any(left is not None or right is not None for left, right in identifiers):
-        return all(left == right for left, right in identifiers if left is not None or right is not None)
-    first_parsed = urlsplit(first_url)
-    second_parsed = urlsplit(second_url)
-    first_key = (
-        first.origin,
-        first_parsed.path.rstrip("/") or "/",
-        first_parsed.query,
-        first_parsed.fragment.rstrip("/"),
-    )
-    second_key = (
-        second.origin,
-        second_parsed.path.rstrip("/") or "/",
-        second_parsed.query,
-        second_parsed.fragment.rstrip("/"),
-    )
-    return first_key == second_key
 
 
 def _require_matching_ids(expected: SourceIdentity, actual: SourceIdentity) -> None:
+    if expected.record_kind is not None and actual.record_kind != expected.record_kind:
+        raise SourceIdentityError(
+            f"记录类型边界不匹配：{expected.record_kind} != {actual.record_kind}"
+        )
     if expected.topic_id is not None and actual.topic_id != expected.topic_id:
         raise SourceIdentityError(f"topic ID 边界不匹配：{expected.topic_id} != {actual.topic_id}")
     if expected.user_id is not None and actual.user_id != expected.user_id:
@@ -140,7 +193,12 @@ def validate_final_url(requested_url: str, final_url: str) -> SourceIdentity:
         raise SourceIdentityError(
             f"最终 URL fragment 边界不匹配：{expected_fragment!r} != {actual_fragment!r}"
         )
-    _require_matching_ids(expected, actual)
+    if expected.has_record_id:
+        _require_matching_ids(expected, actual)
+    elif _canonical_locator(requested_url) != _canonical_locator(final_url):
+        raise SourceIdentityError(
+            f"最终 URL 页面边界不匹配：{_canonical_locator(requested_url)!r} != {_canonical_locator(final_url)!r}"
+        )
     return actual
 
 
@@ -345,7 +403,7 @@ class _PeriodKeywordLinkParser(HTMLParser):
     def __init__(self, base_url: str, period: int, keyword: str) -> None:
         super().__init__(convert_charrefs=True)
         self.base_url = base_url
-        self.period_prefix = re.compile(rf"^\s*{period}\s*期\s*[:：]")
+        self.period_prefix = re.compile(rf"^\s*(?:第\s*)?0*{period}(?!\d)\s*期\s*[:：]")
         self.keyword = re.sub(r"\s+", " ", keyword).strip()
         self.article_urls: list[str] = []
         self.page_urls: list[str] = []
@@ -383,7 +441,7 @@ class _PeriodKeywordLinkParser(HTMLParser):
         if parsed.path.lower().endswith("/article.aspx"):
             article_ids = query.get("id", ())
             valid_article = len(article_ids) == 1 and article_ids[0].isdigit()
-            observed = re.match(r"^\s*第?\s*(\d{1,4})\s*期", text)
+            observed = re.match(r"^\s*(?:第\s*)?0*(\d{1,4})\s*期", text)
             if valid_article and observed:
                 self.observed_periods.append(int(observed.group(1)))
             if self.period_prefix.search(text) and valid_article:

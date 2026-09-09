@@ -42,6 +42,10 @@ class _OutputPayloads(Mapping[Path, str | None]):
 ZODIAC_ORDER = "牛马羊鸡狗猪鼠虎兔龙蛇猴"
 FAILURE_LABELS = {
     FailureCode.NETWORK: "网络失败",
+    FailureCode.HTTP_STATUS: "HTTP状态失败",
+    FailureCode.BROWSER_UNAVAILABLE: "浏览器不可用",
+    FailureCode.BROWSER_CAPTURE: "浏览器取源失败",
+    FailureCode.PARSER_ERROR: "解析器异常",
     FailureCode.PERIOD: "期数失败",
     FailureCode.DIRECTION: "方向失败",
     FailureCode.ANCHOR: "锚点失败",
@@ -180,7 +184,7 @@ def write_output_payloads(payloads: _OutputPayloads, permit: WritePermit) -> Non
 
 def _read_output_text(path: Path) -> str:
     try:
-        return path.read_text(encoding="utf-8")
+        return path.read_text(encoding="utf-8-sig")
     except FileNotFoundError:
         return "无\n"
 
@@ -287,6 +291,59 @@ def _output_name_key(value: str) -> str:
     return _INVISIBLE_NAME_CHARACTERS.sub("", value).strip()
 
 
+
+
+def _is_success_detail_row(value: str) -> tuple[str, str] | None:
+    parts = value.split(maxsplit=1)
+    if len(parts) == 2 and len(parts[0]) == 1 and parts[0] in ZODIAC_ORDER and parts[1].strip():
+        return parts[0], parts[1].strip()
+    return None
+
+
+def _validate_existing_success_text(text: str, separator: str) -> None:
+    """Reject lossy targeted rewrites when the existing detail section is not understood."""
+    separator_seen = False
+    meaningful = False
+    empty_marker_only = True
+    names: dict[str, str] = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped == "生肖次数排行榜" or stripped.split() == ["内容", "次数", "排名"]:
+            break
+        if not stripped:
+            continue
+        meaningful = True
+        if stripped == "无":
+            continue
+        empty_marker_only = False
+        if stripped == separator:
+            if separator_seen:
+                raise ValueError(f"成功TXT包含重复分隔符：{separator}")
+            separator_seen = True
+            continue
+        row = _is_success_detail_row(stripped)
+        if row is not None:
+            zodiac, name = row
+            key = _output_name_key(name)
+            if key in names:
+                raise ValueError(f"成功TXT存在重复站点明细，拒绝有损重写：{name}")
+            names[key] = zodiac
+            continue
+        if not separator_seen and len(stripped.split()) == 1:
+            # Historical extra-name rows such as 华林 are valid before the section separator.
+            continue
+        raise ValueError(f"成功TXT包含无法识别的明细行，拒绝有损重写：{stripped}")
+    if meaningful and not empty_marker_only and not separator_seen:
+        raise ValueError(f"成功TXT缺少分隔符 {separator}，拒绝有损重写")
+
+
+_FAILURE_ROW_IDENTITY = re.compile(r"^(?P<name>.+?)\s+(?:top|bottom)\s+https?://\S+\s+原因：")
+
+
+def _failure_name_key(row: str) -> str | None:
+    match = _FAILURE_ROW_IDENTITY.match(row.strip())
+    return _output_name_key(match.group("name")) if match is not None else None
+
 def _format_failure_rows(rows: Iterable[str]) -> str:
     materialized = tuple(rows)
     if not materialized:
@@ -343,6 +400,7 @@ def build_merged_result_payloads(
     separator = "红色" if is_new else "羽墨"
     read_text = _read_output_text if texts is None else lambda path: texts[path]
     existing_success_text = read_text(success_path)
+    _validate_existing_success_text(existing_success_text, separator)
     success_rows = _success_rows(existing_success_text, separator)
     trailing_success_rows = _trailing_success_rows(existing_success_text, separator)
     success_extra_names = _success_extra_names(existing_success_text, separator)
@@ -375,8 +433,7 @@ def build_merged_result_payloads(
             trailing_success_rows.append(target_row)
 
     failure_rows = _failure_rows(read_text(failure_path))
-    target_prefix = f"{result.site.name} {result.site.direction.value} "
-    failure_rows = [row for row in failure_rows if not row.startswith(target_prefix)]
+    failure_rows = [row for row in failure_rows if _failure_name_key(row) != target_name_key]
     if not result.ok:
         failure_rows.append(_target_failure_row(result))
 

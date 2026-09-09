@@ -249,6 +249,8 @@ class DefaultSourceGateway:
         seen_pages = set()
         matches = []
         scanned = 0
+        cross_year_target: bool | None = None
+        wrapped_to_previous_cycle = False
         while True:
             if document.final_url in seen_pages:
                 raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "栏目分页循环", url=site.url)
@@ -256,9 +258,17 @@ class DefaultSourceGateway:
             scanned += 1
             article_urls, page_urls, periods = discover_period_page_links(document.text, document.final_url, target_period, site.article_keyword)
             matches.extend(article_urls)
-            # Configured newest-first lists stop after a page of strictly older articles.
-            if periods and max(periods) < target_period:
-                break
+            # Newest-first lists can wrap from low January issues to the previous
+            # year's high issue numbers.  Do not stop before that wrap when the
+            # requested issue clearly belongs to the previous cycle.
+            if periods:
+                if cross_year_target is None:
+                    cross_year_target = max(periods) <= 20 and target_period >= 100
+                if cross_year_target and any(period >= 100 for period in periods):
+                    wrapped_to_previous_cycle = True
+                can_compare_numerically = not cross_year_target or wrapped_to_previous_cycle
+                if can_compare_numerically and max(periods) < target_period:
+                    break
             current_page = int(parse_qs(urlsplit(document.final_url).query).get("page", ["1"])[0])
             following = sorted({url for url in page_urls if int(parse_qs(urlsplit(url).query)["page"][0]) == current_page + 1})
             if not following:
@@ -340,6 +350,12 @@ def _failure_code(error: SourceFetchError) -> FailureCode:
         return FailureCode.SOURCE_IDENTITY
     if error.code in {SourceFetchCode.TOO_LARGE, SourceFetchCode.DECODE}:
         return FailureCode.BOUNDARY
+    if error.code is SourceFetchCode.HTTP_STATUS:
+        return FailureCode.HTTP_STATUS
+    if error.code is SourceFetchCode.BROWSER_UNAVAILABLE:
+        return FailureCode.BROWSER_UNAVAILABLE
+    if error.code is SourceFetchCode.BROWSER_CAPTURE:
+        return FailureCode.BROWSER_CAPTURE
     return FailureCode.NETWORK
 
 
@@ -477,7 +493,7 @@ class ScrapeService:
             return ScrapeResult.failure(
                 site,
                 target_period,
-                FailureCode.DEDICATED_PARSER_MISS,
+                FailureCode.PARSER_ERROR,
                 f"专属解析异常：{type(exc).__name__}: {exc}",
                 bundle.documents,
             )
@@ -602,18 +618,21 @@ class ScrapeService:
                 remaining()
             except SourceFetchError as exc:
                 failure = ScrapeResult.failure(site, target_period, _failure_code(exc), str(exc), ())
-                if exc.code is not SourceFetchCode.NETWORK and exc.code is not SourceFetchCode.HTTP_STATUS:
+                retryable_http = exc.code is SourceFetchCode.HTTP_STATUS and exc.status in {408, 429, 500, 502, 503, 504}
+                if exc.code is not SourceFetchCode.NETWORK and not retryable_http:
                     return failure
                 last_failure = failure
                 continue
             result = self._evaluate(site, target_period, bundle, mode)
-            if result.failure_code is FailureCode.CONFLICT:
+            if result.failure_code in {FailureCode.CONFLICT, FailureCode.DIRECTION, FailureCode.PARSER_ERROR}:
                 return result
             try:
                 candidates = tuple(self.registry.parse(site, bundle))
-            except Exception:
-                last_failure = result
-                continue
+            except Exception as exc:
+                return ScrapeResult.failure(
+                    site, target_period, FailureCode.PARSER_ERROR,
+                    f"共识取源解析异常：{type(exc).__name__}: {exc}", bundle.documents,
+                )
             for period in (target_period, target_period + 1):
                 if period > 9999:
                     continue
