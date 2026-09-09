@@ -22,6 +22,8 @@ jobs:
       - name: Rebuild and apply verified patch
         shell: bash
         run: |
+          wc -c .codex/patch.b64.*
+          sha256sum .codex/patch.b64.*
           cat .codex/patch.b64.* | base64 -d | python -c 'import sys,zlib; sys.stdout.buffer.write(zlib.decompress(sys.stdin.buffer.read()))' > /tmp/final-hardening.patch
           git apply --check /tmp/final-hardening.patch
           git apply /tmp/final-hardening.patch
