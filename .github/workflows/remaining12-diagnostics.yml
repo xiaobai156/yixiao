@@ -1,0 +1,103 @@
+name: Remaining 12 diagnostics
+on:
+  push:
+    branches: [codex/remaining-12-fixes-20260909]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e ".[dev]"
+      - name: Diagnose sources
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
+          from zodiac_v2.cli import SOURCE_POLICIES
+          from zodiac_v2.config import load_sites
+          from zodiac_v2.parsers.registry import build_registry
+          from zodiac_v2.services.scrape import DefaultSourceGateway
+          from zodiac_v2.source.http import UrllibTransport, RequestsTransport, fetch_http_document
+
+          names = {
+              '老奇人第一版','欣欣向荣','梵天静候','清爽凯蒂','青云子','钟哥啊','王木木儿涂涂',
+              '不幸蒂芥','息息相关','华夏九州','福禄双全','南柯故人'
+          }
+          sites = load_sites(Path('sites.json'), parser_ids=build_registry().parser_ids, source_policies=SOURCE_POLICIES)
+          chosen = {s.name:s for s in sites if s.name in names}
+          for name in sorted(chosen):
+              s=chosen[name]
+              print('CONFIG', name, s.direction.value, s.parser_id, s.source_policy, s.url, s.api_url or '')
+
+          print('\n=== transport split ===')
+          for name in ('老奇人第一版','欣欣向荣','梵天静候'):
+              site=chosen[name]
+              for label, transport in [('urllib',UrllibTransport()),('requests',RequestsTransport())]:
+                  try:
+                      r=transport.request(site.url, timeout=25, max_bytes=5_000_000)
+                      print('TRANSPORT',name,label,'OK',r.status,len(r.body),r.final_url)
+                  except Exception as exc:
+                      print('TRANSPORT',name,label,'FAIL',type(exc).__name__,str(exc))
+
+          print('\n=== user APIs per_page=100 ===')
+          for name,user_id in [('清爽凯蒂',28097),('青云子',200290),('钟哥啊',179590),('王木木儿涂涂',202661)]:
+              site=chosen[name]
+              if site.api_url:
+                  parts=urlsplit(site.api_url)
+                  q=dict(parse_qsl(parts.query, keep_blank_values=True)); q['per_page']='100'
+                  api=urlunsplit((parts.scheme,parts.netloc,parts.path,urlencode(q),parts.fragment))
+              else:
+                  p=urlsplit(site.url)
+                  api=f'{p.scheme}://{p.netloc}/api/v1/users/{user_id}/forums?per_page=100'
+              try:
+                  doc=fetch_http_document(UrllibTransport(),api,timeout=30,max_bytes=8_000_000)
+                  rows=json.loads(doc.text)
+                  if not isinstance(rows,list): rows=[]
+                  exact=[]
+                  periods=[]
+                  for i,row in enumerate(rows):
+                      if not isinstance(row,dict): continue
+                      draw=row.get('draw'); topic=row.get('topic'); rid=row.get('id')
+                      periods.append((i,rid,draw,topic))
+                      text=f'{topic}\n{row.get("content","")}'
+                      if draw==252 or '252' in text:
+                          exact.append((i,rid,draw,topic, str(row.get('content',''))[:300]))
+                  print('USERAPI',name,'rows',len(rows),'matches252',json.dumps(exact,ensure_ascii=False))
+                  print('USERAPI_HEAD',name,json.dumps(periods[:15],ensure_ascii=False))
+              except Exception as exc:
+                  print('USERAPI',name,'FAIL',type(exc).__name__,str(exc))
+
+          print('\n=== parser candidate order ===')
+          gateway=DefaultSourceGateway()
+          registry=build_registry()
+          for name in ('不幸蒂芥','息息相关','华夏九州','福禄双全','南柯故人'):
+              site=chosen[name]
+              try:
+                  bundle=gateway.http(site,45)
+                  bundle=gateway.embedded(site,bundle,45)
+                  candidates=tuple(registry.parse(site,bundle))
+                  target=[(c.page_order,c.zodiac,c.record_id,c.raw_line[:250],list(c.evidence)) for c in candidates if c.period==252]
+                  nearby=[(c.period,c.page_order,c.zodiac,c.raw_line[:160]) for c in candidates if 248 <= c.period <= 253]
+                  print('CANDIDATES',name,'target',json.dumps(target,ensure_ascii=False))
+                  print('NEARBY',name,json.dumps(nearby[:40],ensure_ascii=False))
+                  for d in bundle.documents:
+                      hits=[line.strip() for line in d.text.splitlines() if '252' in line]
+                      if hits:
+                          print('RAW252',name,d.source_id,json.dumps(hits[:20],ensure_ascii=False))
+              except Exception as exc:
+                  print('CANDIDATES',name,'FAIL',type(exc).__name__,str(exc))
+      - name: Confirm production files unchanged
+        shell: pwsh
+        run: git diff --exit-code -- sites.json recent_10_cache.json archived_sites.json
