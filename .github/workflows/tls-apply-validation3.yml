@@ -1,0 +1,95 @@
+name: TLS fix apply validation 3
+on:
+  push:
+    branches: [codex/tls-cdn-remediation-20260909]
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: ${{ github.event.head_commit.message == 'trigger-tls-apply3' }}
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Patch source and tests
+        shell: python
+        run: |
+          from pathlib import Path
+
+          pyproject = Path('pyproject.toml')
+          text = pyproject.read_text(encoding='utf-8')
+          old = 'dependencies = ["requests>=2.31", "playwright>=1.61,<2", "filelock>=3.15,<4"]'
+          new = 'dependencies = ["requests>=2.31", "playwright>=1.61,<2", "filelock>=3.15,<4", "truststore>=0.10,<1"]'
+          assert old in text and 'truststore>=' not in text
+          pyproject.write_text(text.replace(old, new), encoding='utf-8')
+
+          path = Path('src/zodiac_v2/source/http.py')
+          text = path.read_text(encoding='utf-8')
+          old_imports = 'import io\nimport re\nimport warnings\n'
+          assert old_imports in text
+          text = text.replace(old_imports, 'import io\nimport re\nimport ssl\nimport warnings\n', 1)
+          old_requests = 'import requests\n\nfrom zodiac_v2.contracts'
+          assert old_requests in text
+          text = text.replace(old_requests, 'import requests\nimport truststore\n\nfrom zodiac_v2.contracts', 1)
+          old_init = '''class UrllibTransport:\n    def __init__(self, *, user_agent: str = "Mozilla/5.0 ZodiacV2/1.0") -> None:\n        self.user_agent = user_agent\n'''
+          new_init = '''class UrllibTransport:\n    def __init__(\n        self,\n        *,\n        user_agent: str = "Mozilla/5.0 ZodiacV2/1.0",\n        ssl_context: ssl.SSLContext | None = None,\n    ) -> None:\n        self.user_agent = user_agent\n        self.ssl_context = ssl_context or truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)\n'''
+          assert old_init in text
+          text = text.replace(old_init, new_init, 1)
+          old_open = 'with urlopen(request, timeout=timeout) as response:'
+          assert old_open in text
+          text = text.replace(old_open, 'with urlopen(request, timeout=timeout, context=self.ssl_context) as response:', 1)
+          path.write_text(text, encoding='utf-8')
+
+          test = Path('tests/test_tls_system_trust.py')
+          assert not test.exists()
+          test.write_text('''from __future__ import annotations\n\nimport ssl\n\nimport truststore\n\nfrom zodiac_v2.source import http as http_module\nfrom zodiac_v2.source.http import UrllibTransport\n\n\nclass _Response:\n    status = 200\n    headers = {"Content-Type": "text/plain; charset=utf-8"}\n\n    def __enter__(self):\n        return self\n\n    def __exit__(self, *args):\n        return False\n\n    def read(self, _limit):\n        return b"ok"\n\n    def geturl(self):\n        return "https://example.test/"\n\n\ndef test_urllib_transport_uses_verified_system_trust_context(monkeypatch):\n    captured = {}\n\n    def fake_urlopen(request, *, timeout, context):\n        captured["context"] = context\n        captured["timeout"] = timeout\n        return _Response()\n\n    monkeypatch.setattr(http_module, "urlopen", fake_urlopen)\n    transport = UrllibTransport()\n    result = transport.request("https://example.test/", timeout=3, max_bytes=100)\n    assert result.status == 200\n    assert captured["context"] is transport.ssl_context\n    assert isinstance(transport.ssl_context, truststore.SSLContext)\n    assert transport.ssl_context.verify_mode == ssl.CERT_REQUIRED\n    assert transport.ssl_context.check_hostname is True\n    assert captured["timeout"] == 3\n\n\ndef test_urllib_transport_keeps_explicit_verified_context(monkeypatch):\n    captured = {}\n    explicit = ssl.create_default_context()\n\n    def fake_urlopen(request, *, timeout, context):\n        captured["context"] = context\n        return _Response()\n\n    monkeypatch.setattr(http_module, "urlopen", fake_urlopen)\n    transport = UrllibTransport(ssl_context=explicit)\n    transport.request("https://example.test/", timeout=2, max_bytes=100)\n    assert captured["context"] is explicit\n    assert explicit.verify_mode == ssl.CERT_REQUIRED\n    assert explicit.check_hostname is True\n''', encoding='utf-8')
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m playwright install chromium
+      - run: python -m compileall -q src tests
+      - run: python -m ruff check src tests --select E9,F63,F7,F82
+      - run: python -m pytest -q
+      - name: Validate all configured sites load
+        shell: python
+        run: |
+          from pathlib import Path
+          from zodiac_v2.cli import SOURCE_POLICIES
+          from zodiac_v2.config import load_sites
+          from zodiac_v2.parsers.registry import build_registry
+          sites = load_sites(Path('sites.json'), parser_ids=build_registry().parser_ids, source_policies=SOURCE_POLICIES)
+          assert len(sites) == 552
+          print('VALID_CONFIG_SITES', len(sites))
+      - name: Live verify production urllib TLS path
+        shell: python
+        run: |
+          from zodiac_v2.source.http import UrllibTransport
+          urls = [
+              'https://xia01.cosds.aohjifv.com/upload/script/09/d78282407f3e50b7.js',
+              'https://xia02.cosds.aohjifv.com/upload/script/09/a3b282d3da749415.js',
+              'https://xia03.cosds.aohjifv.com/upload/script/09/aedd75b495595778.js',
+              'https://xia04.cosds.aohjifv.com/upload/script/09/8efda494b4c350a2.js',
+              'https://xia05.cosds.aohjifv.com/upload/script/09/ab7827734ab7af48.js',
+              'https://xia06.cosds.aohjifv.com/upload/script/09/7091d27c129c7271.js',
+          ]
+          transport = UrllibTransport()
+          for url in urls:
+              response = transport.request(url, timeout=20, max_bytes=1_000_000)
+              assert response.status == 200
+              assert response.final_url == url
+              print('TLS_OK', url, len(response.body))
+      - name: Confirm production data unchanged
+        shell: pwsh
+        run: git diff --exit-code -- sites.json recent_10_cache.json archived_sites.json
+      - name: Commit validated source changes
+        shell: pwsh
+        run: |
+          git config user.name "xiaobai156"
+          git config user.email "234583912@qq.com"
+          git add pyproject.toml src/zodiac_v2/source/http.py tests/test_tls_system_trust.py
+          git commit -m "fix: use system trust for verified TLS chains"
+          git push origin HEAD:codex/tls-cdn-remediation-20260909
