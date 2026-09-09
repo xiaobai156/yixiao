@@ -1,0 +1,461 @@
+name: Remaining 12 apply validation
+on:
+  push:
+    branches: [codex/remaining-12-fixes-20260909]
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.event.head_commit.message == 'trigger-remaining12-apply'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Patch positional resolution and deterministic user API
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # 1) Same-document same-period values are resolved by configured TOP/BOTTOM.
+          path = Path('src/zodiac_v2/validation/conflicts.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''    for window in windows.values():
+              conflict = _window_conflict(window, target_period)
+              if conflict is not None:
+                  return conflict
+
+          zodiacs: list[str] = []
+          for window in windows.values():
+              for candidate in window:
+                  if candidate.period != target_period or candidate.zodiac in zodiacs:
+                      continue
+                  zodiacs.append(candidate.zodiac)
+          if len(zodiacs) > 1:
+              return ValidationDecision.failure(
+                  FailureCode.CONFLICT,
+                  f"来源冲突：指定 {target_period}期存在多个合法候选："
+                  f"{'/'.join(zodiacs)}，禁止自动选择",
+              )
+
+          documents = {document.source_id: document for document in bundle.documents}
+          matched_by_document = {
+              document_id: tuple(
+                  candidate for candidate in window if candidate.period == target_period
+              )
+              for document_id, window in windows.items()
+          }
+          selected_document_id = min(
+              matched_by_document,
+              key=lambda document_id: (
+                  documents[document_id].priority,
+                  documents[document_id].page_order,
+              ),
+          )
+          matched = matched_by_document[selected_document_id]
+          selected = matched[-1] if site.direction is Direction.BOTTOM else matched[0]
+          return ValidationDecision.success(selected)
+      '''
+          new = '''    selected_by_document: dict[str, Candidate] = {}
+          for document_id, window in windows.items():
+              matched = tuple(candidate for candidate in window if candidate.period == target_period)
+              if site.direction is Direction.LEFT:
+                  conflict = _window_conflict(matched, target_period)
+                  if conflict is not None:
+                      return conflict
+                  selected = matched[0]
+              else:
+                  selected = matched[-1] if site.direction is Direction.BOTTOM else matched[0]
+              selected_by_document[document_id] = selected
+
+          zodiacs: list[str] = []
+          for candidate in selected_by_document.values():
+              if candidate.zodiac not in zodiacs:
+                  zodiacs.append(candidate.zodiac)
+          if len(zodiacs) > 1:
+              return ValidationDecision.failure(
+                  FailureCode.CONFLICT,
+                  f"来源冲突：按 {site.direction.value} 位置解析后，指定 {target_period}期不同来源仍存在多个值："
+                  f"{'/'.join(zodiacs)}",
+              )
+
+          documents = {document.source_id: document for document in bundle.documents}
+          selected_document_id = min(
+              selected_by_document,
+              key=lambda document_id: (
+                  documents[document_id].priority,
+                  documents[document_id].page_order,
+              ),
+          )
+          return ValidationDecision.success(selected_by_document[selected_document_id])
+      '''
+          assert old in text
+          text = text.replace(old, new, 1)
+
+          old = '''def validate_period_presence(site, bundle, candidates, target_period):
+              """Check existence/conflicts in each active source cycle, independently of its edge."""
+              if not bundle.scan_complete:
+                  return ValidationDecision.failure(FailureCode.BOUNDARY, "来源扫描未完成")
+              grouped = {}
+              for candidate in candidates:
+                  grouped.setdefault(candidate.document_id, []).append(candidate)
+              matched = tuple(
+                  candidate for group in grouped.values()
+                  for candidate in _active_candidates(tuple(group), site.direction)
+                  if candidate.period == target_period
+                  and "record-status:incomplete" not in candidate.evidence
+              )
+              if not matched:
+                  return ValidationDecision.failure(FailureCode.PERIOD, f"候选中未找到指定 {target_period}期")
+              lines_cache = {}
+              for candidate in matched:
+                  decision = validate_candidate_evidence(candidate, bundle, _lines_cache=lines_cache)
+                  if not decision.ok:
+                      return decision
+              conflict = _window_conflict(matched, target_period)
+              return conflict if conflict is not None else ValidationDecision.success(matched[0])
+      '''
+          new = '''def validate_period_presence(site, bundle, candidates, target_period):
+              """Check target-period presence while honoring configured positional semantics."""
+              if not bundle.scan_complete:
+                  return ValidationDecision.failure(FailureCode.BOUNDARY, "来源扫描未完成")
+              grouped = {}
+              for candidate in candidates:
+                  grouped.setdefault(candidate.document_id, []).append(candidate)
+              selected_by_document = {}
+              for document_id, group in grouped.items():
+                  matched = tuple(
+                      candidate
+                      for candidate in _active_candidates(tuple(group), site.direction)
+                      if candidate.period == target_period
+                      and "record-status:incomplete" not in candidate.evidence
+                  )
+                  if not matched:
+                      continue
+                  if site.direction is Direction.LEFT:
+                      conflict = _window_conflict(matched, target_period)
+                      if conflict is not None:
+                          return conflict
+                      selected = matched[0]
+                  else:
+                      selected = matched[-1] if site.direction is Direction.BOTTOM else matched[0]
+                  selected_by_document[document_id] = selected
+              if not selected_by_document:
+                  return ValidationDecision.failure(FailureCode.PERIOD, f"候选中未找到指定 {target_period}期")
+              lines_cache = {}
+              for candidate in selected_by_document.values():
+                  decision = validate_candidate_evidence(candidate, bundle, _lines_cache=lines_cache)
+                  if not decision.ok:
+                      return decision
+              zodiacs = tuple(dict.fromkeys(candidate.zodiac for candidate in selected_by_document.values()))
+              if len(zodiacs) > 1:
+                  return ValidationDecision.failure(
+                      FailureCode.CONFLICT,
+                      f"来源冲突：按 {site.direction.value} 位置解析后，指定 {target_period}期不同来源仍存在多个值：{'/'.join(zodiacs)}",
+                  )
+              documents = {document.source_id: document for document in bundle.documents}
+              selected_document_id = min(
+                  selected_by_document,
+                  key=lambda document_id: (
+                      documents[document_id].priority,
+                      documents[document_id].page_order,
+                  ),
+              )
+              return ValidationDecision.success(selected_by_document[selected_document_id])
+      '''
+          assert old in text
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          # 2) User-forum selector resolves multiple same-period posts by TOP/BOTTOM.
+          path = Path('src/zodiac_v2/parsers/dedicated.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''        if site.name not in {"福禄寿喜财", "连中谎言"}:
+                  return None
+      '''
+          new = '''        if site.direction is Direction.LEFT:
+                  return None
+      '''
+          assert old in text
+          text = text.replace(old, new, 1)
+          old = '''        if len(record_ids) > 1:
+                  zodiacs = {candidate.zodiac for candidate in target_candidates}
+                  if len(zodiacs) != 1 or site.direction is Direction.LEFT:
+                      return None
+                  selected_candidate = (
+                      target_candidates[0]
+                      if site.direction is Direction.TOP
+                      else target_candidates[-1]
+                  )
+                  record_ids = {selected_candidate.record_id}
+      '''
+          new = '''        if len(record_ids) > 1:
+                  selected_candidate = (
+                      target_candidates[0]
+                      if site.direction is Direction.TOP
+                      else target_candidates[-1]
+                  )
+                  record_ids = {selected_candidate.record_id}
+      '''
+          assert old in text
+          text = text.replace(old, new, 1)
+          text = text.replace('''            record_ids_by_period: dict[int, set[str]] = {}
+                  values_by_period: dict[int, set[str]] = {}
+      ''', '', 1)
+          old = '''                record_ids_by_period.setdefault(semantic_period, set()).add(record_id_text)
+                      values_by_period.setdefault(semantic_period, set()).update(
+                          match.group(2)
+                          for _line_index, _line, match in selected_matches
+                          if int(match.group(1)) == semantic_period
+                      )
+      '''
+          assert old in text
+          text = text.replace(old, '', 1)
+          old = '''            ambiguous_periods = {
+                      period
+                      for period, record_ids in record_ids_by_period.items()
+                      if len(record_ids) > 1 and len(values_by_period.get(period, ())) != 1
+                  }
+                  candidates.extend(
+                      candidate
+                      for candidate in document_candidates
+                      if candidate.period not in ambiguous_periods
+                  )
+      '''
+          assert old in text
+          text = text.replace(old, '            candidates.extend(document_candidates)\n', 1)
+          path.write_text(text, encoding='utf-8')
+
+          # 3) browser_user uses a deterministic, strictly same-user HTTPS API before any browser work.
+          path = Path('src/zodiac_v2/source/api.py')
+          text = path.read_text(encoding='utf-8')
+          marker = '\n\ndef bind_user_forum_target(\n'
+          assert marker in text and 'def fetch_user_forum_api(' not in text
+          addition = '''
+
+          def derived_user_forum_api_url(page_url: str, *, per_page: int = 100) -> str | None:
+              if isinstance(per_page, bool) or not isinstance(per_page, int) or not 1 <= per_page <= 100:
+                  raise ValueError("per_page 必须是 1 到 100 的整数")
+              identity = source_identity(page_url)
+              if identity.user_id is None:
+                  return None
+              parsed = urlsplit(page_url)
+              api_url = f"{parsed.scheme}://{parsed.netloc}/api/v1/users/{identity.user_id}/forums?per_page={per_page}"
+              validate_related_url(page_url, api_url, require_matching_id=True)
+              return api_url
+
+
+          def fetch_user_forum_api(
+              transport: HttpTransport,
+              *,
+              page_url: str,
+              timeout: float = 20,
+              max_bytes: int = DEFAULT_MAX_BYTES,
+              per_page: int = 100,
+          ) -> SourceBundle:
+              api_url = derived_user_forum_api_url(page_url, per_page=per_page)
+              if api_url is None:
+                  raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "用户主页 URL 缺少用户 ID", url=page_url)
+              try:
+                  document = fetch_http_document(
+                      transport,
+                      api_url,
+                      timeout=timeout,
+                      max_bytes=max_bytes,
+                      document_type=DocumentType.JSON,
+                      source_id=f"user-api:{source_identity(page_url).user_id}",
+                  )
+                  validate_related_url(page_url, document.final_url, require_matching_id=True)
+              except SourceIdentityError as exc:
+                  raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, str(exc), url=api_url) from exc
+              return SourceBundle(
+                  (document,),
+                  (f"user-api:200:per_page={per_page}", "scan_complete:1"),
+                  scan_complete=True,
+              )
+          '''.replace('\n          ', '\n')
+          text = text.replace(marker, addition + marker, 1)
+          path.write_text(text, encoding='utf-8')
+
+          path = Path('src/zodiac_v2/services/scrape.py')
+          text = path.read_text(encoding='utf-8')
+          old = 'from zodiac_v2.source.api import bind_user_forum_target, derived_article_api_urls, fetch_api_then_page\n'
+          new = 'from zodiac_v2.source.api import bind_user_forum_target, derived_article_api_urls, fetch_api_then_page, fetch_user_forum_api\n'
+          assert old in text
+          text = text.replace(old, new, 1)
+          old = '''    def browser(self, site: SiteConfig, timeout: float) -> SourceBundle: ...
+
+              def article_api(self, site: SiteConfig, timeout: float) -> tuple[SourceBundle, ...]: ...
+      '''
+          new = '''    def browser(self, site: SiteConfig, timeout: float) -> SourceBundle: ...
+
+              def browser_user(self, site: SiteConfig, timeout: float) -> SourceBundle: ...
+
+              def article_api(self, site: SiteConfig, timeout: float) -> tuple[SourceBundle, ...]: ...
+      '''
+          assert old in text
+          text = text.replace(old, new, 1)
+          marker = '''    def browser(self, site: SiteConfig, timeout: float) -> SourceBundle:
+                  allowed = (site.api_url,) if site.api_url else ()
+                  return browser_documents(
+                      self.renderer,
+                      site.url,
+                      timeout=timeout,
+                      max_chars=site.embedded_max_bytes or DEFAULT_MAX_BYTES,
+                      allowed_response_urls=allowed,
+                  )
+      '''
+          assert marker in text
+          addition = marker + '''
+
+              def browser_user(self, site: SiteConfig, timeout: float) -> SourceBundle:
+                  return fetch_user_forum_api(
+                      self.transport,
+                      page_url=site.url,
+                      timeout=timeout,
+                      max_bytes=site.embedded_max_bytes or EMBEDDED_MAX_BYTES,
+                      per_page=100,
+                  )
+      '''
+          text = text.replace(marker, addition, 1)
+          old = '''        if site.source_policy == "browser_user":
+                  return self.gateway.browser(site, timeout)
+      '''
+          new = '''        if site.source_policy == "browser_user":
+                  direct_user_api = getattr(self.gateway, "browser_user", None)
+                  if callable(direct_user_api):
+                      return direct_user_api(site, timeout)
+                  return self.gateway.browser(site, timeout)
+      '''
+          assert old in text
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          # Tests: update old conflict expectations to the newly authorized positional rule.
+          path = Path('tests/test_conflict_scope.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''def test_target_period_conflict_outside_old_window_is_not_hidden() -> None:
+      '''
+          assert old in text
+          text = text.replace(old, 'def test_top_position_selects_first_target_value_when_same_document_repeats_period() -> None:\n', 1)
+          old = '''    assert decision.failure_code is FailureCode.CONFLICT
+              assert "猴/狗" in decision.reason
+      '''
+          new = '''    assert decision.ok
+              assert decision.candidate is not None
+              assert decision.candidate.zodiac == "猴"
+      '''
+          assert old in text
+          text = text.replace(old, new, 1)
+          text += '''
+
+          def test_bottom_position_selects_last_target_value_when_same_document_repeats_period() -> None:
+              rows = ((224, "猴"), (223, "马"), (222, "虎"), (221, "兔"), (220, "龙"), (224, "狗"))
+              candidates = tuple(
+                  Candidate(period, zodiac, f"{period}期：{zodiac}", "script:test", position,
+                            ("section:杀肖", "block:0", "block-range:0-7"))
+                  for position, (period, zodiac) in enumerate(rows, start=1)
+              )
+              site = SiteConfig("测试站", "https://example.test/topic/1.html", Direction.BOTTOM,
+                                SiteSection.EXISTING, "test", "http_documents")
+              decision = validate_candidates(site, _bundle(*(candidate.raw_line for candidate in candidates)), candidates, 224)
+              assert decision.ok and decision.candidate is not None
+              assert decision.candidate.zodiac == "狗"
+
+
+          def test_left_mode_still_rejects_ambiguous_same_period_values() -> None:
+              candidates = (_candidate(224, "猴", 1), _candidate(224, "狗", 2))
+              site = SiteConfig("测试站", "https://example.test/topic/1.html", Direction.LEFT,
+                                SiteSection.EXISTING, "test", "http_documents")
+              decision = validate_candidates(site, _bundle(*(candidate.raw_line for candidate in candidates)), candidates, 224)
+              assert decision.failure_code is FailureCode.CONFLICT
+          '''.replace('\n          ', '\n')
+          path.write_text(text, encoding='utf-8')
+
+          path = Path('tests/test_user_forum_special.py')
+          text = path.read_text(encoding='utf-8')
+          old = 'def test_fulu_does_not_select_between_different_same_period_values() -> None:\n'
+          assert old in text
+          text = text.replace(old, 'def test_fulu_bottom_selects_last_post_when_same_period_values_differ() -> None:\n', 1)
+          old = '''    assert parser.select_source(
+                  _site("福禄寿喜财", 154933),
+                  _bundle(154933, first, second),
+                  238,
+              ) is None
+      '''
+          new = '''    selected = parser.select_source(
+                  _site("福禄寿喜财", 154933),
+                  _bundle(154933, first, second),
+                  238,
+              )
+              assert selected is not None
+              assert selected.documents[0].record_id == "15886257"
+      '''
+          assert old in text
+          text = text.replace(old, new, 1)
+          text += '''
+
+          def test_zhonggea_top_selects_first_same_period_post_when_values_differ() -> None:
+              first = _row(record_id=15975717, user_id=179590, name="钟哥啊", draw=252,
+                           topic="稳杀一肖", content="251期杀：兔✔️<div>252期杀：鼠（以这个为准）</div>")
+              second = _row(record_id=15972916, user_id=179590, name="钟哥啊", draw=252,
+                            topic="稳杀一肖", content="251期杀：兔✔️<div>252期杀：牛</div>")
+              site = _site("钟哥啊", 179590, direction=Direction.TOP)
+              parser = UserForumPostParser()
+              selected = parser.select_source(site, _bundle(179590, first, second), 252)
+              assert selected is not None
+              assert selected.documents[0].record_id == "15975717"
+              decision = validate_candidates(site, selected, parser.parse(site, selected), 252)
+              assert decision.ok and decision.candidate is not None
+              assert decision.candidate.zodiac == "鼠"
+          '''.replace('\n          ', '\n')
+          path.write_text(text, encoding='utf-8')
+
+          test = Path('tests/test_browser_user_direct_api.py')
+          test.write_text('''from __future__ import annotations\n\nimport json\n\nfrom zodiac_v2.contracts import Direction, SiteConfig, SiteSection\nfrom zodiac_v2.services.scrape import DefaultSourceGateway\nfrom zodiac_v2.source.api import derived_user_forum_api_url\nfrom zodiac_v2.source.http import HttpResponse\n\n\nclass Transport:\n    def __init__(self):\n        self.urls = []\n\n    def request(self, url, *, timeout, max_bytes):\n        self.urls.append(url)\n        body = json.dumps([{\"id\": 1, \"status\": \"published\", \"user_id\": 28097, \"draw\": 252,\n                            \"topic\": \"绝杀一肖\", \"content\": \"252期（绝杀一肖) 虎虎虎\",\n                            \"user\": {\"id\": 28097, \"nickname\": \"清爽凯蒂\"}}], ensure_ascii=False).encode()\n        return HttpResponse(200, url, body, ((\"Content-Type\", \"application/json; charset=utf-8\"),))\n\n\ndef test_fragment_user_home_derives_same_user_api():\n    page = \"https://example.test:12277/#/users/28097\"\n    assert derived_user_forum_api_url(page) == \"https://example.test:12277/api/v1/users/28097/forums?per_page=100\"\n\n\ndef test_browser_user_gateway_prefers_verified_same_user_http_api():\n    transport = Transport()\n    site = SiteConfig(\"清爽凯蒂\", \"https://example.test:12277/#/users/28097\", Direction.TOP,\n                      SiteSection.EXISTING, \"special.user_forum_post\", \"browser_user\")\n    bundle = DefaultSourceGateway(transport=transport).browser_user(site, 10)\n    assert transport.urls == [\"https://example.test:12277/api/v1/users/28097/forums?per_page=100\"]\n    assert bundle.scan_complete\n    assert \"252\" in bundle.documents[0].text\n''', encoding='utf-8')
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m playwright install chromium
+      - run: python -m compileall -q src tests
+      - run: python -m ruff check src tests --select E9,F63,F7,F82
+      - run: python -m pytest -q
+      - name: Validate configuration
+        shell: python
+        run: |
+          from pathlib import Path
+          from zodiac_v2.cli import SOURCE_POLICIES
+          from zodiac_v2.config import load_sites
+          from zodiac_v2.parsers.registry import build_registry
+          sites = load_sites(Path('sites.json'), parser_ids=build_registry().parser_ids, source_policies=SOURCE_POLICIES)
+          assert len(sites) == 552
+          print('VALID_CONFIG_SITES', len(sites))
+      - name: Targeted live retest 12 sites
+        shell: python
+        run: |
+          from pathlib import Path
+          from zodiac_v2.cli import SOURCE_POLICIES
+          from zodiac_v2.config import load_sites
+          from zodiac_v2.parsers.registry import build_registry
+          from zodiac_v2.services.scrape import DefaultSourceGateway, ScrapeService
+          from zodiac_v2.contracts import RunMode
+          names = {'老奇人第一版','欣欣向荣','梵天静候','清爽凯蒂','青云子','钟哥啊','王木木儿涂涂','不幸蒂芥','息息相关','华夏九州','福禄双全','南柯故人'}
+          sites = load_sites(Path('sites.json'), parser_ids=build_registry().parser_ids, source_policies=SOURCE_POLICIES)
+          selected = tuple(site for site in sites if site.name in names)
+          service = ScrapeService(DefaultSourceGateway(), build_registry())
+          results = service.scrape_sites(selected, 252, RunMode.READ_ONLY, timeout=60, workers=4)
+          for r in results:
+              print('RETEST', r.site.name, 'OK' if r.ok else 'FAIL', r.candidate.zodiac if r.ok and r.candidate else '', r.failure_code.value if r.failure_code else '', r.reason)
+          print('RETEST_SUMMARY', sum(r.ok for r in results), len(results)-sum(r.ok for r in results))
+      - name: Confirm production files unchanged
+        shell: pwsh
+        run: git diff --exit-code -- sites.json recent_10_cache.json archived_sites.json
+      - name: Commit validated source and tests only
+        shell: pwsh
+        run: |
+          git config user.name "xiaobai156"
+          git config user.email "234583912@qq.com"
+          git add src/zodiac_v2/validation/conflicts.py src/zodiac_v2/parsers/dedicated.py src/zodiac_v2/source/api.py src/zodiac_v2/services/scrape.py tests/test_conflict_scope.py tests/test_user_forum_special.py tests/test_browser_user_direct_api.py
+          git commit -m "fix: resolve repeated period data by configured position"
+          git push origin HEAD:codex/remaining-12-fixes-20260909
