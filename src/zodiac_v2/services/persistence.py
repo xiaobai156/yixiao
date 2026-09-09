@@ -26,6 +26,10 @@ from zodiac_v2.output import (
 from zodiac_v2.storage import locked_paths
 
 
+class CachePersistenceError(RuntimeError):
+    """TXT publication succeeded but an expected cache update did not fully complete."""
+
+
 def validate_result_scope(
     results: Iterable[ScrapeResult],
     expected_sites: Iterable[SiteConfig],
@@ -69,6 +73,13 @@ def _cache_issue(reason: str) -> None:
     print(f'缓存更新未完成（不改变本轮实时结果）：{reason}', flush=True)
 
 
+def _cache_failure(reasons: Iterable[str]) -> CachePersistenceError:
+    details = '；'.join(dict.fromkeys(reason for reason in reasons if reason))
+    message = f'正式 TXT 已写入，但缓存更新未完整完成：{details or "未知缓存错误"}'
+    _cache_issue(message)
+    return CachePersistenceError(message)
+
+
 def _persist_cache(rows: tuple[ScrapeResult, ...], cache_path: Path, permit: WritePermit, *, targeted: bool) -> None:
     from zodiac_v2.services.scrape import cache_record_from_result
 
@@ -84,8 +95,7 @@ def _persist_cache(rows: tuple[ScrapeResult, ...], cache_path: Path, permit: Wri
         else:
             data, quarantined = load_recent_cache_for_commit(cache_path)
     except (ValueError, OSError) as exc:
-        _cache_issue(f'缓存读取失败：{exc}')
-        return
+        raise _cache_failure((f'缓存读取失败：{exc}',)) from exc
     latest = data.get('latest_period')
     older = isinstance(latest, int) and permit.target_period < latest
     if older and not targeted:
@@ -96,21 +106,24 @@ def _persist_cache(rows: tuple[ScrapeResult, ...], cache_path: Path, permit: Wri
         for entry in data['sites']
     }
     records = []
+    issues: list[str] = []
     for result in successes:
         if result.site.identity in quarantined:
-            _cache_issue(f'{result.site.name} 已隔离：{quarantined[result.site.identity]}')
+            issues.append(f'{result.site.name} 已隔离：{quarantined[result.site.identity]}')
             continue
         entry = by_identity.get(result.site.identity)
         if older and entry is None:
-            _cache_issue(f'{result.site.name} 没有旧期回填所需的既有身份')
+            issues.append(f'{result.site.name} 没有旧期回填所需的既有身份')
             continue
         old_values = {item['period']: item['zodiac'] for item in entry.get('records', [])} if entry else {}
         old = old_values.get(permit.target_period)
         if old is not None and old != result.candidate.zodiac:
-            _cache_issue(f'{result.site.name} 缓存同期冲突：旧值 {old}，新值 {result.candidate.zodiac}，旧值保留')
+            issues.append(f'{result.site.name} 缓存同期冲突：旧值 {old}，新值 {result.candidate.zodiac}，旧值保留')
             continue
         records.append(cache_record_from_result(result))
     if not records:
+        if issues:
+            raise _cache_failure(issues)
         return
     try:
         if older:
@@ -123,9 +136,10 @@ def _persist_cache(rows: tuple[ScrapeResult, ...], cache_path: Path, permit: Wri
                 updated = mark_failed_sites(updated, failures, current_period=permit.target_period, permit=permit)
             write_recent_cache(cache_path, updated, permit)
     except (OSError, ValueError, PermissionError) as exc:
-        _cache_issue(str(exc))
-        return
+        raise _cache_failure((str(exc),)) from exc
     print(f'缓存已更新：{len(records)}/{len(successes)} 个成功站点', flush=True)
+    if issues:
+        raise _cache_failure(issues)
 
 
 def commit_full_formal_single(
@@ -154,7 +168,6 @@ def commit_targeted_formal_single(
             partial = build_merged_result_payloads(result, paths, permit, texts=texts)
             changed.update(partial)
             texts.update({path: text for path, text in partial.items() if text is not None})
-        # Preflight every target before publishing any: later conflicts cannot partly commit.
         payloads = _OutputPayloads(changed, target_period=permit.target_period, token=_OUTPUT_TOKEN)
         write_output_payloads(payloads, permit)
         _persist_cache(rows, cache_path, permit, targeted=True)

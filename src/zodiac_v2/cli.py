@@ -14,7 +14,7 @@ from zodiac_v2.duplicate import find_duplicate_matches
 from zodiac_v2.output import output_paths
 from zodiac_v2.parsers.registry import build_registry
 from zodiac_v2.services.onboarding import validate_new_site
-from zodiac_v2.services.persistence import commit_targeted_formal_single
+from zodiac_v2.services.persistence import CachePersistenceError, commit_targeted_formal_single
 from zodiac_v2.services.repair import repair_sites, sites_from_failure_text
 from zodiac_v2.services.scrape import DEFAULT_SITE_TIMEOUT, DefaultSourceGateway, ScrapeService, commit_formal_single
 
@@ -226,13 +226,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             on_result=_progress_printer(start),
         )
         if args.formal:
-            results = commit_formal_single(
-                results,
-                cache_path=args.cache_file,
-                paths=output_paths(args.period, args.success_dir, args.failure_dir),
-                permit=WritePermit.formal_single(args.period),
-                expected_sites=sites,
-            )
+            try:
+                results = commit_formal_single(
+                    results,
+                    cache_path=args.cache_file,
+                    paths=output_paths(args.period, args.success_dir, args.failure_dir),
+                    permit=WritePermit.formal_single(args.period),
+                    expected_sites=sites,
+                )
+            except CachePersistenceError:
+                _print_results(results)
+                print("正式 TXT 已发布，但缓存更新失败；本次命令返回状态码 3", flush=True)
+                return 3
         _print_results(results)
         return 0
     if args.command in {"retry", "repair"}:
@@ -246,9 +251,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             RunMode.FORMAL_SINGLE if formal else RunMode.READ_ONLY,
             timeout=args.timeout, workers=args.workers)
         if formal:
-            results = commit_targeted_formal_single(results, expected_sites=selected,
-                cache_path=args.cache_file, paths=output_paths(args.period, args.success_dir, args.failure_dir),
-                permit=WritePermit.formal_single(args.period))
+            try:
+                results = commit_targeted_formal_single(results, expected_sites=selected,
+                    cache_path=args.cache_file, paths=output_paths(args.period, args.success_dir, args.failure_dir),
+                    permit=WritePermit.formal_single(args.period))
+            except CachePersistenceError:
+                _print_results(results)
+                print("正式 TXT 已发布，但缓存更新失败；本次命令返回状态码 3", flush=True)
+                return 3
         else:
             print("限定复抓为只读验证，未写缓存或正式 TXT")
         _print_results(results)
