@@ -2,33 +2,61 @@ name: Review validation
 on:
   push:
     branches: [codex/yixiao-review-fixes-20260909]
+    paths: [tools/apply_review_repairs.py]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: yixiao-review-repair
+  cancel-in-progress: false
 jobs:
-  baseline:
+  repair-and-test:
+    if: github.ref == 'refs/heads/codex/yixiao-review-fixes-20260909'
     runs-on: windows-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
     env:
       PYTHONPATH: src
       PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: codex/yixiao-review-fixes-20260909
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python -m pip install pytest requests playwright filelock
-      - name: Inspect source configuration identities
+      - name: Apply exact reviewed source changes
+        run: python tools/apply_review_repairs.py
+      - run: python -m pip install -e ".[dev]"
+      - name: Compile source
+        run: python -m compileall -q src tests
+      - name: Complete offline regression suite
+        run: python -m pytest -ra --tb=short
+      - name: Validate runtime configuration without network
+        run: python -c "from pathlib import Path; from zodiac_v2.cli import _runtime; sites, _ = _runtime(Path('sites.json')); print('VALID_CONFIG_SITES', len(sites))"
+      - name: Confirm production data unchanged
+        run: git diff --exit-code -- sites.json recent_10_cache.json archived_sites.json
+      - name: Commit tested source changes to work branch only
         shell: python
         run: |
           import json
-          from collections import defaultdict
+          import subprocess
           from pathlib import Path
-          sites = json.loads(Path('sites.json').read_text(encoding='utf-8-sig'))
-          groups = defaultdict(list)
-          for site in sites:
-              groups[site['url']].append((site['name'], site.get('article_keyword'), site['parser_id']))
-          print('SITE_COUNT', len(sites))
-          print('SHARED_URLS', [items for items in groups.values() if len(items) > 1])
-      - name: Existing offline regression suite
-        run: python -m pytest -q
+          files = json.loads(Path('.review-changed-files.json').read_text(encoding='utf-8'))
+          allowed = ('src/zodiac_v2/', 'tests/', 'docs/')
+          if not files or any(not (p.startswith(allowed) or p in ('pyproject.toml', '.gitignore', 'AGENTS.md')) for p in files):
+              raise RuntimeError('Unexpected changed-file scope')
+          def git(*args):
+              return subprocess.run(['git', *args], check=True, text=True, capture_output=True).stdout
+          git('add', '--', *files)
+          staged = git('diff', '--cached', '--name-only').splitlines()
+          if any(p not in files for p in staged):
+              raise RuntimeError('Unexpected staged file')
+          if staged:
+              git('config', 'user.name', 'github-actions[bot]')
+              git('config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com')
+              git('commit', '-m', 'fix: scope formal writes and harden validated source boundaries')
+              git('push', 'origin', 'HEAD:refs/heads/codex/yixiao-review-fixes-20260909')
+          print('TESTED_COMMIT', git('rev-parse', 'HEAD').strip())
