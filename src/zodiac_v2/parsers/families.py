@@ -235,61 +235,34 @@ class AnchoredSectionFamilyParser:
         spec = self.specs.get(site.name)
         if spec is None:
             return ()
-        candidates: list[Candidate] = []
-        seen: set[tuple[str, int, int, int, str]] = set()
+        candidates = []
+        seen = set()
         for document in bundle.documents:
             lines = document_lines(document)
             for anchor_index, anchor_line in enumerate(lines):
                 if spec.anchor_pattern.search(anchor_line.text) is None:
                     continue
-                first_record_index = anchor_index if spec.include_anchor_line else anchor_index + 1
-                end_index = len(lines)
-                for index in range(first_record_index, len(lines)):
-                    line = lines[index].text
-                    if spec.stop_pattern is not None and spec.stop_pattern.search(line):
-                        end_index = index
+                first = anchor_index if spec.include_anchor_line else anchor_index + 1
+                end = len(lines)
+                for index in range(first, len(lines)):
+                    if (spec.stop_pattern is not None and spec.stop_pattern.search(lines[index].text)) or (index > anchor_index and spec.anchor_pattern.search(lines[index].text)):
+                        end = index
                         break
-                    if index > anchor_index and spec.anchor_pattern.search(line):
-                        end_index = index
-                        break
-                    record_text = normalize_space(
-                        " ".join(
-                            item.text
-                            for item in lines[index : index + spec.record_window_lines]
-                        )
-                    )
+                for index in range(first, end):
+                    record_text = normalize_space(" ".join(item.text for item in lines[index:min(index + spec.record_window_lines, end)]))
                     for match in spec.record_pattern.finditer(record_text):
                         period = int(match.group(1).lstrip("0") or "0")
                         zodiac = match.group(2)
-                        key = _physical_match_key(
-                            document.source_id,
-                            index,
-                            match.start(1),
-                            period,
-                            zodiac,
-                        )
+                        key = _physical_match_key(document.source_id, index, match.start(1), period, zodiac)
                         if key in seen:
                             continue
                         seen.add(key)
-                        candidates.append(
-                            Candidate(
-                                period,
-                                zodiac,
-                                record_text,
-                                document.source_id,
-                                document.page_order * 1_000_000 + index,
-                                (
-                                    f"section:{normalize_space(anchor_line.text)}",
-                                    f"anchor:{normalize_space(anchor_line.text)}",
-                                    f"anchor-line:{anchor_index}",
-                                    f"section-range:{anchor_index}-{end_index}",
-                                    f"record-offset:{match.start(1)}",
-                                ),
-                                record_id=document.record_id,
-                            )
-                        )
-        candidates.sort(key=lambda candidate: candidate.page_order)
-        return tuple(candidates)
+                        candidates.append(Candidate(period, zodiac, record_text, document.source_id,
+                            document.page_order * 1_000_000 + index,
+                            (f"section:{normalize_space(anchor_line.text)}", f"anchor:{normalize_space(anchor_line.text)}",
+                             f"anchor-line:{anchor_index}", f"section-range:{anchor_index}-{end}", f"record-offset:{match.start(1)}"),
+                            record_id=document.record_id))
+        return tuple(sorted(candidates, key=lambda candidate: candidate.page_order))
 
 
 class StrictArticleFamilyParser:

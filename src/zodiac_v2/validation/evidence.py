@@ -264,6 +264,8 @@ def validate_candidate_evidence(
         )
 
     document = documents[0]
+    if candidate.record_id is not None and document.record_id is not None and candidate.record_id != document.record_id:
+        return ValidationDecision.failure(FailureCode.SOURCE_IDENTITY, "候选记录 ID 与来源文档记录 ID 不一致")
     candidate_document_order = candidate.page_order // 1_000_000
     if candidate_document_order != document.page_order:
         return ValidationDecision.failure(
@@ -353,6 +355,11 @@ def validate_candidate_evidence(
             f"候选缺少可追溯的栏目、标题、作者或分块证据：{candidate.evidence}",
         )
 
+    if evidence_ranges:
+        block_end = min(end for _prefix, _start, end in evidence_ranges)
+        bounded_source = _normalize_space(" ".join(lines[local_position:min(local_position + 8, block_end)]))
+        if expected not in bounded_source:
+            return ValidationDecision.failure(FailureCode.BOUNDARY, "候选原始行跨越了已证明的区块结束边界")
     for prefix, start, end in evidence_ranges:
         if not start <= local_position < end:
             return ValidationDecision.failure(

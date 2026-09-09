@@ -22,7 +22,7 @@ DEFAULT_MAX_BYTES = 5_000_000
 # response.  Keep the normal page limit unchanged, but allow a bounded larger
 # limit for those explicitly discovered content documents.
 EMBEDDED_MAX_BYTES = 8_000_000
-DEFAULT_INSECURE_TLS_HOSTS = frozenset({"nlafoq9v.dh5565656.xyz", "156.225.88.144"})
+DEFAULT_INSECURE_TLS_HOSTS: frozenset[str] = frozenset()
 TRANSIENT_HTTP_STATUSES = frozenset({500, 502, 503, 504})
 
 
@@ -116,6 +116,8 @@ class RequestsTransport:
         max_bytes: int,
         verify: bool,
     ) -> HttpResponse:
+        if not verify:
+            raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "禁止关闭 TLS 证书验证", url=url)
         with requests.Session() as session:
             session.headers.update(
                 {
@@ -139,26 +141,10 @@ class RequestsTransport:
                     )
 
     def request(self, url: str, *, timeout: float, max_bytes: int) -> HttpResponse:
-        hostname = (urlsplit(url).hostname or "").lower()
         try:
             result = self._request(url, timeout=timeout, max_bytes=max_bytes, verify=True)
-        except requests.exceptions.SSLError as exc:
-            if hostname not in self.insecure_tls_hosts:
-                raise SourceFetchError(
-                    SourceFetchCode.NETWORK,
-                    f"HTTP 请求失败：{exc}",
-                    url=url,
-                ) from exc
-            try:
-                result = self._request(url, timeout=timeout, max_bytes=max_bytes, verify=False)
-            except requests.RequestException as insecure_exc:
-                raise SourceFetchError(
-                    SourceFetchCode.NETWORK,
-                    f"HTTP 请求失败：{insecure_exc}",
-                    url=url,
-                ) from insecure_exc
         except requests.RequestException as exc:
-            raise SourceFetchError(SourceFetchCode.NETWORK, f"HTTP 请求失败：{exc}", url=url) from exc
+            raise SourceFetchError(SourceFetchCode.NETWORK, f"HTTP 请求失败（未关闭证书验证）：{exc}", url=url) from exc
         if len(result.body) > max_bytes:
             raise SourceFetchError(SourceFetchCode.TOO_LARGE, f"HTTP 响应超过 {max_bytes} 字节", url=url)
         return result

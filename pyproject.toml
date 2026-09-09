@@ -7,7 +7,7 @@ name = "zodiac-v2"
 version = "0.1.0"
 description = "Modular zodiac site scraper"
 requires-python = ">=3.10"
-dependencies = ["requests>=2.31", "playwright>=1.61,<2"]
+dependencies = ["requests>=2.31", "playwright>=1.61,<2", "filelock>=3.15,<4"]
 
 [project.scripts]
 zodiac-v2 = "zodiac_v2.cli:main"
@@ -24,3 +24,11 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.6,<1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["historical_snapshot: requires matching historical production cache/config/TXT; opt in explicitly"]

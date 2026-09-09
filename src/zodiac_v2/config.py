@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 from zodiac_v2.contracts import Direction, SiteConfig, SiteSection, WritePermit
 from zodiac_v2.source.documents import same_source_identity
+from zodiac_v2.storage import locked_paths
 
 
 class ConfigError(ValueError):
@@ -174,6 +175,10 @@ def load_sites(
             )
         )
 
+    for index, site in enumerate(sites):
+        for previous in sites[:index]:
+            if same_business_source(site, previous):
+                raise ConfigError(f"不同站名重复绑定同一来源和栏目：{site.name} / {previous.name}")
     return tuple(sites)
 
 
@@ -184,7 +189,7 @@ def append_site_configs(path: Path, sites: Iterable[SiteConfig], *, permit: Writ
     candidates = tuple(sites)
     if not candidates:
         raise ConfigError("正式新增没有可写入的站点")
-    with _CONFIG_WRITE_LOCK:
+    with _CONFIG_WRITE_LOCK, locked_paths((path,)):
         raw = _read_json(path)
         if not isinstance(raw, list):
             raise ConfigError("站点配置根节点必须是数组")
@@ -236,3 +241,15 @@ def append_site_configs(path: Path, sites: Iterable[SiteConfig], *, permit: Writ
         finally:
             temporary.unlink(missing_ok=True)
         return candidates
+
+
+def same_business_source(first: SiteConfig, second: SiteConfig) -> bool:
+    if not same_source_identity(first.url, second.url):
+        return False
+    if (first.source_policy == second.source_policy == "http_period_keyword_article"
+        and first.article_keyword and second.article_keyword and first.article_keyword != second.article_keyword):
+        return False
+    names = {"关公杀一肖", "佛主禁肖图", "三怪禁肖图"}
+    if first.parser_id == second.parser_id == "special.sanguai_period_section" and first.name in names and second.name in names and first.name != second.name:
+        return False
+    return True

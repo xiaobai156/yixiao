@@ -9,7 +9,7 @@ from html import unescape
 from pathlib import Path
 from time import monotonic
 from typing import Protocol
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from zodiac_v2.cache import (
     load_recent_cache_for_commit,
@@ -40,6 +40,7 @@ from zodiac_v2.source.documents import (
     discover_content_documents,
     discover_named_topic_documents,
     discover_period_keyword_links,
+    discover_period_page_links,
     source_identity,
 )
 from zodiac_v2.source.http import (
@@ -51,7 +52,7 @@ from zodiac_v2.source.http import (
     default_http_transport,
     fetch_http_document,
 )
-from zodiac_v2.validation.conflicts import _active_candidates, validate_candidates
+from zodiac_v2.validation.conflicts import _active_candidates, validate_candidates, validate_period_presence
 
 DEFAULT_SITE_TIMEOUT = 60.0
 HTTP_CONSENSUS_ATTEMPTS = 5
@@ -238,75 +239,42 @@ class DefaultSourceGateway:
             scan_complete=scan_complete,
         )
 
-    def period_keyword_article(
-        self,
-        site: SiteConfig,
-        bundle: SourceBundle,
-        target_period: int,
-        timeout: float,
-    ) -> SourceBundle:
-        if site.article_keyword is None:
-            raise SourceFetchError(
-                SourceFetchCode.SOURCE_IDENTITY,
-                f"站点 {site.name} 缺少文章关键字",
-                url=site.url,
-            )
+    def period_keyword_article(self, site, bundle, target_period, timeout):
+        if not site.article_keyword:
+            raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "缺少文章关键字", url=site.url)
+        if len(bundle.documents) != 1:
+            raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "栏目分页必须从唯一入口开始", url=site.url)
         deadline = monotonic() + timeout
-        pending = list(bundle.documents)
-        seen_pages = {document.final_url for document in pending}
-        matches: list[str] = []
+        document = bundle.documents[0]
+        seen_pages = set()
+        matches = []
         scanned = 0
-        while pending:
-            document = pending.pop(0)
+        while True:
+            if document.final_url in seen_pages:
+                raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "栏目分页循环", url=site.url)
+            seen_pages.add(document.final_url)
             scanned += 1
-            if scanned > 10:
-                raise SourceFetchError(
-                    SourceFetchCode.SOURCE_IDENTITY,
-                    "同栏目分页超过安全上限 10 页",
-                    url=site.url,
-                )
-            article_urls, page_urls, has_target_period_articles = discover_period_keyword_links(
-                document.text,
-                document.final_url,
-                target_period,
-                site.article_keyword,
-            )
+            article_urls, page_urls, periods = discover_period_page_links(document.text, document.final_url, target_period, site.article_keyword)
             matches.extend(article_urls)
-            if not has_target_period_articles:
-                continue
-            for page_url in page_urls:
-                if page_url in seen_pages:
-                    continue
-                seen_pages.add(page_url)
-                pending.append(
-                    fetch_http_document(
-                        self.transport,
-                        page_url,
-                        timeout=_remaining_budget(deadline, timeout, site.url, "栏目分页取源总超时"),
-                        identity_url=page_url,
-                        source_id=f"period-list:{page_url}",
-                    )
-                )
-        unique_matches = tuple(dict.fromkeys(matches))
-        if len(unique_matches) != 1:
-            raise SourceFetchError(
-                SourceFetchCode.SOURCE_IDENTITY,
-                f"{target_period}期完整关键字 {site.article_keyword!r} 详情链接命中 {len(unique_matches)} 个",
-                url=site.url,
-            )
-        detail_url = unique_matches[0]
-        detail = fetch_http_document(
-            self.transport,
-            detail_url,
-            timeout=_remaining_budget(deadline, timeout, site.url, "文章详情取源总超时"),
-            identity_url=detail_url,
-            source_id=f"ttss-article:{detail_url}",
-        )
-        return SourceBundle(
-            (detail,),
-            (f"period-list-pages:{scanned}", "period-keyword-match:1", "scan_complete:1"),
-            scan_complete=True,
-        )
+            # Configured newest-first lists stop after a page of strictly older articles.
+            if periods and max(periods) < target_period:
+                break
+            current_page = int(parse_qs(urlsplit(document.final_url).query).get("page", ["1"])[0])
+            following = sorted({url for url in page_urls if int(parse_qs(urlsplit(url).query)["page"][0]) == current_page + 1})
+            if not following:
+                if page_urls and any(int(parse_qs(urlsplit(url).query)["page"][0]) > current_page for url in page_urls):
+                    raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "缺少连续下一页，不能证明扫描完整", url=site.url)
+                break
+            if len(following) != 1 or scanned >= 10:
+                raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "同栏目分页不唯一或超过安全上限 10 页", url=site.url)
+            document = fetch_http_document(self.transport, following[0],
+                timeout=_remaining_budget(deadline, timeout, site.url, "栏目分页取源总超时"),
+                identity_url=following[0], source_id=f"period-list:{following[0]}")
+        unique = tuple(dict.fromkeys(matches))
+        if len(unique) != 1:
+            raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, f"{target_period}期完整关键字 {site.article_keyword!r} 详情链接命中 {len(unique)} 个", url=site.url)
+        detail = fetch_http_document(self.transport, unique[0], timeout=_remaining_budget(deadline, timeout, site.url, "文章详情取源总超时"), identity_url=unique[0], source_id=f"ttss-article:{unique[0]}")
+        return self.embedded(site, SourceBundle((detail,), (f"period-list-pages:{scanned}", "period-keyword-match:1"), scan_complete=False), _remaining_budget(deadline, timeout, site.url, "文章详情取源总超时"))
 
     def api_then_http(self, site: SiteConfig, timeout: float) -> SourceBundle:
         if site.api_url is None:
@@ -502,6 +470,8 @@ class ScrapeService:
         mode: RunMode,
     ) -> ScrapeResult:
         try:
+            if sum(len(document.text.encode("utf-8")) for document in bundle.documents) > 64_000_000:
+                return ScrapeResult.failure(site, target_period, FailureCode.BOUNDARY, "站点文档累计超过 64000000 字节", bundle.documents)
             candidates = tuple(self.registry.parse(site, bundle))
         except Exception as exc:
             return ScrapeResult.failure(
@@ -620,112 +590,59 @@ class ScrapeService:
             url=site.url,
         )
 
-    def _http_consensus(
-        self,
-        site: SiteConfig,
-        target_period: int,
-        mode: RunMode,
-        remaining: Callable[[], float],
-    ) -> ScrapeResult:
-        probes: list[tuple[ScrapeResult, ScrapeResult | None]] = []
-        fetch_failures: list[ScrapeResult] = []
-
+    def _http_consensus(self, site, target_period, mode, remaining):
+        hits = []
+        last_failure = None
+        newer_values = set()
+        newer_documents = ()
         for _attempt in range(HTTP_CONSENSUS_ATTEMPTS):
             try:
                 bundle = self.gateway.http(site, remaining())
                 bundle = self.gateway.embedded(site, bundle, remaining())
                 remaining()
             except SourceFetchError as exc:
-                fetch_failures.append(
-                    ScrapeResult.failure(
-                        site,
-                        target_period,
-                        _failure_code(exc),
-                        str(exc),
-                        (),
-                    )
-                )
+                failure = ScrapeResult.failure(site, target_period, _failure_code(exc), str(exc), ())
+                if exc.code is not SourceFetchCode.NETWORK and exc.code is not SourceFetchCode.HTTP_STATUS:
+                    return failure
+                last_failure = failure
                 continue
-            probes.append(
-                (
-                    self._evaluate(site, target_period, bundle, mode),
-                    self._evaluate(site, target_period + 1, bundle, RunMode.READ_ONLY)
-                    if target_period < 9999
-                    else None,
-                )
-            )
-
-        newer_hits = tuple(
-            next_result
-            for _, next_result in probes
-            if next_result is not None and next_result.ok
-        )
-        newer_values = {
-            result.candidate.zodiac
-            for result in newer_hits
-            if result.candidate is not None
-        }
+            result = self._evaluate(site, target_period, bundle, mode)
+            if result.failure_code is FailureCode.CONFLICT:
+                return result
+            try:
+                candidates = tuple(self.registry.parse(site, bundle))
+            except Exception:
+                last_failure = result
+                continue
+            for period in (target_period, target_period + 1):
+                if period > 9999:
+                    continue
+                presence = validate_period_presence(site, bundle, candidates, period)
+                if presence.failure_code is FailureCode.CONFLICT:
+                    return ScrapeResult.failure(site, target_period, FailureCode.CONFLICT,
+                        f"共识取源发现 {period}期明确冲突：{presence.reason}", bundle.documents)
+                if presence.failure_code not in (None, FailureCode.PERIOD):
+                    return ScrapeResult.failure(site, target_period, presence.failure_code, presence.reason, bundle.documents)
+                if period > target_period and presence.ok:
+                    newer_values.add(presence.candidate.zodiac)
+                    newer_documents = bundle.documents
+            if result.ok:
+                hits.append(result)
+            else:
+                last_failure = result
         if len(newer_values) > 1:
-            return ScrapeResult.failure(
-                site,
-                target_period,
-                FailureCode.CONFLICT,
-                f"多次取源的 {target_period + 1}期结果冲突：{sorted(newer_values)}",
-                newer_hits[0].documents,
-            )
-        if newer_hits:
-            return ScrapeResult.failure(
-                site,
-                target_period,
-                FailureCode.DIRECTION,
-                f"多次取源发现更新的 {target_period + 1}期有效结果"
-                f"[{next(iter(newer_values))}]，指定 {target_period}期不是{site.direction.value}边界",
-                newer_hits[0].documents,
-            )
-
-        target_hits = tuple(target_result for target_result, _ in probes if target_result.ok)
-        target_values = {
-            result.candidate.zodiac
-            for result in target_hits
-            if result.candidate is not None
-        }
-        if len(target_values) > 1:
-            return ScrapeResult.failure(
-                site,
-                target_period,
-                FailureCode.CONFLICT,
-                f"{target_period}期多次取源结果冲突：{sorted(target_values)}",
-                target_hits[0].documents,
-            )
-        if len(target_hits) >= HTTP_CONSENSUS_CONFIRMATIONS:
-            return target_hits[0]
-        if target_hits:
-            return ScrapeResult.failure(
-                site,
-                target_period,
-                FailureCode.SOURCE_IDENTITY,
-                f"{target_period}期多次取源仅有 {len(target_hits)} 次有效确认，"
-                f"少于 {HTTP_CONSENSUS_CONFIRMATIONS} 次",
-                target_hits[0].documents,
-            )
-        if probes:
-            representative = probes[-1][0]
-            return ScrapeResult.failure(
-                site,
-                target_period,
-                representative.failure_code or FailureCode.SOURCE_IDENTITY,
-                f"{target_period}期多次取源均未确认；最后结果：{representative.reason}",
-                representative.documents,
-            )
-        if fetch_failures:
-            return fetch_failures[-1]
-        return ScrapeResult.failure(
-            site,
-            target_period,
-            FailureCode.SOURCE_IDENTITY,
-            f"{target_period}期多次取源未取得有效文档",
-            (),
-        )
+            return ScrapeResult.failure(site, target_period, FailureCode.CONFLICT, "多次取源的下一期结果冲突", newer_documents)
+        if newer_values:
+            return ScrapeResult.failure(site, target_period, FailureCode.DIRECTION,
+                f"多次取源发现更新的 {target_period + 1}期有效结果，指定期不是方向边界", newer_documents)
+        values = {result.candidate.zodiac for result in hits}
+        if len(values) > 1:
+            return ScrapeResult.failure(site, target_period, FailureCode.CONFLICT, f"目标期多次取源结果冲突：{sorted(values)}", hits[0].documents)
+        if len(hits) >= HTTP_CONSENSUS_CONFIRMATIONS:
+            return hits[0]
+        if hits:
+            return ScrapeResult.failure(site, target_period, FailureCode.SOURCE_IDENTITY, "多次取源有效确认不足", hits[0].documents)
+        return last_failure or ScrapeResult.failure(site, target_period, FailureCode.SOURCE_IDENTITY, "多次取源未取得有效文档", ())
 
     def scrape_site(
         self,
@@ -762,6 +679,12 @@ class ScrapeService:
                     result = self._evaluate(site, target_period, target_bundle, mode)
                     remaining()
                     return result
+                if not article_documents:
+                    page_bundle = self.gateway.http(site, remaining())
+                    page_bundle = self.gateway.embedded(site, page_bundle, remaining())
+                    documents = page_bundle.documents
+                    if not _bundle_is_empty_shell(page_bundle):
+                        return self._evaluate(site, target_period, page_bundle, mode)
                 browser_bundle = self.gateway.browser(site, remaining())
                 documents = browser_bundle.documents
                 remaining()
@@ -942,101 +865,10 @@ def _report_cache_issue(reason: str) -> None:
     print(f"缓存更新未完成（仅影响新增站点判重，不影响本轮抓取结果）：{reason}", flush=True)
 
 
-def commit_formal_single(
-    results: Iterable[ScrapeResult],
-    *,
-    cache_path: Path,
-    paths: OutputPaths,
-    permit: WritePermit,
-    existing_success_extra_names: Iterable[str] = (),
-) -> tuple[ScrapeResult, ...]:
-    permit.require_formal_single(permit.target_period)
-    materialized = tuple(results)
-    for result in materialized:
-        if result.target_period != permit.target_period:
-            raise PermissionError("抓取结果期数与正式单期写入许可不一致")
-        if result.ok and not result.writable:
-            raise PermissionError("抓取结果未获得正式单期写入资格")
-        if result.ok and result.candidate is not None:
-            if not result.validator_issued:
-                raise PermissionError("抓取结果未由统一验证器签发")
-            expected_receipt = build_validation_receipt(
-                result.site,
-                result.target_period,
-                result.candidate,
-                result.documents,
-            )
-            if result.validation_receipt != expected_receipt:
-                raise PermissionError("抓取结果缺少有效统一验证回执")
-    final_tuple = tuple(materialized)
-    write_output_payloads(
-        build_output_payloads(
-            final_tuple,
-            paths,
-            existing_success_extra_names=existing_success_extra_names,
-        ),
-        permit,
-    )
-
-    successful_results = tuple(result for result in final_tuple if result.ok)
-    if not successful_results:
-        return final_tuple
-    if len(successful_results) * 100 <= len(final_tuple) * CACHE_SUCCESS_RATE_PERCENT:
-        print(
-            f"成功率 {len(successful_results)}/{len(final_tuple)} 未超过 "
-            f"{CACHE_SUCCESS_RATE_PERCENT}%，缓存不更新",
-            flush=True,
-        )
-        return final_tuple
-
-    try:
-        updated_cache, quarantined_errors = load_recent_cache_for_commit(cache_path)
-    except ValueError as exc:
-        _report_cache_issue(f"缓存读取失败：{exc}")
-        return final_tuple
-
-    accepted_count = 0
-    for result in successful_results:
-        quarantined_reason = quarantined_errors.get(result.site.identity)
-        if quarantined_reason is not None:
-            _report_cache_issue(f"{result.site.name} 缓存目录已隔离：{quarantined_reason}")
-            continue
-        try:
-            record = cache_record_from_result(result)
-            updated_cache = update_recent_cache(
-                updated_cache,
-                (record,),
-                current_period=permit.target_period,
-                permit=permit,
-            )
-        except ValueError as exc:
-            _report_cache_issue(f"{result.site.name}：{exc}")
-            continue
-        accepted_count += 1
-
-    if not accepted_count:
-        return final_tuple
-    failed_sites = tuple(
-        (
-            result.site.identity,
-            result.reason or f"{result.target_period}期抓取失败",
-        )
-        for result in final_tuple
-        if not result.ok
-    )
-    if failed_sites:
-        try:
-            updated_cache = mark_failed_sites(
-                updated_cache,
-                failed_sites,
-                current_period=permit.target_period,
-                permit=permit,
-            )
-        except ValueError as exc:
-            _report_cache_issue(f"失败站点状态标记未完成：{exc}")
-            return final_tuple
-    try:
-        write_recent_cache(cache_path, updated_cache, permit)
-    except (OSError, ValueError) as exc:
-        _report_cache_issue(f"缓存写入失败：{exc}")
-    return final_tuple
+def commit_formal_single(results, *, cache_path, paths, permit, expected_sites=None, existing_success_extra_names=()):
+    """Compatibility name for a full batch; scope must be explicitly supplied."""
+    from zodiac_v2.services.persistence import commit_full_formal_single
+    if expected_sites is None:
+        raise ValueError("全量正式提交必须提供 expected_sites，禁止子集覆盖")
+    return commit_full_formal_single(results, expected_sites=expected_sites, cache_path=cache_path, paths=paths,
+        permit=permit, existing_success_extra_names=existing_success_extra_names)
