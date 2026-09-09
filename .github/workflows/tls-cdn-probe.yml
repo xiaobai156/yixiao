@@ -1,0 +1,101 @@
+name: TLS CDN probe
+on:
+  push:
+    branches: [codex/tls-cdn-remediation-20260909]
+permissions:
+  contents: read
+jobs:
+  probe:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install requests truststore
+      - name: Probe certificate chain and trusted mirrors
+        shell: python
+        run: |
+          import hashlib
+          import json
+          import ssl
+          import subprocess
+          import sys
+          from urllib.parse import urlsplit
+          import requests
+          import truststore
+
+          samples = {
+              'xia01': '/upload/script/09/d78282407f3e50b7.js',
+              'xia02': '/upload/script/09/a3b282d3da749415.js',
+              'xia03': '/upload/script/09/aedd75b495595778.js',
+              'xia04': '/upload/script/09/8efda494b4c350a2.js',
+              'xia05': '/upload/script/09/ab7827734ab7af48.js',
+              'xia06': '/upload/script/09/7091d27c129c7271.js',
+          }
+
+          def result(url, *, session=None):
+              try:
+                  client = session or requests
+                  r = client.get(url, timeout=15)
+                  return {'ok': True, 'status': r.status_code, 'bytes': len(r.content), 'sha256': hashlib.sha256(r.content).hexdigest()}
+              except Exception as exc:
+                  return {'ok': False, 'error': f'{type(exc).__name__}: {exc}'}
+
+          default_results = {}
+          mirror_results = {}
+          for prefix, path in samples.items():
+              original = f'https://{prefix}.cosds.aohjifv.com{path}'
+              mirror = f'https://{prefix}.cosds.ahsccn.com{path}'
+              default_results[original] = result(original)
+              mirror_results[mirror] = result(mirror)
+
+          # Test an explicit OS-backed TLS context without disabling verification.
+          adapter = requests.adapters.HTTPAdapter()
+          session = requests.Session()
+          import urllib3
+          pool = urllib3.PoolManager(ssl_context=truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT))
+          class TruststoreAdapter(requests.adapters.HTTPAdapter):
+              def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
+                  pool_kwargs['ssl_context'] = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                  return super().init_poolmanager(connections, maxsize, block=block, **pool_kwargs)
+          session.mount('https://', TruststoreAdapter())
+          truststore_results = {}
+          for prefix, path in samples.items():
+              original = f'https://{prefix}.cosds.aohjifv.com{path}'
+              truststore_results[original] = result(original, session=session)
+
+          # Certificate-chain metadata only; no insecure content is used.
+          chain = {}
+          if sys.platform != 'win32':
+              for prefix in samples:
+                  host = f'{prefix}.cosds.aohjifv.com'
+                  proc = subprocess.run(
+                      ['openssl','s_client','-connect',f'{host}:443','-servername',host,'-showcerts','-verify_return_error'],
+                      input='', text=True, capture_output=True, timeout=15,
+                  )
+                  combined = proc.stdout + '\n' + proc.stderr
+                  chain[host] = '\n'.join(line for line in combined.splitlines() if any(k in line for k in ('subject=', 'issuer=', 'Verify return code', 'verify error')))
+
+          payload = {
+              'platform': sys.platform,
+              'default': default_results,
+              'truststore': truststore_results,
+              'mirror': mirror_results,
+              'chain': chain,
+          }
+          print(json.dumps(payload, ensure_ascii=False, indent=2))
+          with open('tls-probe.json','w',encoding='utf-8') as f:
+              json.dump(payload,f,ensure_ascii=False,indent=2)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tls-cdn-probe-${{ matrix.os }}
+          path: tls-probe.json
+          retention-days: 1
