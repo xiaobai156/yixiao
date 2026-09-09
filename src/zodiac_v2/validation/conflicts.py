@@ -98,6 +98,8 @@ def _direction_window(
         )
     active = _active_candidates(items, direction)
     window = directional_candidate_window(active, direction)
+    if not window:
+        return window, ValidationDecision.failure(FailureCode.BOUNDARY, "过滤未完成记录后没有可用于方向验证的完整候选")
     matched = tuple(candidate for candidate in window if candidate.period == target_period)
 
     if direction is Direction.LEFT:
@@ -246,3 +248,26 @@ def validate_candidates(
     matched = matched_by_document[selected_document_id]
     selected = matched[-1] if site.direction is Direction.BOTTOM else matched[0]
     return ValidationDecision.success(selected)
+
+
+def validate_period_presence(site, bundle, candidates, target_period):
+    """Check existence/conflicts in each active source cycle, independently of its edge."""
+    if not bundle.scan_complete:
+        return ValidationDecision.failure(FailureCode.BOUNDARY, "来源扫描未完成")
+    grouped = {}
+    for candidate in candidates:
+        grouped.setdefault(candidate.document_id, []).append(candidate)
+    matched = tuple(
+        candidate for group in grouped.values()
+        for candidate in _active_candidates(tuple(group), site.direction)
+        if candidate.period == target_period
+    )
+    if not matched:
+        return ValidationDecision.failure(FailureCode.PERIOD, f"候选中未找到指定 {target_period}期")
+    lines_cache = {}
+    for candidate in matched:
+        decision = validate_candidate_evidence(candidate, bundle, _lines_cache=lines_cache)
+        if not decision.ok:
+            return decision
+    conflict = _window_conflict(matched, target_period)
+    return conflict if conflict is not None else ValidationDecision.success(matched[0])

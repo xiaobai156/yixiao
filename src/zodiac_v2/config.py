@@ -9,7 +9,8 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from zodiac_v2.contracts import Direction, SiteConfig, SiteSection, WritePermit
-from zodiac_v2.source.documents import same_source_identity
+from zodiac_v2.source.documents import same_source_identity, source_identity
+from zodiac_v2.storage import locked_paths
 
 
 class ConfigError(ValueError):
@@ -18,19 +19,10 @@ class ConfigError(ValueError):
 
 _CONFIG_WRITE_LOCK = threading.Lock()
 
-
 _ALLOWED_FIELDS = frozenset(
     {
-        "name",
-        "url",
-        "pick",
-        "direction",
-        "section",
-        "parser_id",
-        "source_policy",
-        "api_url",
-        "article_keyword",
-        "embedded_max_bytes",
+        "name", "url", "pick", "direction", "section", "parser_id",
+        "source_policy", "api_url", "article_keyword", "embedded_max_bytes",
     }
 )
 _DIRECTION_ALIASES = {
@@ -96,6 +88,15 @@ def _read_json(path: Path) -> object:
         raise ConfigError(f"站点配置不是有效 JSON：{path}: {exc}") from exc
 
 
+def _source_group_key(url: str) -> tuple[object, ...]:
+    """Index the exact equivalence used by same_source_identity in one pass."""
+    identity = source_identity(url)
+    if identity.has_record_id:
+        return identity.origin, "record", identity.topic_id, identity.user_id, identity.article_id
+    parsed = urlsplit(url)
+    return identity.origin, "page", parsed.path.rstrip("/") or "/", parsed.query, parsed.fragment.rstrip("/")
+
+
 def load_sites(
     path: Path,
     *,
@@ -105,7 +106,6 @@ def load_sites(
     raw = _read_json(path)
     if not isinstance(raw, list) or not raw:
         raise ConfigError("站点配置根节点必须是非空数组")
-
     known_parsers = frozenset(parser_ids)
     known_policies = frozenset(source_policies)
     sites: list[SiteConfig] = []
@@ -117,7 +117,6 @@ def load_sites(
         unknown = sorted(set(item) - _ALLOWED_FIELDS)
         if unknown:
             raise ConfigError(f"第 {index} 个站点包含未知字段：{', '.join(unknown)}")
-
         name = _text(item, "name", index)
         url = _url(_text(item, "url", index), "url", index)
         direction = _direction(item, index)
@@ -128,7 +127,6 @@ def load_sites(
             raise ConfigError(f"第 {index} 个站点使用未知解析器：{parser_id}")
         if source_policy not in known_policies:
             raise ConfigError(f"第 {index} 个站点使用未知取源策略：{source_policy}")
-
         api_url_value = item.get("api_url")
         api_url = None
         if api_url_value is not None:
@@ -160,31 +158,25 @@ def load_sites(
             raise ConfigError(f"第 {index} 个站点存在重复站名：{name}")
         names.add(name)
         identities.add(identity)
-        sites.append(
-            SiteConfig(
-                name,
-                url,
-                direction,
-                section,
-                parser_id,
-                source_policy,
-                api_url,
-                article_keyword,
-                embedded_max_bytes,
-            )
-        )
-
+        sites.append(SiteConfig(name, url, direction, section, parser_id, source_policy,
+                                api_url, article_keyword, embedded_max_bytes))
+    by_source: dict[tuple[object, ...], list[SiteConfig]] = {}
+    for site in sites:
+        group = by_source.setdefault(_source_group_key(site.url), [])
+        for previous in group:
+            if same_business_source(site, previous):
+                raise ConfigError(f"不同站名重复绑定同一来源和栏目：{site.name} / {previous.name}")
+        group.append(site)
     return tuple(sites)
 
 
 def append_site_configs(path: Path, sites: Iterable[SiteConfig], *, permit: WritePermit) -> tuple[SiteConfig, ...]:
     """Atomically append formally authorized, already-validated site configs."""
-
     permit.require_formal_single(permit.target_period)
     candidates = tuple(sites)
     if not candidates:
         raise ConfigError("正式新增没有可写入的站点")
-    with _CONFIG_WRITE_LOCK:
+    with _CONFIG_WRITE_LOCK, locked_paths((path,)):
         raw = _read_json(path)
         if not isinstance(raw, list):
             raise ConfigError("站点配置根节点必须是数组")
@@ -203,17 +195,11 @@ def append_site_configs(path: Path, sites: Iterable[SiteConfig], *, permit: Writ
         for site in candidates:
             if site.name in existing_names:
                 raise ConfigError(f"正式新增站名重名：{site.name}")
-            if any(
-                same_source_identity(site.url, existing_url)
-                for existing_url in (*existing_urls, *candidate_urls)
-            ):
+            if any(same_source_identity(site.url, existing_url) for existing_url in (*existing_urls, *candidate_urls)):
                 raise ConfigError(f"正式新增 URL/topic 重复：{site.url}")
             entry: dict[str, object] = {
-                "name": site.name,
-                "pick": site.direction.value,
-                "url": site.url,
-                "section": site.section.value,
-                "parser_id": site.parser_id,
+                "name": site.name, "pick": site.direction.value, "url": site.url,
+                "section": site.section.value, "parser_id": site.parser_id,
                 "source_policy": site.source_policy,
             }
             if site.api_url is not None:
@@ -236,3 +222,16 @@ def append_site_configs(path: Path, sites: Iterable[SiteConfig], *, permit: Writ
         finally:
             temporary.unlink(missing_ok=True)
         return candidates
+
+
+def same_business_source(first: SiteConfig, second: SiteConfig) -> bool:
+    if not same_source_identity(first.url, second.url):
+        return False
+    if (first.source_policy == second.source_policy == "http_period_keyword_article"
+        and first.article_keyword and second.article_keyword and first.article_keyword != second.article_keyword):
+        return False
+    names = {"关公杀一肖", "佛主禁肖图", "三怪禁肖图"}
+    if (first.parser_id == second.parser_id == "special.sanguai_period_section"
+        and first.name in names and second.name in names and first.name != second.name):
+        return False
+    return True

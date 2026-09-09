@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from zodiac_v2.contracts import RunMode, ScrapeResult, SiteConfig
+from zodiac_v2.source.documents import same_source_identity
 
 REPAIR_STAGES = (
     "登记",
@@ -33,19 +34,20 @@ class RepairReport:
 
 
 def sites_from_failure_text(text: str, sites: Iterable[SiteConfig]) -> tuple[SiteConfig, ...]:
-    by_url: dict[str, list[SiteConfig]] = {}
-    for site in sites:
-        by_url.setdefault(site.url, []).append(site)
-    selected: list[SiteConfig] = []
+    known = {site.name: site for site in sites}
+    selected = []
     for line in text.splitlines():
-        match = URL_PATTERN.search(line)
-        if match is None:
+        if URL_PATTERN.search(line) is None:
             continue
-        matching = by_url.get(match.group(0), ())
-        named = tuple(site for site in matching if line.startswith(f"{site.name} "))
-        for site in named or matching:
-            if site not in selected:
-                selected.append(site)
+        match = re.match(r"^(?P<name>.+?)\s+(?P<pick>top|bottom)\s+(?P<url>https?://\S+)", line.strip())
+        if match is None:
+            raise ValueError(f"失败清单行缺少明确站名/方向：{line}")
+        name = re.sub(r"[\u200b-\u200d\ufeff]", "", match['name']).strip()
+        site = known.get(name)
+        if site is None or site.direction.value != match['pick'] or not same_source_identity(site.url, match['url']):
+            raise ValueError(f"失败清单身份与当前配置不一致，拒绝扩大复抓范围：{name}")
+        if site not in selected:
+            selected.append(site)
     return tuple(selected)
 
 

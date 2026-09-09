@@ -12,6 +12,8 @@ from typing import Any
 
 from zodiac_v2.contracts import ZODIACS, CacheRecord, Direction, SiteSection, WritePermit
 
+from zodiac_v2.storage import atomic_write_bytes, locked_paths
+
 CACHE_WINDOW = 10
 _CACHE_TOKEN = object()
 CacheIdentity = tuple[str, str, Direction, SiteSection]
@@ -548,16 +550,8 @@ def mark_failed_sites(
 
 
 def _atomic_write(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
-    try:
-        with temporary.open("w", encoding="utf-8", newline="\n") as handle:
-            handle.write(text)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    with locked_paths((path,)):
+        atomic_write_bytes(path, text.encode('utf-8'))
 
 
 def write_recent_cache(path: Path, data: object, permit: WritePermit) -> None:

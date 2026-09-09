@@ -1,0 +1,46 @@
+name: Regression tests
+on:
+  push:
+    branches: [main, codex/yixiao-review-fixes-20260909]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: regression-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  offline-regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            python: '3.11'
+          - os: ubuntu-latest
+            python: '3.10'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[dev]"
+      - name: Compile source and tests
+        run: python -m compileall -q src tests
+      - name: Fatal syntax and undefined-name checks
+        run: python -m ruff check src tests --select E9,F63,F7,F82
+      - name: Offline regression suite with explicit skip reasons
+        run: python -m pytest -ra --tb=short
+      - name: Validate configuration without crawling
+        run: python -c "from pathlib import Path; from zodiac_v2.cli import _runtime; sites, _ = _runtime(Path('sites.json')); print('VALID_CONFIG_SITES', len(sites))"
+      - name: Confirm production data unchanged
+        run: git diff --exit-code -- sites.json recent_10_cache.json archived_sites.json

@@ -102,7 +102,7 @@ def same_source_identity(first_url: str, second_url: str) -> bool:
         (first.article_id, second.article_id),
     )
     if any(left is not None or right is not None for left, right in identifiers):
-        return any(left is not None and left == right for left, right in identifiers)
+        return all(left == right for left, right in identifiers if left is not None or right is not None)
     first_parsed = urlsplit(first_url)
     second_parsed = urlsplit(second_url)
     first_key = (
@@ -350,6 +350,7 @@ class _PeriodKeywordLinkParser(HTMLParser):
         self.article_urls: list[str] = []
         self.page_urls: list[str] = []
         self.has_target_period_article = False
+        self.observed_periods: list[int] = []
         self._href: str | None = None
         self._parts: list[str] = []
         base = urlsplit(base_url)
@@ -382,6 +383,9 @@ class _PeriodKeywordLinkParser(HTMLParser):
         if parsed.path.lower().endswith("/article.aspx"):
             article_ids = query.get("id", ())
             valid_article = len(article_ids) == 1 and article_ids[0].isdigit()
+            observed = re.match(r"^\s*第?\s*(\d{1,4})\s*期", text)
+            if valid_article and observed:
+                self.observed_periods.append(int(observed.group(1)))
             if self.period_prefix.search(text) and valid_article:
                 self.has_target_period_article = True
             if self.period_prefix.search(text) and self.keyword in text and valid_article:
@@ -459,10 +463,14 @@ def collect_content_documents(
     documents = [parent]
     seen = {resource.url for resource, _depth in queue}
     depth_truncated = False
+    total_bytes = len(parent.text.encode("utf-8"))
     while queue and len(documents) - 1 < max_documents:
         resource, depth = queue.pop(0)
         fetched = fetcher(resource)
         validate_final_url(resource.url, fetched.final_url)
+        total_bytes += len(fetched.text.encode("utf-8"))
+        if total_bytes > 64_000_000:
+            raise ValueError("站点内容文档累计超过 64000000 字节")
         if fetched.document_type is not resource.document_type:
             raise ValueError("内容文档类型与发现记录不一致")
         documents.append(
@@ -482,7 +490,7 @@ def collect_content_documents(
             allowed_origins=allowed_origins,
         )
         if depth + 1 >= max_depth:
-            depth_truncated = depth_truncated or bool(nested_resources)
+            depth_truncated = depth_truncated or any(nested.url not in seen for nested in nested_resources)
             continue
         for nested in nested_resources:
             if nested.url in seen:
@@ -503,3 +511,13 @@ def collect_content_documents(
         *(truncation_diagnostics or ("scan_complete:1",)),
     )
     return SourceBundle(documents, diagnostics, scan_complete=not truncation_diagnostics)
+
+
+def discover_period_page_links(html, base_url, period, keyword):
+    source_identity(base_url)
+    if not keyword.strip():
+        raise ValueError("文章关键字不能为空")
+    parser = _PeriodKeywordLinkParser(base_url, period, keyword)
+    parser.feed(html)
+    parser.close()
+    return tuple(parser.article_urls), tuple(dict.fromkeys(parser.page_urls)), tuple(parser.observed_periods)

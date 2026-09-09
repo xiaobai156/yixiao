@@ -1,0 +1,2 @@
+# Keep Windows launchers executable regardless of the checkout platform.
+*.bat text eol=crlf

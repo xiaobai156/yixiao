@@ -1,0 +1,43 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Test and diagnostic artifacts
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.diagnostics/
+
+# Runtime scratch files (do not ignore dependency lockfiles)
+*.tmp
+recent_10_cache.json.lock
+.zodiac-v2-*.lock
+.zodiac-v2-transaction.json
+
+# Local credentials
+.env
+.env.*
+!.env.example
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+*.egg-info/
+*.tmp
+.*.lock
+recent_10_cache.json.lock
+.zodiac-txn-*.json
+.*.bak
+.diagnostics/
+.review-changed-files.json
