@@ -1,20 +1,19 @@
 from __future__ import annotations
 
-import os
 import re
-import threading
 from collections import Counter
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
 from zodiac_v2.contracts import FailureCode, ScrapeResult, SiteSection, WritePermit
+from zodiac_v2.storage import atomic_write_many, locked_paths, require_no_pending_transaction
 
 _OUTPUT_TOKEN = object()
 
 
 class _OutputPayloads(Mapping[Path, str | None]):
-    __slots__ = ("_target_period", "_values", "_token")
+    __slots__ = ("_target_period", "_values", "_token", "_journal_path")
 
     def __init__(
         self,
@@ -22,12 +21,14 @@ class _OutputPayloads(Mapping[Path, str | None]):
         *,
         target_period: int,
         token: object,
+        journal_path: Path,
     ) -> None:
         if token is not _OUTPUT_TOKEN:
             raise PermissionError("输出载荷必须由统一验证器签发")
         self._values = dict(values)
         self._target_period = target_period
         self._token = token
+        self._journal_path = journal_path
 
     def __getitem__(self, path: Path) -> str | None:
         return self._values[path]
@@ -63,14 +64,41 @@ class OutputPaths:
 
 
 def output_paths(period: int, success_dir: Path, failure_dir: Path) -> OutputPaths:
-    if isinstance(period, bool) or not isinstance(period, int) or period <= 0:
-        raise ValueError("输出期数必须是正整数")
+    if isinstance(period, bool) or not isinstance(period, int) or not 1 <= period <= 9999:
+        raise ValueError("输出期数必须是 1 到 9999 的整数")
     return OutputPaths(
         success_dir / f"{period}期-肖.txt",
         success_dir / f"{period}期-肖-新增.txt",
         failure_dir / f"{period}期-肖-失败.txt",
         failure_dir / f"{period}期-肖-失败-新增.txt",
     )
+
+
+def output_journal(paths: OutputPaths, period: int) -> Path:
+    return paths.existing_success.parent / f".zodiac-v2-{period}-output-transaction.json"
+
+
+def all_output_paths(paths: OutputPaths) -> tuple[Path, ...]:
+    return (paths.existing_success, paths.new_success, paths.existing_failure, paths.new_failure)
+
+
+def _validated_results(results: Iterable[ScrapeResult]) -> tuple[ScrapeResult, ...]:
+    rows = tuple(results)
+    if not rows:
+        raise ValueError("正式输出结果为空，拒绝覆盖正式文件")
+    identities: set[tuple[object, ...]] = set()
+    names: set[tuple[SiteSection, str]] = set()
+    for result in rows:
+        if not isinstance(result, ScrapeResult):
+            raise ValueError("正式输出只能包含 ScrapeResult")
+        key = (result.site.section, _output_name_key(result.site.name))
+        if result.site.identity in identities or key in names:
+            raise ValueError(f"正式输出包含重复站点：{result.site.name}")
+        identities.add(result.site.identity)
+        names.add(key)
+        if result.ok and (not result.writable or not result.validator_issued):
+            raise PermissionError("正式输出只接受统一验证器签发结果")
+    return rows
 
 
 def _success_text(
@@ -112,9 +140,9 @@ def build_output_payloads(
     *,
     existing_success_extra_names: Iterable[str] = (),
 ) -> _OutputPayloads:
-    materialized = tuple(results)
-    if any(result.ok and not result.validator_issued for result in materialized):
-        raise PermissionError("正式输出只接受统一验证器签发结果")
+    materialized = _validated_results(results)
+    if len({path.resolve() for path in all_output_paths(paths)}) != 4:
+        raise PermissionError("四类输出文件路径必须互不重叠")
     path_names = tuple(
         path.name
         for path in (
@@ -129,7 +157,7 @@ def build_output_payloads(
         for name in path_names
         if (match := re.match(r"^(\d+)期-", name)) is not None
     }
-    if len(path_periods) != 1:
+    if len(path_periods) != 1 or any(re.match(r"^(\d+)期-", name) is None for name in path_names):
         raise PermissionError("四类输出文件必须绑定同一期数")
     target_period = next(iter(path_periods))
     if any(result.target_period != target_period for result in materialized):
@@ -147,48 +175,21 @@ def build_output_payloads(
         },
         target_period=target_period,
         token=_OUTPUT_TOKEN,
+        journal_path=output_journal(paths, target_period),
     )
-
-
-def _stage(path: Path, text: str) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
-    with temporary.open("w", encoding="utf-8", newline="\n") as handle:
-        handle.write(text)
-        handle.flush()
-        os.fsync(handle.fileno())
-    return temporary
 
 
 def write_output_payloads(payloads: _OutputPayloads, permit: WritePermit) -> None:
     if not isinstance(payloads, _OutputPayloads) or payloads._token is not _OUTPUT_TOKEN:
         raise PermissionError("输出载荷必须由统一验证器签发")
-    permit.require_formal_single(permit.target_period)
-    if payloads._target_period != permit.target_period:
-        raise PermissionError("输出载荷期数与正式单期写入许可不一致")
+    permit.require_formal_single(payloads._target_period)
     expected_prefix = f"{permit.target_period}期-"
-    if any(not path.name.startswith(expected_prefix) for path in payloads):
+    if not payloads or any(not path.name.startswith(expected_prefix) for path in payloads):
         raise PermissionError("输出文件期数与正式单期写入许可不一致")
-    originals = {path: path.read_bytes() if path.exists() else None for path in payloads}
-    staged: dict[Path, Path] = {}
-    try:
-        staged = {path: _stage(path, text) for path, text in payloads.items() if text is not None}
-        for path, text in payloads.items():
-            if text is None:
-                path.unlink(missing_ok=True)
-            else:
-                os.replace(staged[path], path)
-    except Exception:
-        for path, original in originals.items():
-            if original is None:
-                path.unlink(missing_ok=True)
-            else:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(original)
-        raise
-    finally:
-        for temporary in staged.values():
-            temporary.unlink(missing_ok=True)
+    atomic_write_many(
+        {path: text.encode("utf-8") if text is not None else None for path, text in payloads.items()},
+        journal=payloads._journal_path,
+    )
 
 
 def _read_output_text(path: Path) -> str:
@@ -259,6 +260,9 @@ def _format_success_rows(
     if not all_rows and not extras:
         return "无\n"
     counter: Counter[str] = Counter(zodiac for zodiac, _name in all_rows)
+    rank_by_count = {
+        count: rank for rank, count in enumerate(sorted(set(counter.values()), reverse=True), start=1)
+    }
     separator = "红色" if section is SiteSection.NEW else "羽墨"
     lines = [f"{zodiac} {name}" for zodiac, name in materialized]
     lines.extend(extras)
@@ -267,9 +271,9 @@ def _format_success_rows(
     lines.extend(
         [
             "",
-            "生肖次数排行榜",
+            "内容\t次数\t排名",
             *(
-                f"{zodiac} {counter[zodiac]}次"
+                f"{zodiac}\t{counter[zodiac]}\t{rank_by_count[counter[zodiac]]}"
                 for zodiac in sorted(counter, key=lambda item: (-counter[item], ZODIAC_ORDER.index(item)))
             ),
             "",
@@ -330,79 +334,112 @@ def _target_failure_row(result: ScrapeResult) -> str:
     )
 
 
-def merge_formal_single_result_output(
-    result: ScrapeResult,
+def _merged_success_text(
+    text: str,
+    results: tuple[ScrapeResult, ...],
+    section: SiteSection,
+    *,
+    allow_existing_value_correction: bool,
+) -> str:
+    """Edit selected raw detail lines, preserving unrelated text and its order."""
+    lines = text.splitlines()
+    ranking = next((index for index, line in enumerate(lines)
+                    if line.strip() == "生肖次数排行榜" or line.split() == ["内容", "次数", "排名"]), len(lines))
+    statistics = next((index for index, line in enumerate(lines)
+                       if line.strip() == "前一期失败统计"), len(lines))
+    details = lines[:min(ranking, statistics)]
+    if not details or all(not line.strip() or line.strip() == "无" for line in details):
+        details = ["红色" if section is SiteSection.NEW else "羽墨"]
+    while details and not details[-1].strip():
+        details.pop()
+    for result in results:
+        if not result.ok or result.candidate is None:
+            continue
+        target_key = _output_name_key(result.site.name)
+        indexes = []
+        for index, line in enumerate(details):
+            parts = line.split(maxsplit=1)
+            if (len(parts) == 2 and len(parts[0]) == 1 and parts[0] in ZODIAC_ORDER
+                    and _output_name_key(parts[1]) == target_key):
+                indexes.append(index)
+        old_values = {details[index].split(maxsplit=1)[0] for index in indexes}
+        if old_values and old_values != {result.candidate.zodiac}:
+            if not allow_existing_value_correction:
+                raise ValueError(f"成功TXT已有不同值，禁止覆盖：{result.site.name} "
+                                 f"{sorted(old_values)} -> {result.candidate.zodiac}")
+            for index in indexes:
+                details[index] = f"{result.candidate.zodiac} {result.site.name}"
+        if not indexes:
+            details.append(f"{result.candidate.zodiac} {result.site.name}")
+    counter: Counter[str] = Counter()
+    for line in details:
+        parts = line.split(maxsplit=1)
+        if len(parts) == 2 and len(parts[0]) == 1 and parts[0] in ZODIAC_ORDER:
+            counter[parts[0]] += 1
+    ranks = {count: rank for rank, count in enumerate(sorted(set(counter.values()), reverse=True), 1)}
+    ranked = [f"{value}\t{counter[value]}\t{ranks[counter[value]]}"
+              for value in sorted(counter, key=lambda item: (-counter[item], ZODIAC_ORDER.index(item)))]
+    tail = lines[statistics:] if statistics < len(lines) else ["前一期失败统计", "无"]
+    return "\n".join([*details, "", "内容\t次数\t排名", *ranked, "", *tail]) + "\n"
+
+
+def build_merged_output_payloads(
+    results: Iterable[ScrapeResult],
     paths: OutputPaths,
     permit: WritePermit,
     *,
     allow_existing_value_correction: bool = False,
-) -> None:
-    """Merge one repaired result, preserving unrelated rows and their order."""
+) -> _OutputPayloads:
+    """Build all selected changes before writing any; caller holds output locks."""
+    rows = _validated_results(results)
     permit.require_formal_single(permit.target_period)
-    if result.target_period != permit.target_period:
+    if any(result.target_period != permit.target_period for result in rows):
         raise PermissionError("抓取结果期数与正式单期写入许可不一致")
-    if result.ok and (not result.writable or not result.validator_issued):
-        raise PermissionError("正式成功结果未获得统一验证器写入资格")
-
-    is_new = result.site.section is SiteSection.NEW
-    success_path = paths.new_success if is_new else paths.existing_success
-    failure_path = paths.new_failure if is_new else paths.existing_failure
-    expected_prefix = f"{permit.target_period}期-"
-    if not success_path.name.startswith(expected_prefix) or not failure_path.name.startswith(expected_prefix):
-        raise PermissionError("输出文件期数与正式单期写入许可不一致")
-
-    separator = "红色" if is_new else "羽墨"
-    existing_success_text = _read_output_text(success_path)
-    success_rows = _success_rows(existing_success_text, separator)
-    trailing_success_rows = _trailing_success_rows(existing_success_text, separator)
-    success_extra_names = _success_extra_names(existing_success_text, separator)
-    target_name_key = _output_name_key(result.site.name)
-    all_success_rows = (*success_rows, *trailing_success_rows)
-    target_indexes = [
-        index
-        for index, (_zodiac, name) in enumerate(all_success_rows)
-        if _output_name_key(name) == target_name_key
-    ]
-    if result.ok and result.candidate is not None:
-        target_row = (result.candidate.zodiac, result.site.name)
-        existing_zodiacs = {all_success_rows[index][0] for index in target_indexes}
-        if (
-            existing_zodiacs
-            and existing_zodiacs != {result.candidate.zodiac}
-            and not allow_existing_value_correction
-        ):
-            raise ValueError(
-                f"成功TXT已有不同值，禁止覆盖：{result.site.name} "
-                f"{sorted(existing_zodiacs)} -> {result.candidate.zodiac}"
+    values: dict[Path, str | None] = {}
+    for section in SiteSection:
+        selected = tuple(result for result in rows if result.site.section is section)
+        if not selected:
+            continue
+        success_path = paths.new_success if section is SiteSection.NEW else paths.existing_success
+        failure_path = paths.new_failure if section is SiteSection.NEW else paths.existing_failure
+        if any(not path.name.startswith(f"{permit.target_period}期-") for path in (success_path, failure_path)):
+            raise PermissionError("输出文件期数与正式单期写入许可不一致")
+        # A failed retry does not revoke an earlier verified success, or rewrite its file.
+        if any(result.ok for result in selected):
+            values[success_path] = _merged_success_text(
+                _read_output_text(success_path), selected, section,
+                allow_existing_value_correction=allow_existing_value_correction,
             )
-        if existing_zodiacs and existing_zodiacs != {result.candidate.zodiac}:
-            for index in target_indexes:
-                if index < len(success_rows):
-                    success_rows[index] = target_row
-                else:
-                    trailing_success_rows[index - len(success_rows)] = target_row
-        if not target_indexes:
-            trailing_success_rows.append(target_row)
+        failures = _failure_rows(_read_output_text(failure_path))
+        for result in selected:
+            target_prefix = f"{result.site.name} {result.site.direction.value} "
+            failures = [row for row in failures if not row.startswith(target_prefix)]
+            if not result.ok:
+                failures.append(_target_failure_row(result))
+        values[failure_path] = _format_failure_rows(failures)
+    return _OutputPayloads(values, target_period=permit.target_period, token=_OUTPUT_TOKEN,
+                           journal_path=output_journal(paths, permit.target_period))
 
-    failure_rows = _failure_rows(_read_output_text(failure_path))
-    target_prefix = f"{result.site.name} {result.site.direction.value} "
-    failure_rows = [row for row in failure_rows if not row.startswith(target_prefix)]
-    if not result.ok:
-        success_rows = [row for row in success_rows if _output_name_key(row[1]) != target_name_key]
-        trailing_success_rows = [row for row in trailing_success_rows if _output_name_key(row[1]) != target_name_key]
-        failure_rows.append(_target_failure_row(result))
 
-    payloads = _OutputPayloads(
-        {
-            success_path: _format_success_rows(
-                success_rows,
-                result.site.section,
-                extra_names=success_extra_names,
-                trailing_rows=trailing_success_rows,
-            ),
-            failure_path: _format_failure_rows(failure_rows),
-        },
-        target_period=result.target_period,
-        token=_OUTPUT_TOKEN,
+def merge_formal_results_output(
+    results: Iterable[ScrapeResult], paths: OutputPaths, permit: WritePermit, *,
+    allow_existing_value_correction: bool = False,
+) -> None:
+    rows = _validated_results(results)
+    journal = output_journal(paths, permit.target_period)
+    with locked_paths((*all_output_paths(paths), journal)):
+        require_no_pending_transaction(journal)
+        payloads = build_merged_output_payloads(
+            rows, paths, permit, allow_existing_value_correction=allow_existing_value_correction,
+        )
+        write_output_payloads(payloads, permit)
+
+
+def merge_formal_single_result_output(
+    result: ScrapeResult, paths: OutputPaths, permit: WritePermit, *,
+    allow_existing_value_correction: bool = False,
+) -> None:
+    """Compatibility entry point for one authorized targeted update."""
+    merge_formal_results_output(
+        (result,), paths, permit, allow_existing_value_correction=allow_existing_value_correction,
     )
-    write_output_payloads(payloads, permit)

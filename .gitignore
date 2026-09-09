@@ -18,8 +18,10 @@ htmlcov/
 # Runtime scratch files (do not ignore dependency lockfiles)
 *.tmp
 recent_10_cache.json.lock
+.*.write.lock
 .zodiac-v2-*.lock
 .zodiac-v2-transaction.json
+.zodiac-v2-*-output-transaction.json
 
 # Local credentials
 .env

@@ -264,6 +264,14 @@ def validate_candidate_evidence(
         )
 
     document = documents[0]
+    if document.record_id is not None and (
+        (candidate.record_id is not None and candidate.record_id != document.record_id)
+        or (document.document_type is DocumentType.JSON and candidate.record_id is None)
+    ):
+        return ValidationDecision.failure(
+            FailureCode.SOURCE_IDENTITY,
+            "候选记录 ID 与已绑定的来源文档记录 ID 不一致",
+        )
     candidate_document_order = candidate.page_order // 1_000_000
     if candidate_document_order != document.page_order:
         return ValidationDecision.failure(
@@ -358,6 +366,14 @@ def validate_candidate_evidence(
             return ValidationDecision.failure(
                 FailureCode.BOUNDARY,
                 f"候选页内位置 {local_position} 不在 {prefix} {start}-{end} 内",
+            )
+
+    for prefix, _start, end in evidence_ranges:
+        bounded_source = _normalize_space(" ".join(lines[local_position:min(local_position + 8, end)]))
+        if expected not in bounded_source:
+            return ValidationDecision.failure(
+                FailureCode.BOUNDARY,
+                f"候选原始行跨出 {prefix} 声明的区块终点 {end}",
             )
 
     for evidence in candidate.evidence:

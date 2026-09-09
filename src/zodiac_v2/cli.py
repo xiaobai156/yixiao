@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 from collections import defaultdict
 from collections.abc import Sequence
 from pathlib import Path
@@ -12,6 +13,7 @@ from zodiac_v2.contracts import Direction, RunMode, SiteConfig, SiteSection, Wri
 from zodiac_v2.duplicate import find_duplicate_matches
 from zodiac_v2.output import output_paths
 from zodiac_v2.parsers.registry import build_registry
+from zodiac_v2.services.formal import commit_targeted_formal_single
 from zodiac_v2.services.onboarding import validate_new_site
 from zodiac_v2.services.repair import repair_sites, sites_from_failure_text
 from zodiac_v2.services.scrape import DEFAULT_SITE_TIMEOUT, DefaultSourceGateway, ScrapeService, commit_formal_single
@@ -42,11 +44,31 @@ def _period(value: str) -> int:
     return period
 
 
+def _positive_timeout(value: str) -> float:
+    try:
+        seconds = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("timeout 必须是有限正数") from exc
+    if not math.isfinite(seconds) or seconds <= 0:
+        raise argparse.ArgumentTypeError("timeout 必须是有限正数")
+    return seconds
+
+
+def _positive_workers(value: str) -> int:
+    try:
+        count = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("workers 必须是正整数") from exc
+    if count <= 0:
+        raise argparse.ArgumentTypeError("workers 必须是正整数")
+    return count
+
+
 def _common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--sites-file", type=Path, default=Path("sites.json"))
     parser.add_argument("--cache-file", type=Path, default=Path("recent_10_cache.json"))
-    parser.add_argument("--timeout", type=float, default=DEFAULT_SITE_TIMEOUT)
-    parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument("--timeout", type=_positive_timeout, default=DEFAULT_SITE_TIMEOUT)
+    parser.add_argument("--workers", type=_positive_workers, default=8)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -60,7 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
     single.add_argument("--success-dir", type=Path, default=DEFAULT_SUCCESS_DIR)
     single.add_argument("--failure-dir", type=Path, default=DEFAULT_FAILURE_DIR)
 
-    retry = commands.add_parser("retry", help="按失败清单限定复抓，只读验证")
+    retry = commands.add_parser("retry", help="按失败清单限定复抓；默认只读，--formal 定点合并")
     _common(retry)
     retry.add_argument("--period", "--issue", type=_period, required=True)
     retry.add_argument("--retry-errors", type=Path, action="append", required=True)
@@ -78,6 +100,7 @@ def build_parser() -> argparse.ArgumentParser:
     onboard.add_argument("--name", required=True)
     onboard.add_argument("--url", required=True)
     onboard.add_argument("--api-url")
+    onboard.add_argument("--article-keyword")
     onboard.add_argument(
         "--pick",
         choices=(Direction.TOP.value, Direction.BOTTOM.value),
@@ -185,6 +208,15 @@ def _run_duplicate(args: argparse.Namespace, data: object) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     sites, scraper = _runtime(args.sites_file)
+    try:
+        return _execute(args, sites, scraper)
+    finally:
+        close = getattr(scraper, "close", None)
+        if callable(close):
+            close()
+
+
+def _execute(args: argparse.Namespace, sites, scraper) -> int:
     if args.command == "single":
         mode = RunMode.FORMAL_SINGLE if args.formal else RunMode.READ_ONLY
         start = monotonic()
@@ -200,6 +232,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.formal:
             results = commit_formal_single(
                 results,
+                expected_sites=sites,
                 cache_path=args.cache_file,
                 paths=output_paths(args.period, args.success_dir, args.failure_dir),
                 permit=WritePermit.formal_single(args.period),
@@ -207,18 +240,34 @@ def main(argv: Sequence[str] | None = None) -> int:
         _print_results(results)
         return 0
     if args.command in {"retry", "repair"}:
-        text = "\n".join(path.read_text(encoding="utf-8") for path in args.retry_errors)
-        selected = sites_from_failure_text(text, sites)
-        reports = repair_sites(scraper, selected, args.period)
-        results = tuple(report.result for report in reports)
+        text = "\n".join(path.read_text(encoding="utf-8-sig") for path in args.retry_errors)
+        try:
+            selected = sites_from_failure_text(text, sites)
+        except ValueError as exc:
+            print(f"失败清单范围无法确认，未执行抓取或正式写入：{exc}")
+            return 2
+        if not selected:
+            print("失败清单没有匹配到任何站点，未执行抓取或正式写入")
+            return 2
+        print(f"限定复抓：{len(selected)} 个站点：{'、'.join(site.name for site in selected)}", flush=True)
         if args.command == "retry" and args.formal:
-            results = commit_formal_single(
+            results = scraper.scrape_sites(
+                selected, args.period, RunMode.FORMAL_SINGLE,
+                timeout=args.timeout, workers=args.workers,
+                on_result=_progress_printer(monotonic()),
+            )
+            results = commit_targeted_formal_single(
                 results,
+                expected_sites=selected,
                 cache_path=args.cache_file,
                 paths=output_paths(args.period, args.success_dir, args.failure_dir),
                 permit=WritePermit.formal_single(args.period),
             )
         else:
+            reports = repair_sites(
+                scraper, selected, args.period, timeout=args.timeout, workers=args.workers,
+            )
+            results = tuple(report.result for report in reports)
             print("限定复抓为只读验证，未写缓存或正式 TXT")
         _print_results(results)
         return 0
@@ -233,9 +282,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.parser_id,
             args.source_policy,
             args.api_url,
+            args.article_keyword,
         )
         data = load_recent_cache(args.cache_file)
-        periods = tuple(range(args.period, args.period - 10, -1))
+        periods = tuple(range(args.period, max(0, args.period - 10), -1))
         decision = validate_new_site(
             scraper,
             candidate,

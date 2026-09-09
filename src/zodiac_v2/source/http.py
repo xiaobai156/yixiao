@@ -3,13 +3,11 @@ from __future__ import annotations
 import gzip
 import io
 import re
-import warnings
 from dataclasses import dataclass
 from http.client import IncompleteRead
 from time import monotonic
 from typing import Protocol
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 import requests
@@ -22,7 +20,7 @@ DEFAULT_MAX_BYTES = 5_000_000
 # response.  Keep the normal page limit unchanged, but allow a bounded larger
 # limit for those explicitly discovered content documents.
 EMBEDDED_MAX_BYTES = 8_000_000
-DEFAULT_INSECURE_TLS_HOSTS = frozenset({"nlafoq9v.dh5565656.xyz", "156.225.88.144"})
+DEFAULT_INSECURE_TLS_HOSTS: frozenset[str] = frozenset()
 TRANSIENT_HTTP_STATUSES = frozenset({500, 502, 503, 504})
 
 
@@ -106,7 +104,8 @@ class RequestsTransport:
         insecure_tls_hosts: frozenset[str] | set[str] = frozenset(),
     ) -> None:
         self.user_agent = user_agent
-        self.insecure_tls_hosts = frozenset(host.lower() for host in insecure_tls_hosts)
+        if insecure_tls_hosts:
+            raise ValueError("已移除不校验 TLS 的站点白名单；请修复证书或配置受信任 CA")
 
     def _request(
         self,
@@ -125,38 +124,18 @@ class RequestsTransport:
                     "Accept-Encoding": "gzip",
                 }
             )
-            with warnings.catch_warnings():
-                if not verify:
-                    warnings.simplefilter("ignore")
-                with session.get(url, timeout=timeout, stream=True, verify=verify) as response:
-                    response.raw.decode_content = False
-                    body = response.raw.read(max_bytes + 1)
-                    return HttpResponse(
-                        int(response.status_code),
-                        response.url,
-                        body,
-                        tuple(response.headers.items()),
-                    )
+            if not verify:
+                raise ValueError("HTTP 取源禁止关闭 TLS 证书校验")
+            with session.get(url, timeout=timeout, stream=True, verify=True) as response:
+                response.raw.decode_content = False
+                body = response.raw.read(max_bytes + 1)
+                return HttpResponse(
+                    int(response.status_code), response.url, body, tuple(response.headers.items()),
+                )
 
     def request(self, url: str, *, timeout: float, max_bytes: int) -> HttpResponse:
-        hostname = (urlsplit(url).hostname or "").lower()
         try:
             result = self._request(url, timeout=timeout, max_bytes=max_bytes, verify=True)
-        except requests.exceptions.SSLError as exc:
-            if hostname not in self.insecure_tls_hosts:
-                raise SourceFetchError(
-                    SourceFetchCode.NETWORK,
-                    f"HTTP 请求失败：{exc}",
-                    url=url,
-                ) from exc
-            try:
-                result = self._request(url, timeout=timeout, max_bytes=max_bytes, verify=False)
-            except requests.RequestException as insecure_exc:
-                raise SourceFetchError(
-                    SourceFetchCode.NETWORK,
-                    f"HTTP 请求失败：{insecure_exc}",
-                    url=url,
-                ) from insecure_exc
         except requests.RequestException as exc:
             raise SourceFetchError(SourceFetchCode.NETWORK, f"HTTP 请求失败：{exc}", url=url) from exc
         if len(result.body) > max_bytes:

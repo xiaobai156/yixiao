@@ -243,6 +243,8 @@ class AnchoredSectionFamilyParser:
                 if spec.anchor_pattern.search(anchor_line.text) is None:
                     continue
                 first_record_index = anchor_index if spec.include_anchor_line else anchor_index + 1
+                # Resolve the complete block boundary before constructing any
+                # rolling window or evidence; never join text from the next block.
                 end_index = len(lines)
                 for index in range(first_record_index, len(lines)):
                     line = lines[index].text
@@ -252,10 +254,11 @@ class AnchoredSectionFamilyParser:
                     if index > anchor_index and spec.anchor_pattern.search(line):
                         end_index = index
                         break
+                for index in range(first_record_index, end_index):
                     record_text = normalize_space(
                         " ".join(
                             item.text
-                            for item in lines[index : index + spec.record_window_lines]
+                            for item in lines[index:min(index + spec.record_window_lines, end_index)]
                         )
                     )
                     for match in spec.record_pattern.finditer(record_text):
@@ -547,6 +550,8 @@ class TitleAuthorParser:
                     if re.search(r"(?:作者\s*[:：]|\S+\s+发表于)", line):
                         block_end = index
                         break
+                for index in range(author_index + 1, block_end):
+                    line = lines[index].text
                     for match in self.record_pattern.finditer(line):
                         period = int(match.group(1))
                         zodiac = match.group(2)

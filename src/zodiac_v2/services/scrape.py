@@ -2,21 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
-from pathlib import Path
 from time import monotonic
 from typing import Protocol
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
-from zodiac_v2.cache import (
-    load_recent_cache_for_commit,
-    mark_failed_sites,
-    update_recent_cache,
-    write_recent_cache,
-)
 from zodiac_v2.contracts import (
     CacheRecord,
     Direction,
@@ -27,10 +21,13 @@ from zodiac_v2.contracts import (
     SiteConfig,
     SourceBundle,
     SourceDocument,
-    WritePermit,
     build_validation_receipt,
 )
-from zodiac_v2.output import OutputPaths, build_output_payloads, write_output_payloads
+from zodiac_v2.services.formal import (
+    commit_formal_single as commit_formal_single,
+    commit_full_formal_single as commit_full_formal_single,
+    commit_targeted_formal_single as commit_targeted_formal_single,
+)
 from zodiac_v2.parsers.common import decoded_script_fragments
 from zodiac_v2.parsers.registry import ParserRegistry
 from zodiac_v2.source.api import bind_user_forum_target, derived_article_api_urls, fetch_api_then_page
@@ -39,7 +36,7 @@ from zodiac_v2.source.documents import (
     collect_content_documents,
     discover_content_documents,
     discover_named_topic_documents,
-    discover_period_keyword_links,
+    discover_period_keyword_page,
     source_identity,
 )
 from zodiac_v2.source.http import (
@@ -51,7 +48,7 @@ from zodiac_v2.source.http import (
     default_http_transport,
     fetch_http_document,
 )
-from zodiac_v2.validation.conflicts import _active_candidates, validate_candidates
+from zodiac_v2.validation.conflicts import _active_candidates, validate_candidates, validate_period_presence
 
 DEFAULT_SITE_TIMEOUT = 60.0
 HTTP_CONSENSUS_ATTEMPTS = 5
@@ -105,6 +102,11 @@ class DefaultSourceGateway:
     ) -> None:
         self.transport = transport or default_http_transport()
         self.renderer = renderer or PlaywrightBrowserRenderer()
+
+    def close(self) -> None:
+        close = getattr(self.renderer, "close", None)
+        if callable(close):
+            close()
 
     def http(self, site: SiteConfig, timeout: float) -> SourceBundle:
         configured_url = urlsplit(site.url)
@@ -261,32 +263,41 @@ class DefaultSourceGateway:
             scanned += 1
             if scanned > 10:
                 raise SourceFetchError(
-                    SourceFetchCode.SOURCE_IDENTITY,
-                    "同栏目分页超过安全上限 10 页",
-                    url=site.url,
+                    SourceFetchCode.SOURCE_IDENTITY, "同栏目分页超过安全上限 10 页", url=site.url,
                 )
-            article_urls, page_urls, has_target_period_articles = discover_period_keyword_links(
-                document.text,
-                document.final_url,
-                target_period,
-                site.article_keyword,
+            article_urls, page_urls, observed_periods = discover_period_keyword_page(
+                document.text, document.final_url, target_period, site.article_keyword,
             )
             matches.extend(article_urls)
-            if not has_target_period_articles:
+            # The configured period-list strategy scans descending lists. A
+            # newer first page must not stop a search for an older target page.
+            if observed_periods and max(observed_periods) < target_period:
                 continue
-            for page_url in page_urls:
-                if page_url in seen_pages:
-                    continue
-                seen_pages.add(page_url)
-                pending.append(
-                    fetch_http_document(
-                        self.transport,
-                        page_url,
-                        timeout=_remaining_budget(deadline, timeout, site.url, "栏目分页取源总超时"),
-                        identity_url=page_url,
-                        source_id=f"period-list:{page_url}",
-                    )
+            current_page = int(parse_qs(urlsplit(document.final_url).query).get("page", ["1"])[0])
+            forward = sorted(
+                (int(parse_qs(urlsplit(url).query)["page"][0]), url)
+                for url in set(page_urls)
+                if url not in seen_pages
+                and int(parse_qs(urlsplit(url).query)["page"][0]) > current_page
+            )
+            if not forward:
+                continue
+            page_number, page_url = forward[0]
+            if page_number != current_page + 1:
+                raise SourceFetchError(
+                    SourceFetchCode.SOURCE_IDENTITY,
+                    f"同栏目分页缺少连续下一页 {current_page + 1}，无法完成唯一性扫描", url=site.url,
                 )
+            if scanned + len(pending) >= 10:
+                raise SourceFetchError(
+                    SourceFetchCode.SOURCE_IDENTITY, "同栏目分页超过安全上限 10 页", url=site.url,
+                )
+            seen_pages.add(page_url)
+            pending.append(fetch_http_document(
+                self.transport, page_url,
+                timeout=_remaining_budget(deadline, timeout, site.url, "栏目分页取源总超时"),
+                identity_url=page_url, source_id=f"period-list:{page_url}",
+            ))
         unique_matches = tuple(dict.fromkeys(matches))
         if len(unique_matches) != 1:
             raise SourceFetchError(
@@ -494,6 +505,11 @@ class ScrapeService:
         self.gateway = gateway
         self.registry = registry
 
+    def close(self) -> None:
+        close = getattr(self.gateway, "close", None)
+        if callable(close):
+            close()
+
     def _evaluate(
         self,
         site: SiteConfig,
@@ -629,6 +645,7 @@ class ScrapeService:
     ) -> ScrapeResult:
         probes: list[tuple[ScrapeResult, ScrapeResult | None]] = []
         fetch_failures: list[ScrapeResult] = []
+        target_observations = []
 
         for _attempt in range(HTTP_CONSENSUS_ATTEMPTS):
             try:
@@ -646,14 +663,48 @@ class ScrapeService:
                     )
                 )
                 continue
-            probes.append(
-                (
-                    self._evaluate(site, target_period, bundle, mode),
-                    self._evaluate(site, target_period + 1, bundle, RunMode.READ_ONLY)
-                    if target_period < 9999
-                    else None,
-                )
+            # Presence and edge validation are different questions. Inspect the
+            # active cycle for explicit conflicts even when a period is not on
+            # its required edge; two later confirmations cannot erase a conflict.
+            try:
+                candidates = tuple(self.registry.parse(site, bundle))
+            except Exception as exc:
+                fetch_failures.append(ScrapeResult.failure(
+                    site, target_period, FailureCode.DEDICATED_PARSER_MISS,
+                    f"专属解析异常：{type(exc).__name__}: {exc}", bundle.documents,
+                ))
+                continue
+            current_presence = validate_period_presence(site, bundle, candidates, target_period)
+            next_presence = (
+                validate_period_presence(site, bundle, candidates, target_period + 1)
+                if target_period < 9999 else None
             )
+            for observation in (current_presence, next_presence):
+                if observation is not None and observation.failure_code is FailureCode.CONFLICT:
+                    return ScrapeResult.failure(
+                        site, target_period, FailureCode.CONFLICT,
+                        f"共识取源发现明确冲突，禁止被确认次数掩盖：{observation.reason}", bundle.documents,
+                    )
+            if current_presence.ok:
+                target_observations.append(current_presence.candidate.zodiac)
+            if len(set(target_observations)) > 1:
+                return ScrapeResult.failure(
+                    site, target_period, FailureCode.CONFLICT,
+                    f"{target_period}期多次取源结果冲突：{sorted(set(target_observations))}", bundle.documents,
+                )
+            next_result = None
+            if next_presence is not None and next_presence.ok:
+                next_result = ScrapeResult.success(
+                    site, target_period + 1, next_presence.candidate, bundle.documents, writable=False,
+                )
+            target_result = self._evaluate(site, target_period, bundle, mode)
+            if target_result.failure_code is FailureCode.CONFLICT:
+                return ScrapeResult.failure(
+                    site, target_period, FailureCode.CONFLICT,
+                    f"共识取源的最终验证发现明确冲突：{target_result.reason}", bundle.documents,
+                )
+            probes.append((target_result, next_result))
+            remaining()
 
         newer_hits = tuple(
             next_result
@@ -735,8 +786,8 @@ class ScrapeService:
         *,
         timeout: float = DEFAULT_SITE_TIMEOUT,
     ) -> ScrapeResult:
-        if timeout <= 0:
-            raise ValueError("timeout 必须大于 0")
+        if isinstance(timeout, bool) or not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("timeout 必须是有限正数")
         deadline = monotonic() + timeout
 
         def remaining() -> float:
@@ -762,6 +813,14 @@ class ScrapeService:
                     result = self._evaluate(site, target_period, target_bundle, mode)
                     remaining()
                     return result
+                if not article_documents:
+                    page_bundle = self.gateway.http(site, remaining())
+                    if not page_bundle.scan_complete:
+                        page_bundle = self.gateway.embedded(site, page_bundle, remaining())
+                    documents = page_bundle.documents
+                    remaining()
+                    if not page_bundle.scan_complete or not _bundle_is_empty_shell(page_bundle):
+                        return self._evaluate(site, target_period, page_bundle, mode)
                 browser_bundle = self.gateway.browser(site, remaining())
                 documents = browser_bundle.documents
                 remaining()
@@ -938,105 +997,3 @@ def cache_record_from_result(result: ScrapeResult) -> CacheRecord:
     )
 
 
-def _report_cache_issue(reason: str) -> None:
-    print(f"缓存更新未完成（仅影响新增站点判重，不影响本轮抓取结果）：{reason}", flush=True)
-
-
-def commit_formal_single(
-    results: Iterable[ScrapeResult],
-    *,
-    cache_path: Path,
-    paths: OutputPaths,
-    permit: WritePermit,
-    existing_success_extra_names: Iterable[str] = (),
-) -> tuple[ScrapeResult, ...]:
-    permit.require_formal_single(permit.target_period)
-    materialized = tuple(results)
-    for result in materialized:
-        if result.target_period != permit.target_period:
-            raise PermissionError("抓取结果期数与正式单期写入许可不一致")
-        if result.ok and not result.writable:
-            raise PermissionError("抓取结果未获得正式单期写入资格")
-        if result.ok and result.candidate is not None:
-            if not result.validator_issued:
-                raise PermissionError("抓取结果未由统一验证器签发")
-            expected_receipt = build_validation_receipt(
-                result.site,
-                result.target_period,
-                result.candidate,
-                result.documents,
-            )
-            if result.validation_receipt != expected_receipt:
-                raise PermissionError("抓取结果缺少有效统一验证回执")
-    final_tuple = tuple(materialized)
-    write_output_payloads(
-        build_output_payloads(
-            final_tuple,
-            paths,
-            existing_success_extra_names=existing_success_extra_names,
-        ),
-        permit,
-    )
-
-    successful_results = tuple(result for result in final_tuple if result.ok)
-    if not successful_results:
-        return final_tuple
-    if len(successful_results) * 100 <= len(final_tuple) * CACHE_SUCCESS_RATE_PERCENT:
-        print(
-            f"成功率 {len(successful_results)}/{len(final_tuple)} 未超过 "
-            f"{CACHE_SUCCESS_RATE_PERCENT}%，缓存不更新",
-            flush=True,
-        )
-        return final_tuple
-
-    try:
-        updated_cache, quarantined_errors = load_recent_cache_for_commit(cache_path)
-    except ValueError as exc:
-        _report_cache_issue(f"缓存读取失败：{exc}")
-        return final_tuple
-
-    accepted_count = 0
-    for result in successful_results:
-        quarantined_reason = quarantined_errors.get(result.site.identity)
-        if quarantined_reason is not None:
-            _report_cache_issue(f"{result.site.name} 缓存目录已隔离：{quarantined_reason}")
-            continue
-        try:
-            record = cache_record_from_result(result)
-            updated_cache = update_recent_cache(
-                updated_cache,
-                (record,),
-                current_period=permit.target_period,
-                permit=permit,
-            )
-        except ValueError as exc:
-            _report_cache_issue(f"{result.site.name}：{exc}")
-            continue
-        accepted_count += 1
-
-    if not accepted_count:
-        return final_tuple
-    failed_sites = tuple(
-        (
-            result.site.identity,
-            result.reason or f"{result.target_period}期抓取失败",
-        )
-        for result in final_tuple
-        if not result.ok
-    )
-    if failed_sites:
-        try:
-            updated_cache = mark_failed_sites(
-                updated_cache,
-                failed_sites,
-                current_period=permit.target_period,
-                permit=permit,
-            )
-        except ValueError as exc:
-            _report_cache_issue(f"失败站点状态标记未完成：{exc}")
-            return final_tuple
-    try:
-        write_recent_cache(cache_path, updated_cache, permit)
-    except (OSError, ValueError) as exc:
-        _report_cache_issue(f"缓存写入失败：{exc}")
-    return final_tuple

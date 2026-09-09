@@ -267,6 +267,7 @@ def build_validation_receipt(
             "section": site.section.value,
             "parser_id": site.parser_id,
             "source_policy": site.source_policy,
+            "api_url": site.api_url,
             "article_keyword": site.article_keyword,
             "embedded_max_bytes": site.embedded_max_bytes,
         },

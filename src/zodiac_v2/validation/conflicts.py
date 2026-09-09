@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from dataclasses import replace
 
 from zodiac_v2.contracts import (
     ZODIACS,
@@ -98,6 +99,11 @@ def _direction_window(
         )
     active = _active_candidates(items, direction)
     window = directional_candidate_window(active, direction)
+    if not window:
+        return window, ValidationDecision.failure(
+            FailureCode.BOUNDARY,
+            "过滤未完成记录后没有可用于方向验证的完整候选",
+        )
     matched = tuple(candidate for candidate in window if candidate.period == target_period)
 
     if direction is Direction.LEFT:
@@ -246,3 +252,23 @@ def validate_candidates(
     matched = matched_by_document[selected_document_id]
     selected = matched[-1] if site.direction is Direction.BOTTOM else matched[0]
     return ValidationDecision.success(selected)
+
+
+def validate_period_presence(
+    site: SiteConfig, bundle: SourceBundle, candidates: Iterable[Candidate], target_period: int,
+) -> ValidationDecision:
+    """Check a period anywhere in each active cycle, without an edge test.
+
+    This is a read-only consensus probe, never the final direction decision.
+    A pending draw is not the same as an absent prediction field.
+    """
+    grouped: dict[str, list[Candidate]] = {}
+    for candidate in candidates:
+        grouped.setdefault(candidate.document_id, []).append(candidate)
+    active = tuple(
+        candidate
+        for group in grouped.values()
+        for candidate in _active_candidates(tuple(group), site.direction)
+        if candidate.period == target_period
+    )
+    return validate_candidates(replace(site, direction=Direction.LEFT), bundle, active, target_period)

@@ -60,8 +60,9 @@ def _origin(url: str) -> tuple[str, str]:
     hostname = (parsed.hostname or "").lower()
     if scheme not in {"http", "https"} or not hostname or parsed.username or parsed.password:
         raise SourceIdentityError(f"来源 URL 非法：{url!r}")
-    normalized_port = port or (443 if scheme == "https" else 80)
-    return f"{scheme}://{hostname}:{normalized_port}", parsed.path + "/" + parsed.fragment
+    normalized_port = port if port is not None else (443 if scheme == "https" else 80)
+    authority = f"[{hostname}]" if ":" in hostname else hostname
+    return f"{scheme}://{authority}:{normalized_port}", parsed.path + "/" + parsed.fragment
 
 
 def source_identity(url: str) -> SourceIdentity:
@@ -87,37 +88,20 @@ def source_identity(url: str) -> SourceIdentity:
     )
 
 
+def source_identity_key(url: str) -> tuple[object, ...]:
+    identity = source_identity(url)
+    if identity.has_record_id:
+        return identity.origin, identity.topic_id, identity.user_id, identity.article_id
+    parsed = urlsplit(url)
+    return identity.origin, parsed.path.rstrip("/") or "/", parsed.query, parsed.fragment.rstrip("/")
+
+
 def same_source_identity(first_url: str, second_url: str) -> bool:
-    """Compare canonical source identity without treating query noise as a new record."""
+    """All identified components must agree, not merely any one matching id."""
     try:
-        first = source_identity(first_url)
-        second = source_identity(second_url)
+        return source_identity_key(first_url) == source_identity_key(second_url)
     except SourceIdentityError:
         return first_url.strip() == second_url.strip()
-    if first.origin != second.origin:
-        return False
-    identifiers = (
-        (first.topic_id, second.topic_id),
-        (first.user_id, second.user_id),
-        (first.article_id, second.article_id),
-    )
-    if any(left is not None or right is not None for left, right in identifiers):
-        return any(left is not None and left == right for left, right in identifiers)
-    first_parsed = urlsplit(first_url)
-    second_parsed = urlsplit(second_url)
-    first_key = (
-        first.origin,
-        first_parsed.path.rstrip("/") or "/",
-        first_parsed.query,
-        first_parsed.fragment.rstrip("/"),
-    )
-    second_key = (
-        second.origin,
-        second_parsed.path.rstrip("/") or "/",
-        second_parsed.query,
-        second_parsed.fragment.rstrip("/"),
-    )
-    return first_key == second_key
 
 
 def _require_matching_ids(expected: SourceIdentity, actual: SourceIdentity) -> None:
@@ -176,16 +160,14 @@ def _json_has_identity(value: object, keys: frozenset[str], expected: str) -> bo
 
 
 def structured_body_matches_identity(body: str, identity: SourceIdentity) -> bool:
-    try:
-        payload = json.loads(body)
-    except (json.JSONDecodeError, TypeError):
+    from zodiac_v2.source.projection import project_response
+
+    if not identity.has_record_id:
         return False
-    checks = (
-        (identity.topic_id, frozenset({"topicid", "threadid"})),
-        (identity.user_id, frozenset({"userid", "uid", "memberid", "authorid"})),
-        (identity.article_id, frozenset({"articleid", "postid", "recordid"})),
-    )
-    return any(expected is not None and _json_has_identity(payload, keys, expected) for expected, keys in checks)
+    try:
+        return project_response(body, identity, identity.origin) is not None
+    except SourceIdentityError:
+        return False
 
 
 class _EmbeddedParser(HTMLParser):
@@ -345,11 +327,12 @@ class _PeriodKeywordLinkParser(HTMLParser):
     def __init__(self, base_url: str, period: int, keyword: str) -> None:
         super().__init__(convert_charrefs=True)
         self.base_url = base_url
-        self.period_prefix = re.compile(rf"^\s*{period}\s*期\s*[:：]")
+        self.period_prefix = re.compile(rf"^\s*(?:第\s*)?0*{period}\s*期\s*[:：]")
         self.keyword = re.sub(r"\s+", " ", keyword).strip()
         self.article_urls: list[str] = []
         self.page_urls: list[str] = []
         self.has_target_period_article = False
+        self.observed_periods: list[int] = []
         self._href: str | None = None
         self._parts: list[str] = []
         base = urlsplit(base_url)
@@ -382,6 +365,9 @@ class _PeriodKeywordLinkParser(HTMLParser):
         if parsed.path.lower().endswith("/article.aspx"):
             article_ids = query.get("id", ())
             valid_article = len(article_ids) == 1 and article_ids[0].isdigit()
+            observed = re.match(r"^\s*(?:第\s*)?(\d{1,4})\s*期\s*[:：]", text)
+            if valid_article and observed is not None:
+                self.observed_periods.append(int(observed.group(1)))
             if self.period_prefix.search(text) and valid_article:
                 self.has_target_period_article = True
             if self.period_prefix.search(text) and self.keyword in text and valid_article:
@@ -396,19 +382,25 @@ class _PeriodKeywordLinkParser(HTMLParser):
             self.page_urls.append(url)
 
 
-def discover_period_keyword_links(
-    html: str,
-    base_url: str,
-    period: int,
-    keyword: str,
-) -> tuple[tuple[str, ...], tuple[str, ...], bool]:
+def discover_period_keyword_page(
+    html: str, base_url: str, period: int, keyword: str,
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[int, ...]]:
+    """Return matching articles, same-column navigation and all observed periods."""
     source_identity(base_url)
     if not keyword.strip():
         raise ValueError("文章关键字不能为空")
     parser = _PeriodKeywordLinkParser(base_url, period, keyword)
     parser.feed(html)
     parser.close()
-    return tuple(parser.article_urls), tuple(parser.page_urls), parser.has_target_period_article
+    return tuple(parser.article_urls), tuple(parser.page_urls), tuple(parser.observed_periods)
+
+
+def discover_period_keyword_links(
+    html: str, base_url: str, period: int, keyword: str,
+) -> tuple[tuple[str, ...], tuple[str, ...], bool]:
+    # Preserve the existing discovery API for callers/tests.
+    articles, pages, periods = discover_period_keyword_page(html, base_url, period, keyword)
+    return articles, pages, period in periods
 
 
 def collect_embedded_documents(
@@ -453,15 +445,22 @@ def collect_content_documents(
     *,
     max_depth: int = 3,
     max_documents: int = 64,
+    max_total_bytes: int = 64_000_000,
     allowed_origins: Collection[str] = (),
 ) -> SourceBundle:
     queue = [(resource, 0) for resource in resources]
     documents = [parent]
     seen = {resource.url for resource, _depth in queue}
     depth_truncated = False
+    total_bytes = len(parent.text.encode("utf-8"))
+    if total_bytes > max_total_bytes:
+        return SourceBundle((parent,), ("content_truncated:total_bytes",), scan_complete=False)
     while queue and len(documents) - 1 < max_documents:
         resource, depth = queue.pop(0)
         fetched = fetcher(resource)
+        total_bytes += len(fetched.text.encode("utf-8"))
+        if total_bytes > max_total_bytes:
+            return SourceBundle(documents, ("content_truncated:total_bytes",), scan_complete=False)
         validate_final_url(resource.url, fetched.final_url)
         if fetched.document_type is not resource.document_type:
             raise ValueError("内容文档类型与发现记录不一致")
