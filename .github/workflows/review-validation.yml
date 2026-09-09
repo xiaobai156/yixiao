@@ -1,21 +1,27 @@
-name: Review validation
+name: Regression tests
 on:
   push:
-    branches: [codex/yixiao-review-fixes-20260909]
-    paths: [tools/apply_review_repairs.py]
+    branches: [main, codex/yixiao-review-fixes-20260909]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: yixiao-review-repair
-  cancel-in-progress: false
+  group: regression-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  repair-and-test:
-    if: github.ref == 'refs/heads/codex/yixiao-review-fixes-20260909'
-    runs-on: windows-latest
+  offline-regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            python: '3.11'
+          - os: ubuntu-latest
+            python: '3.10'
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
-    permissions:
-      contents: write
     env:
       PYTHONPATH: src
       PYTHONUTF8: '1'
@@ -23,40 +29,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: codex/yixiao-review-fixes-20260909
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Apply exact reviewed source changes
-        run: python tools/apply_review_repairs.py
+          python-version: ${{ matrix.python }}
       - run: python -m pip install -e ".[dev]"
-      - name: Compile source
+      - name: Compile source and tests
         run: python -m compileall -q src tests
-      - name: Complete offline regression suite
+      - name: Fatal syntax and undefined-name checks
+        run: python -m ruff check src tests --select E9,F63,F7,F82
+      - name: Offline regression suite with explicit skip reasons
         run: python -m pytest -ra --tb=short
-      - name: Validate runtime configuration without network
+      - name: Validate configuration without crawling
         run: python -c "from pathlib import Path; from zodiac_v2.cli import _runtime; sites, _ = _runtime(Path('sites.json')); print('VALID_CONFIG_SITES', len(sites))"
       - name: Confirm production data unchanged
         run: git diff --exit-code -- sites.json recent_10_cache.json archived_sites.json
-      - name: Commit tested source changes to work branch only
-        shell: python
-        run: |
-          import json
-          import subprocess
-          from pathlib import Path
-          files = json.loads(Path('.review-changed-files.json').read_text(encoding='utf-8'))
-          allowed = ('src/zodiac_v2/', 'tests/', 'docs/')
-          if not files or any(not (p.startswith(allowed) or p in ('pyproject.toml', '.gitignore', 'AGENTS.md')) for p in files):
-              raise RuntimeError('Unexpected changed-file scope')
-          def git(*args):
-              return subprocess.run(['git', *args], check=True, text=True, capture_output=True).stdout
-          git('add', '--', *files)
-          staged = git('diff', '--cached', '--name-only').splitlines()
-          if any(p not in files for p in staged):
-              raise RuntimeError('Unexpected staged file')
-          if staged:
-              git('config', 'user.name', 'github-actions[bot]')
-              git('config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com')
-              git('commit', '-m', 'fix: scope formal writes and harden validated source boundaries')
-              git('push', 'origin', 'HEAD:refs/heads/codex/yixiao-review-fixes-20260909')
-          print('TESTED_COMMIT', git('rev-parse', 'HEAD').strip())
