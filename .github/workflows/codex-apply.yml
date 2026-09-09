@@ -8,7 +8,7 @@ jobs:
   apply:
     if: contains(github.event.head_commit.message, 'stage final hardening patch')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       PYTHONPATH: src
       PYTHONUTF8: '1'
@@ -19,11 +19,11 @@ jobs:
         with:
           python-version: '3.10'
       - run: python -m pip install -e ".[dev]"
+      - name: Install Chromium runtime
+        run: python -m playwright install --with-deps chromium
       - name: Rebuild and apply verified patch
         shell: bash
         run: |
-          wc -c .codex/patch.b64.*
-          sha256sum .codex/patch.b64.*
           cat .codex/patch.b64.* | base64 -d | python -c 'import sys,zlib; sys.stdout.buffer.write(zlib.decompress(sys.stdin.buffer.read()))' > /tmp/final-hardening.patch
           git apply --check /tmp/final-hardening.patch
           git apply /tmp/final-hardening.patch
@@ -46,6 +46,7 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git rm -rf .codex
+          git rm -f .github/workflows/codex-apply.yml .github/workflows/codex-export.yml
           git add -A
           git commit -m "fix: harden source identity and formal update boundaries"
           git push origin HEAD:codex/yixiao-final-hardening-20260909
