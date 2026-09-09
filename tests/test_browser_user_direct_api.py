@@ -32,7 +32,7 @@ class Transport:
 def test_fragment_user_home_derives_same_user_api():
     page = "https://example.test:12277/#/users/28097"
     assert derived_user_forum_api_url(page) == (
-        "https://example.test:12277/api/v1/users/28097/forums?per_page=100"
+        "https://example.test:12277/api/v1/users/28097/forums?per_page=20"
     )
 
 
@@ -47,6 +47,6 @@ def test_browser_user_gateway_prefers_verified_same_user_http_api():
         "browser_user",
     )
     bundle = DefaultSourceGateway(transport=transport).browser_user(site, 10)
-    assert transport.urls == ["https://example.test:12277/api/v1/users/28097/forums?per_page=100"]
+    assert transport.urls == ["https://example.test:12277/api/v1/users/28097/forums?per_page=20"]
     assert bundle.scan_complete
     assert "252" in bundle.documents[0].text

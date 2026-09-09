@@ -323,7 +323,7 @@ class DefaultSourceGateway:
             page_url=site.url,
             timeout=timeout,
             max_bytes=site.embedded_max_bytes or EMBEDDED_MAX_BYTES,
-            per_page=100,
+            per_page=20,
         )
 
     def article_api(self, site: SiteConfig, timeout: float) -> tuple[SourceBundle, ...]:
