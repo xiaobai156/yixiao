@@ -171,3 +171,34 @@ def test_zhangliao_top_uses_the_first_annual_record_cycle() -> None:
 
     assert decision.ok and decision.candidate is not None
     assert decision.candidate.zodiac == "猪"
+
+
+def test_fei_ran_er_fan_top_uses_current_annual_cycle() -> None:
+    site = SiteConfig(
+        "废然而反",
+        "https://example.test/topic/206891.html",
+        Direction.TOP,
+        SiteSection.NEW,
+        "regex.86a7042b2c5a",
+        "http_documents",
+    )
+    parser = RegexFamilyParser(
+        PATTERN_SETS[COMMON_PATTERN_ID],
+        anchor_aliases={"废然而反": "废然而反"},
+        directional_cycle_sites=DIRECTIONAL_CYCLE_REGEX_SITES,
+    )
+    bundle = _bundle(
+        "废然而反\n"
+        "254期:绝杀一肖【狗】开:00准\n"
+        "253期:绝杀一肖【蛇】开:龙38准\n"
+        "001期:绝杀一肖【鼠】开:牛01准\n"
+        "260期:绝杀一肖【马】开:虎17准\n"
+        "259期:绝杀一肖【兔】开:鼠02准\n"
+        "254期:绝杀一肖【龙】开:兔23准"
+    )
+
+    candidates = parser.parse(site, bundle)
+    decision = validate_candidates(site, bundle, candidates, 254)
+
+    assert decision.ok and decision.candidate is not None
+    assert decision.candidate.zodiac == "狗"
