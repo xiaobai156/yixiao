@@ -90,6 +90,39 @@ def test_two_xiaozhuge_articles_follow_live_title_period_without_domain_anchor()
         assert not missing.ok
 
 
+def test_placeholder_titles_still_use_the_configured_direction() -> None:
+    parser = StrictArticleFamilyParser(STRICT_ARTICLE_SPECS)
+    cases = (
+        (
+            "学无止境",
+            Direction.TOP,
+            "<h1>高手 00期【综合杀料】已公开</h1>"
+            "<p>255期杀【狗肖.0头.6尾.水行】开0000准</p>"
+            "<p>254期杀【牛肖.1头.5尾.金行】开蛇02准</p>",
+            "狗",
+        ),
+        (
+            "推心置腹",
+            Direction.BOTTOM,
+            "<h1>高手 00期【杀肖杀码】已公开</h1>"
+            "<p>254期:【绝杀1肖码】【兔♥40】开蛇02准</p>"
+            "<p>255期:【绝杀1肖码】【鸡♥22】开000准</p>",
+            "鸡",
+        ),
+    )
+    for name, direction, html, expected in cases:
+        site = _site(name, "family.strict_article", direction)
+        bundle = _bundle(html, DocumentType.BROWSER)
+        candidates = parser.parse(site, bundle)
+
+        current = validate_candidates(site, bundle, candidates, 255)
+        previous = validate_candidates(site, bundle, candidates, 254)
+
+        assert current.ok and current.candidate is not None
+        assert current.candidate.zodiac == expected
+        assert not previous.ok
+
+
 def test_kaijiang_facai_accepts_live_bare_zodiac_cell() -> None:
     url = "https://84477.kjfc88b.app:2443/welcome.html#234432"
     site = SiteConfig(

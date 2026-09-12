@@ -238,6 +238,7 @@ STRICT_ARTICLE_SPECS: dict[str, StrictArticleSpec] = {
     '推心置腹': StrictArticleSpec(
         r'^高手\s+(\d{2,4})期【杀肖杀码】已公开$',
         r'^(\d{2,4})期:【绝杀1肖码】【([鼠牛虎兔龙蛇马羊猴鸡狗猪])♥\d+】',
+        allow_placeholder_title=True,
         directional_cycles=True,
     ),
     '金瓯无缺': StrictArticleSpec(
@@ -248,6 +249,7 @@ STRICT_ARTICLE_SPECS: dict[str, StrictArticleSpec] = {
     '学无止境': StrictArticleSpec(
         r'^高手\s+(\d{2,4})期【综合杀料】已公开$',
         r'^(\d{2,4})期杀【([鼠牛虎兔龙蛇马羊猴鸡狗猪])肖[.]\d+头[.]\d+尾[.]\S+行】',
+        allow_placeholder_title=True,
         directional_cycles=True,
     ),
     '艳绝千秋': StrictArticleSpec(

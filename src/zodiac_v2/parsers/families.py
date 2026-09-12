@@ -22,6 +22,7 @@ class StrictArticleSpec:
     record_pattern: str
     author_pattern: str | None = None
     allow_pending_title: bool = False
+    allow_placeholder_title: bool = False
     directional_cycles: bool = False
 
 
@@ -40,6 +41,7 @@ class _CompiledStrictArticleSpec:
     record_pattern: re.Pattern[str]
     author_pattern: re.Pattern[str] | None
     allow_pending_title: bool
+    allow_placeholder_title: bool
     directional_cycles: bool
 
 
@@ -274,6 +276,7 @@ class StrictArticleFamilyParser:
                     re.compile(spec.record_pattern, re.IGNORECASE),
                     re.compile(spec.author_pattern, re.IGNORECASE) if spec.author_pattern else None,
                     spec.allow_pending_title,
+                    spec.allow_placeholder_title,
                     spec.directional_cycles,
                 )
                 for name, spec in specs.items()
@@ -296,6 +299,7 @@ class StrictArticleFamilyParser:
                     continue
                 author_line_index = _strict_author_line_index(lines, title_index, spec)
                 title_period = int(title_match.group(1).lstrip("0") or "0")
+                placeholder_title = spec.allow_placeholder_title and title_period == 0
                 records = _strict_article_records(
                     document.source_id,
                     document.page_order,
@@ -308,21 +312,35 @@ class StrictArticleFamilyParser:
                     author_text,
                     spec,
                 )
+                cycle_title_period = (
+                    max((candidate.period for candidate in records), default=0)
+                    if placeholder_title
+                    else title_period
+                )
                 accepted_title_periods = {title_period}
                 if spec.allow_pending_title and title_period > 1:
                     accepted_title_periods.add(title_period - 1)
-                for cycle_index, cycle in enumerate(_strict_cycles(records, title_period)):
-                    eligible = tuple(
-                        candidate for candidate in cycle if candidate.period <= title_period
+                for cycle_index, cycle in enumerate(_strict_cycles(records, cycle_title_period)):
+                    eligible = (
+                        cycle
+                        if placeholder_title
+                        else tuple(candidate for candidate in cycle if candidate.period <= title_period)
                     )
-                    accepted_indexes = [
-                        index
-                        for index, candidate in enumerate(cycle)
-                        if candidate.period in accepted_title_periods
-                    ]
+                    accepted_indexes = (
+                        [0]
+                        if placeholder_title and cycle
+                        else [
+                            index
+                            for index, candidate in enumerate(cycle)
+                            if candidate.period in accepted_title_periods
+                        ]
+                    )
                     if not eligible or not accepted_indexes:
                         continue
-                    if any(candidate.period > title_period for candidate in cycle[: accepted_indexes[0]]):
+                    if (
+                        not placeholder_title
+                        and any(candidate.period > title_period for candidate in cycle[: accepted_indexes[0]])
+                    ):
                         continue
                     if spec.directional_cycles:
                         eligible = tuple(
