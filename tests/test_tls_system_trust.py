@@ -65,3 +65,64 @@ def test_requests_transport_uses_verified_system_trust_context():
     assert isinstance(transport.ssl_context, truststore.SSLContext)
     assert transport.ssl_context.verify_mode == ssl.CERT_REQUIRED
     assert transport.ssl_context.check_hostname is True
+
+
+def test_requests_transport_reuses_session_until_closed(monkeypatch):
+    class Response:
+        status_code = 200
+        url = "https://example.test/"
+        headers = {"Content-Type": "text/plain"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        class Raw:
+            decode_content = True
+
+            def read(self, _limit):
+                return b"ok"
+
+        raw = Raw()
+
+    class Session:
+        def __init__(self):
+            self.mounts = []
+            self.headers = {}
+            self.urls = []
+            self.closed = False
+
+        def mount(self, prefix, adapter):
+            self.mounts.append((prefix, adapter))
+
+        def get(self, url, **kwargs):
+            self.urls.append((url, kwargs))
+            return Response()
+
+        def close(self):
+            self.closed = True
+
+    sessions = []
+
+    def make_session():
+        session = Session()
+        sessions.append(session)
+        return session
+
+    monkeypatch.setattr(http_module.requests, "Session", make_session)
+    transport = RequestsTransport()
+
+    transport.request("https://example.test/one", timeout=1, max_bytes=100)
+    transport.request("https://example.test/two", timeout=1, max_bytes=100)
+
+    assert len(sessions) == 1
+    assert [url for url, _ in sessions[0].urls] == [
+        "https://example.test/one",
+        "https://example.test/two",
+    ]
+    assert sessions[0].urls[0][1]["verify"] is True
+    transport.close()
+    transport.close()
+    assert sessions[0].closed

@@ -4,13 +4,13 @@ import gzip
 import io
 import re
 import ssl
+import threading
 import warnings
 from dataclasses import dataclass
 from http.client import IncompleteRead
 from time import monotonic
 from typing import Protocol
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 import requests
@@ -132,6 +132,27 @@ class RequestsTransport:
         self.user_agent = user_agent
         self.insecure_tls_hosts = frozenset(host.lower() for host in insecure_tls_hosts)
         self.ssl_context = ssl_context or truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        self._local = threading.local()
+        self._sessions: list[requests.Session] = []
+        self._sessions_lock = threading.Lock()
+
+    def _session(self) -> requests.Session:
+        session = getattr(self._local, "session", None)
+        if session is None:
+            session = requests.Session()
+            session.mount("https://", _SystemTrustAdapter(self.ssl_context))
+            session.headers.update(
+                {
+                    "User-Agent": self.user_agent,
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.7",
+                    "Accept-Encoding": "gzip",
+                }
+            )
+            self._local.session = session
+            with self._sessions_lock:
+                self._sessions.append(session)
+        return session
 
     def _request(
         self,
@@ -143,28 +164,31 @@ class RequestsTransport:
     ) -> HttpResponse:
         if not verify:
             raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "禁止关闭 TLS 证书验证", url=url)
-        with requests.Session() as session:
-            session.mount("https://", _SystemTrustAdapter(self.ssl_context))
-            session.headers.update(
-                {
-                    "User-Agent": self.user_agent,
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.7",
-                    "Accept-Encoding": "gzip",
-                }
-            )
-            with warnings.catch_warnings():
-                if not verify:
-                    warnings.simplefilter("ignore")
-                with session.get(url, timeout=timeout, stream=True, verify=verify) as response:
-                    response.raw.decode_content = False
-                    body = response.raw.read(max_bytes + 1)
-                    return HttpResponse(
-                        int(response.status_code),
-                        response.url,
-                        body,
-                        tuple(response.headers.items()),
-                    )
+        with warnings.catch_warnings():
+            if not verify:
+                warnings.simplefilter("ignore")
+            with self._session().get(url, timeout=timeout, stream=True, verify=verify) as response:
+                response.raw.decode_content = False
+                body = response.raw.read(max_bytes + 1)
+                return HttpResponse(
+                    int(response.status_code),
+                    response.url,
+                    body,
+                    tuple(response.headers.items()),
+                )
+
+    def close(self) -> None:
+        with self._sessions_lock:
+            sessions, self._sessions = self._sessions, []
+        for session in sessions:
+            session.close()
+        self._local.session = None
+
+    def __enter__(self) -> RequestsTransport:
+        return self
+
+    def __exit__(self, *_exc_info: object) -> None:
+        self.close()
 
     def request(self, url: str, *, timeout: float, max_bytes: int) -> HttpResponse:
         try:
