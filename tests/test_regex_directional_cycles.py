@@ -59,6 +59,26 @@ def test_haoxue_buyan_uses_verified_directional_cycle_handling() -> None:
     assert "好学不厌" in DIRECTIONAL_CYCLE_REGEX_SITES
 
 
+def test_yuxuanlizhi_top_uses_the_first_annual_record_cycle() -> None:
+    site = SiteConfig(
+        "鱼轩莅止",
+        "https://example.test/topic/1.html",
+        Direction.TOP,
+        SiteSection.EXISTING,
+        "regex.test",
+        "http_documents",
+    )
+    parser = RegexFamilyParser(
+        (r"(\d{3})期[:：]([鼠牛虎兔龙蛇马羊猴鸡狗猪])",),
+        directional_cycle_sites=DIRECTIONAL_CYCLE_REGEX_SITES,
+    )
+    bundle = _bundle("鱼轩莅止\n255期：蛇\n001期：鼠\n255期：猪")
+    result = validate_candidates(site, bundle, parser.parse(site, bundle), 255)
+
+    assert result.ok and result.candidate is not None
+    assert result.candidate.zodiac == "蛇"
+
+
 def test_gongche_bottom_uses_the_last_annual_record_cycle() -> None:
     site = SiteConfig(
         "宫车晏驾",
