@@ -3511,15 +3511,6 @@
     "source_policy": "http_documents"
   },
   {
-    "name": "王木木儿涂涂",
-    "pick": "bottom",
-    "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/202661",
-    "section": "新增的站点",
-    "parser_id": "special.user_forum_post",
-    "source_policy": "api_then_http",
-    "api_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/202661/forums?per_page=20"
-  },
-  {
     "name": "暴躁骨衬",
     "pick": "top",
     "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/46320",
@@ -3770,22 +3761,6 @@
     "source_policy": "http_documents"
   },
   {
-    "name": "燕语莺声",
-    "pick": "bottom",
-    "url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
-    "section": "新增的站点",
-    "parser_id": "regex.86a7042b2c5a",
-    "source_policy": "http_documents"
-  },
-  {
-    "name": "南柯故人",
-    "pick": "bottom",
-    "url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
-    "section": "新增的站点",
-    "parser_id": "regex.86a7042b2c5a",
-    "source_policy": "http_documents"
-  },
-  {
     "name": "福星精品",
     "pick": "bottom",
     "url": "https://12388990827.794555.xyz/bbs/topic.php?id=19332",
@@ -3853,30 +3828,6 @@
     "name": "福星高照",
     "pick": "bottom",
     "url": "https://88888020827.833567.xyz/bbs/topic.php?id=22610",
-    "section": "已有站点",
-    "parser_id": "regex.86a7042b2c5a",
-    "source_policy": "http_documents"
-  },
-  {
-    "name": "大放光彩",
-    "pick": "bottom",
-    "url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
-    "section": "已有站点",
-    "parser_id": "regex.86a7042b2c5a",
-    "source_policy": "http_documents"
-  },
-  {
-    "name": "汪洋大海",
-    "pick": "bottom",
-    "url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
-    "section": "已有站点",
-    "parser_id": "regex.86a7042b2c5a",
-    "source_policy": "http_documents"
-  },
-  {
-    "name": "华夏九州",
-    "pick": "bottom",
-    "url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
     "section": "已有站点",
     "parser_id": "regex.86a7042b2c5a",
     "source_policy": "http_documents"
@@ -3962,14 +3913,6 @@
     "source_policy": "http_documents"
   },
   {
-    "name": "绝杀一合",
-    "pick": "bottom",
-    "url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
-    "section": "已有站点",
-    "parser_id": "regex.86a7042b2c5a",
-    "source_policy": "http_documents"
-  },
-  {
     "name": "三十六计",
     "pick": "bottom",
     "url": "https://nthgdg.tqfft-smgnt-xtacyn.xyz:29488/article/lottery/6a1cf5ca0b8d229707caac4c?url=dym",
@@ -3998,14 +3941,6 @@
     "name": "东彩破庄",
     "pick": "bottom",
     "url": "https://12388990827.688756.xyz/bbs/topic.php?id=18484",
-    "section": "已有站点",
-    "parser_id": "regex.86a7042b2c5a",
-    "source_policy": "http_documents"
-  },
-  {
-    "name": "福禄双全",
-    "pick": "bottom",
-    "url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
     "section": "已有站点",
     "parser_id": "regex.86a7042b2c5a",
     "source_policy": "http_documents"
@@ -4499,5 +4434,14 @@
     "section": "已有站点",
     "parser_id": "family.strict_article",
     "source_policy": "http_documents"
+  },
+  {
+    "name": "草莓菇凉",
+    "pick": "top",
+    "url": "https://www.jx438.com/index.php?fid=3",
+    "section": "新增的站点",
+    "parser_id": "special.jx438_strawberry_stats",
+    "source_policy": "http_named_stat_article",
+    "article_keyword": "草莓菇凉"
   }
 ]

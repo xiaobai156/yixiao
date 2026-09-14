@@ -120,6 +120,87 @@
       "source_policy": "http_then_browser",
       "archived_at": "2026-09-05",
       "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "大放光彩",
+      "pick": "bottom",
+      "url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+      "section": "已有站点",
+      "parser_id": "regex.86a7042b2c5a",
+      "source_policy": "http_documents",
+      "archived_at": "2026-09-12",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "汪洋大海",
+      "pick": "bottom",
+      "url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+      "section": "已有站点",
+      "parser_id": "regex.86a7042b2c5a",
+      "source_policy": "http_documents",
+      "archived_at": "2026-09-12",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "华夏九州",
+      "pick": "bottom",
+      "url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+      "section": "已有站点",
+      "parser_id": "regex.86a7042b2c5a",
+      "source_policy": "http_documents",
+      "archived_at": "2026-09-12",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "绝杀一合",
+      "pick": "bottom",
+      "url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+      "section": "已有站点",
+      "parser_id": "regex.86a7042b2c5a",
+      "source_policy": "http_documents",
+      "archived_at": "2026-09-12",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "福禄双全",
+      "pick": "bottom",
+      "url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+      "section": "已有站点",
+      "parser_id": "regex.86a7042b2c5a",
+      "source_policy": "http_documents",
+      "archived_at": "2026-09-12",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "王木木儿涂涂",
+      "pick": "bottom",
+      "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/202661",
+      "section": "新增的站点",
+      "parser_id": "special.user_forum_post",
+      "source_policy": "api_then_http",
+      "api_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/202661/forums?per_page=20",
+      "archived_at": "2026-09-14",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "燕语莺声",
+      "pick": "bottom",
+      "url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+      "section": "新增的站点",
+      "parser_id": "regex.86a7042b2c5a",
+      "source_policy": "http_documents",
+      "archived_at": "2026-09-14",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "南柯故人",
+      "pick": "bottom",
+      "url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+      "section": "新增的站点",
+      "parser_id": "regex.86a7042b2c5a",
+      "source_policy": "http_documents",
+      "archived_at": "2026-09-14",
+      "archive_reason": "用户明确要求封存，不再抓取"
     }
   ],
   "cache_entries": [
@@ -1388,6 +1469,999 @@
           229
         ]
       }
+    },
+    {
+      "name": "大放光彩",
+      "pick": "bottom",
+      "url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+      "section": "已有站点",
+      "error": "专属解析未命中指定 255期，禁止回落通用解析",
+      "records": [
+        {
+          "period": 251,
+          "zodiac": "猪"
+        },
+        {
+          "period": 250,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 249,
+          "zodiac": "猪"
+        },
+        {
+          "period": 248,
+          "zodiac": "猴"
+        },
+        {
+          "period": 247,
+          "zodiac": "兔"
+        },
+        {
+          "period": 246,
+          "zodiac": "猴"
+        },
+        {
+          "period": 245,
+          "zodiac": "狗"
+        },
+        {
+          "period": 243,
+          "zodiac": "虎"
+        },
+        {
+          "period": 242,
+          "zodiac": "牛"
+        },
+        {
+          "period": 241,
+          "zodiac": "猪"
+        }
+      ],
+      "fingerprint": "猪鸡猪猴兔猴狗虎牛猪",
+      "record_provenance": {
+        "241": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "evidence_sha256": "da0141f62e8b93e68e3bf1bef225c79f08f9410b5bbc21804f8e4aeaaa44a8a1"
+        },
+        "242": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "evidence_sha256": "6b44bc231b46a85b61b49a5332ec0b6e547b1bc2f2b0f8a786a63b49138f7eda"
+        },
+        "243": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "evidence_sha256": "e0a55c348a5df86c8fb7bd0ddf0f52245967dad62375cd2276e81ce97c291155"
+        },
+        "245": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "evidence_sha256": "1f07974646a4bf756bbb111bd9625fd8bb53c75cefae19460f7c839813f3648f"
+        },
+        "246": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "evidence_sha256": "214a7b4c8e371ff6155b259d85d712cab624725303617d0733537172747731cf"
+        },
+        "247": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "evidence_sha256": "ef02e3b69e1c399852a15ab7134ab7df5c134c3a0956ff1b6f34ac2354913d3b"
+        },
+        "248": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "evidence_sha256": "05d462450bd57c78d392c8c44bc6cd494fdd27562facdbcb6768aa482c2dbd0b"
+        },
+        "249": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "evidence_sha256": "daf7bc7a37a5078b8499cbefdb4cd0aab322fc5c84b0ee4036ae4ff2283a9ccb"
+        },
+        "250": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "evidence_sha256": "3000f3093cc688622e729001a3b7dd43b5986b182d63dea699bda269be0a20bc"
+        },
+        "251": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20219",
+          "evidence_sha256": "65572a06ecbe9d30786c84aa11118d315299e82b1bc7a2b6a03512730e39d896"
+        }
+      },
+      "onboarding_exception": {
+        "target_period": 238,
+        "exception": "用户批准连续3至5期疑似重复特例",
+        "validated_periods": [
+          238,
+          237,
+          236,
+          235,
+          234,
+          233,
+          232,
+          231,
+          230,
+          229
+        ]
+      },
+      "archived_at": "2026-09-12",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "汪洋大海",
+      "pick": "bottom",
+      "url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+      "section": "已有站点",
+      "error": "专属解析未命中指定 255期，禁止回落通用解析",
+      "records": [
+        {
+          "period": 251,
+          "zodiac": "虎"
+        },
+        {
+          "period": 250,
+          "zodiac": "羊"
+        },
+        {
+          "period": 249,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 248,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 247,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 246,
+          "zodiac": "狗"
+        },
+        {
+          "period": 245,
+          "zodiac": "马"
+        },
+        {
+          "period": 243,
+          "zodiac": "虎"
+        },
+        {
+          "period": 242,
+          "zodiac": "龙"
+        },
+        {
+          "period": 241,
+          "zodiac": "猪"
+        }
+      ],
+      "fingerprint": "虎羊蛇鼠鸡狗马虎龙猪",
+      "record_provenance": {
+        "241": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "evidence_sha256": "794b12db1437f4274f6969b1d90314e6e5500ac0a0f3c68e6e3d5faf2876a1ed"
+        },
+        "242": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "evidence_sha256": "dea89583ced4cfc3696ae17428e88fd0b602c123206ea769f321b237f28551bd"
+        },
+        "243": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "evidence_sha256": "30f997deac600bc37f3c5064fa58859b16cbb52c1513243e2829a0e460fe48bd"
+        },
+        "245": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "evidence_sha256": "7812ce90a4defe11c94f76ce2334f2946f71075fc2265c9234f5c56c2424cbb1"
+        },
+        "246": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "evidence_sha256": "f5b486b648e243d166881584a18143387d35ed6bbecdda22d4e52f4a92a24555"
+        },
+        "247": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "evidence_sha256": "a75e6192ecaa261e1b9a29c653b1ab24637b4db8c13a1aa1fa750c44bd07789d"
+        },
+        "248": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "evidence_sha256": "ee116bedb53c7d5b17c924988a1f1c8abd68f41ed37f11a6389ef9b3bb1f25a4"
+        },
+        "249": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "evidence_sha256": "99ee0f193d630449749131cea871b43ed05f9baf0ff394e7d9c27bd9d1aeaf0e"
+        },
+        "250": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "evidence_sha256": "45c1e2ce1d28de23175e31ab7355f0f5a30bb094b36e3b19a777a5305f06cc7e"
+        },
+        "251": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=20217",
+          "evidence_sha256": "be2dc531fb0774d259e50f85cdfc9ed8e6384be395734e5fe4dd6976cf804091"
+        }
+      },
+      "onboarding_exception": {
+        "target_period": 238,
+        "exception": "用户批准连续3至5期疑似重复特例",
+        "validated_periods": [
+          238,
+          237,
+          236,
+          235,
+          234,
+          233,
+          232,
+          231,
+          230,
+          229
+        ]
+      },
+      "archived_at": "2026-09-12",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "华夏九州",
+      "pick": "bottom",
+      "url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+      "section": "已有站点",
+      "error": "专属解析未命中指定 255期，禁止回落通用解析",
+      "records": [
+        {
+          "period": 251,
+          "zodiac": "马"
+        },
+        {
+          "period": 250,
+          "zodiac": "羊"
+        },
+        {
+          "period": 249,
+          "zodiac": "羊"
+        },
+        {
+          "period": 248,
+          "zodiac": "羊"
+        },
+        {
+          "period": 247,
+          "zodiac": "牛"
+        },
+        {
+          "period": 246,
+          "zodiac": "虎"
+        },
+        {
+          "period": 245,
+          "zodiac": "兔"
+        },
+        {
+          "period": 243,
+          "zodiac": "牛"
+        },
+        {
+          "period": 242,
+          "zodiac": "龙"
+        },
+        {
+          "period": 241,
+          "zodiac": "猪"
+        }
+      ],
+      "fingerprint": "马羊羊羊牛虎兔牛龙猪",
+      "record_provenance": {
+        "241": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "evidence_sha256": "44b4ad6e28dd639f6503b41cf13b1f440fe06e8ca973b0e42e4757d2ec955f3c"
+        },
+        "242": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "evidence_sha256": "2c454a56eb844a8bb4b672b4fa9cf45014e79b3b17a90e141d07ab6273dec828"
+        },
+        "243": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "evidence_sha256": "ee9ad89f1b74793f00f20791b1345edcc055798b939b987ce868d6b0ba1db80b"
+        },
+        "245": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "evidence_sha256": "5f2912ce0e3075de3c8ceb4c77be6318e212638cf9cf134c2605e6bc9f1ed0d0"
+        },
+        "246": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "evidence_sha256": "f84a7a8a810ce9b9542263cdd3d675a7d9839abdd3f67b2822aceda4240087b7"
+        },
+        "247": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "evidence_sha256": "138500d88da2a8d94fe5e1429e56b4f9d636aa0e45430a90dc860c1aafa71883"
+        },
+        "248": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "evidence_sha256": "a9c57a39e75197e1fdb580f7e3033dd483bee7ccc0bc6a0de7963c84ea94efb2"
+        },
+        "249": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "evidence_sha256": "c66a982cb42a9bbc712f97ad6fdd10daeb6033b7a151395a7ab753f8bfea65ef"
+        },
+        "250": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "evidence_sha256": "dbe7edd761fb04338793d531f4c72ec6b3db920da640290c8294239b2f6f139f"
+        },
+        "251": {
+          "validation_status": "validated",
+          "source_id": "html:https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "source_url": "https://88888020827.897657.xyz/bbs/topic.php?id=18555",
+          "evidence_sha256": "871e9984d858bf480d366a96a80b825a597260ae43c3ab74cdaa79eefdffd34b"
+        }
+      },
+      "onboarding_exception": {
+        "target_period": 238,
+        "exception": "用户批准连续3至5期疑似重复特例",
+        "validated_periods": [
+          238,
+          237,
+          236,
+          235,
+          234,
+          233,
+          232,
+          231,
+          230,
+          229
+        ]
+      },
+      "archived_at": "2026-09-12",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "绝杀一合",
+      "pick": "bottom",
+      "url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+      "section": "已有站点",
+      "error": "专属解析未命中指定 255期，禁止回落通用解析",
+      "records": [
+        {
+          "period": 251,
+          "zodiac": "牛"
+        },
+        {
+          "period": 250,
+          "zodiac": "猪"
+        },
+        {
+          "period": 249,
+          "zodiac": "龙"
+        },
+        {
+          "period": 248,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 247,
+          "zodiac": "马"
+        },
+        {
+          "period": 246,
+          "zodiac": "羊"
+        },
+        {
+          "period": 245,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 243,
+          "zodiac": "羊"
+        },
+        {
+          "period": 242,
+          "zodiac": "牛"
+        },
+        {
+          "period": 241,
+          "zodiac": "鸡"
+        }
+      ],
+      "fingerprint": "牛猪龙蛇马羊鸡羊牛鸡",
+      "record_provenance": {
+        "241": {
+          "validation_status": "validated",
+          "source_id": "html:https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "source_url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "evidence_sha256": "04e04b876a09c53e3ff38a91b8a581d9b841a6964da8f2ee9d84b3c4409a65fb"
+        },
+        "242": {
+          "validation_status": "validated",
+          "source_id": "html:https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "source_url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "evidence_sha256": "9d08ce0e81b245dad3d5aa8b2546ccfcd1354b09a693461c8ba7ca9f3b9df424"
+        },
+        "243": {
+          "validation_status": "validated",
+          "source_id": "html:https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "source_url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "evidence_sha256": "743e9149470ec9f5688bf2fe21647787864327fe9fde35f5e2946342de6d0a5b"
+        },
+        "245": {
+          "validation_status": "validated",
+          "source_id": "html:https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "source_url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "evidence_sha256": "ca0ca67c099b7189d1448ccf123c681729d464537a445716dc2324da43db25dc"
+        },
+        "246": {
+          "validation_status": "validated",
+          "source_id": "html:https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "source_url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "evidence_sha256": "7032e8aaf8c6eef59b79be8267a61bc0b3596e7b805885ea0df73ed3d1926482"
+        },
+        "247": {
+          "validation_status": "validated",
+          "source_id": "html:https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "source_url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "evidence_sha256": "d801bbcd8ab8af057763ef72c843f4eae123745a88b65ab82f60d08fb60a9076"
+        },
+        "248": {
+          "validation_status": "validated",
+          "source_id": "html:https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "source_url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "evidence_sha256": "8b0eb7ff60cbdf4603c5847e37e4669e4e9a8842d42c79df0da09710e7dd1ee1"
+        },
+        "249": {
+          "validation_status": "validated",
+          "source_id": "html:https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "source_url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "evidence_sha256": "e92e045334a7cd88f06019d1781cd8daedffd09b10e431432267d1cf132e6f5c"
+        },
+        "250": {
+          "validation_status": "validated",
+          "source_id": "html:https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "source_url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "evidence_sha256": "7cf2cbadf7f2180a7f5661b9b4406486a57015a5f5d01e94c877dd758cdb2b44"
+        },
+        "251": {
+          "validation_status": "validated",
+          "source_id": "html:https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "source_url": "https://i97lk4jb16.333741bbs1.shop/bbs/topic.php?id=2416",
+          "evidence_sha256": "70ba4ba58bdbf65cb4fc7f22c4cf6be9af3c57378ec3372e6f47482fc829bfc8"
+        }
+      },
+      "onboarding_exception": {
+        "target_period": 240,
+        "exception": "用户批准连续3至5期疑似重复特例",
+        "validated_periods": [
+          240,
+          239,
+          238,
+          237,
+          236,
+          235,
+          234,
+          233,
+          232,
+          231
+        ]
+      },
+      "archived_at": "2026-09-12",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "福禄双全",
+      "pick": "bottom",
+      "url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+      "section": "已有站点",
+      "error": "专属解析未命中指定 255期，禁止回落通用解析",
+      "records": [
+        {
+          "period": 248,
+          "zodiac": "羊"
+        },
+        {
+          "period": 247,
+          "zodiac": "牛"
+        },
+        {
+          "period": 246,
+          "zodiac": "狗"
+        },
+        {
+          "period": 245,
+          "zodiac": "猴"
+        },
+        {
+          "period": 243,
+          "zodiac": "狗"
+        },
+        {
+          "period": 242,
+          "zodiac": "龙"
+        },
+        {
+          "period": 241,
+          "zodiac": "羊"
+        },
+        {
+          "period": 240,
+          "zodiac": "兔"
+        },
+        {
+          "period": 239,
+          "zodiac": "牛"
+        },
+        {
+          "period": 238,
+          "zodiac": "牛"
+        }
+      ],
+      "fingerprint": "羊牛狗猴狗龙羊兔牛牛",
+      "record_provenance": {
+        "240": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "source_url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "evidence_sha256": "df127af6946fab456562d4285daa5873956e0319833bb1c28e2f56851730e1bc"
+        },
+        "239": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "source_url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "evidence_sha256": "bedfdb80d086771c5eb5e51260a9e65a7047b24641a807a128483739feb27ed2"
+        },
+        "238": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "source_url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "evidence_sha256": "a91f8d60af6d034719182b5d1efc4575bc78a427d0a744e3cf39941e4c62da7b"
+        },
+        "241": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "source_url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "evidence_sha256": "96917208c7caf92b5da6d46d645fa5b943235837c35c5f3abd2d2bfab34bb472"
+        },
+        "242": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "source_url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "evidence_sha256": "224cc18a27d2e28da16907c2228226425bcdb74224a60ad7b511b9990b80b255"
+        },
+        "243": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "source_url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "evidence_sha256": "d069f17bc528259e8c64eb159eb662e36536613f385eb07b82426fb1e850d616"
+        },
+        "245": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "source_url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "evidence_sha256": "cc2e21ba2eddc555ba2eb9fdb6d3d2cd5f7b84dc9dd32cf93b3b29493e71e1f2"
+        },
+        "246": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "source_url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "evidence_sha256": "fad4457ca01f500fc62d017b240323f43189029786c285fb33dfef03dc17911b"
+        },
+        "247": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "source_url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "evidence_sha256": "d1331a08f6f6514c552a8ab2fb57d923328803d89aea117e56b6991e5e15edcd"
+        },
+        "248": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "source_url": "https://0130190827.767566.xyz/bbs/topic.php?id=31440",
+          "evidence_sha256": "00fb6e64e76cf8680eced147832d4452a9cb70cd5b0a49039abd308767253899"
+        }
+      },
+      "onboarding_exception": {
+        "target_period": 240,
+        "exception": "用户批准连续3至5期疑似重复特例",
+        "validated_periods": [
+          240,
+          239,
+          238,
+          237,
+          236,
+          235,
+          234,
+          233,
+          232,
+          231
+        ]
+      },
+      "archived_at": "2026-09-12",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "王木木儿涂涂",
+      "pick": "bottom",
+      "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/202661",
+      "section": "新增的站点",
+      "error": "用户 202661 的接口未找到指定 257期帖子",
+      "records": [
+        {
+          "period": 241,
+          "zodiac": "羊"
+        },
+        {
+          "period": 240,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 239,
+          "zodiac": "羊"
+        },
+        {
+          "period": 238,
+          "zodiac": "龙"
+        },
+        {
+          "period": 236,
+          "zodiac": "羊"
+        },
+        {
+          "period": 235,
+          "zodiac": "猪"
+        }
+      ],
+      "fingerprint": "羊鸡羊龙羊猪",
+      "record_provenance": {
+        "235": {
+          "validation_status": "validated",
+          "source_id": "user:202661:record:15868778",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/202661/forums?per_page=20",
+          "evidence_sha256": "be2cec024ec47ec13a4c4f8d01f60704382d97122fa5aa739360b482994e12b1",
+          "record_id": "15868778"
+        },
+        "236": {
+          "validation_status": "validated",
+          "source_id": "user:202661:record:15876135",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/202661/forums?per_page=20",
+          "evidence_sha256": "f59e6323888c6a2eb0669d022523ec330af311db76425e2a1a98053412f57626",
+          "record_id": "15876135"
+        },
+        "238": {
+          "validation_status": "validated",
+          "source_id": "user:202661:record:15885797",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/202661/forums?per_page=20",
+          "evidence_sha256": "00007df5e6d4e8b3c1f3aa6a0f192367c55242567b8da8d84a0ea0fb29768b6b",
+          "record_id": "15885797"
+        },
+        "239": {
+          "validation_status": "validated",
+          "source_id": "user:202661:record:15893570",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/202661/forums?per_page=20",
+          "evidence_sha256": "2d24e52ac46807b8a55e128eda675293ad46bfe7829807fa45fa2d8421bb8a3f",
+          "record_id": "15893570"
+        },
+        "240": {
+          "validation_status": "validated",
+          "source_id": "user:202661:record:15898797",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/202661/forums?per_page=20",
+          "evidence_sha256": "57c5c8eab85e493d28fbc27ffed243bd75b5abb454b55a3e9fc5aa7bad5ecba2",
+          "record_id": "15898797"
+        },
+        "241": {
+          "validation_status": "validated",
+          "source_id": "user:202661:record:15906549",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/202661/forums?per_page=20",
+          "evidence_sha256": "0dd6ce7118acde6656edd5ecc7d44cdb6bb77159d7f0ec5ac53a372cb2674c14",
+          "record_id": "15906549"
+        }
+      },
+      "archived_at": "2026-09-14",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "燕语莺声",
+      "pick": "bottom",
+      "url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+      "section": "新增的站点",
+      "error": "专属解析未命中指定 257期，禁止回落通用解析",
+      "records": [
+        {
+          "period": 256,
+          "zodiac": "马"
+        },
+        {
+          "period": 255,
+          "zodiac": "猪"
+        },
+        {
+          "period": 254,
+          "zodiac": "兔"
+        },
+        {
+          "period": 251,
+          "zodiac": "兔"
+        },
+        {
+          "period": 250,
+          "zodiac": "羊"
+        },
+        {
+          "period": 249,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 248,
+          "zodiac": "马"
+        },
+        {
+          "period": 247,
+          "zodiac": "虎"
+        },
+        {
+          "period": 246,
+          "zodiac": "猪"
+        },
+        {
+          "period": 245,
+          "zodiac": "猴"
+        }
+      ],
+      "fingerprint": "马猪兔兔羊鸡马虎猪猴",
+      "record_provenance": {
+        "245": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "evidence_sha256": "656b270a6635f2f7aa5164937f2cb498034db57acd2b59023fff6a00e1cc3cca"
+        },
+        "246": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "evidence_sha256": "7e59314ae9c98c5a84fcf4ea4a0c419ca105282efc29b53d1d5bc56bb02df651"
+        },
+        "247": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "evidence_sha256": "9adbc7ffa817f8712d853e4ca53e75bbb13a2ef952f43a59f3592a8a389bcac7"
+        },
+        "248": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "evidence_sha256": "2501e67d7fe134e9491aa41945c4b0d1a0cd8c6833feeefb52ba5d9e46d5ac9d"
+        },
+        "249": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "evidence_sha256": "dda54963a9c897f0d90055dd26d876264d44a3f394aba7e95d923162daf61dea"
+        },
+        "250": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "evidence_sha256": "33c66cc4e3b92f4c80bf756fd329d844f750a9572fb49ae36d4cc8669b225efa"
+        },
+        "251": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "evidence_sha256": "f00187c9954ac3d8ccf09e1629d089d61881a0a09056433485d572b6ab03ee5f"
+        },
+        "254": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "evidence_sha256": "501d64c7f64e00510659f983a9ed196e6480117569d38b1f97a4d347930c5933",
+          "record_id": "18592"
+        },
+        "255": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "evidence_sha256": "7e28674502f3684cd44c09f8e935c1679eb2595081ebac6a5aa51cf5146f2a75",
+          "record_id": "18592"
+        },
+        "256": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18592",
+          "evidence_sha256": "3a6bfe131cf6b0c401c22cdbe795cd936036c358f0d3e98135776d970058ae61",
+          "record_id": "18592"
+        }
+      },
+      "onboarding_exception": {
+        "target_period": 238,
+        "exception": "用户批准连续3至5期疑似重复特例",
+        "validated_periods": [
+          238,
+          237,
+          236,
+          235,
+          234,
+          233,
+          232,
+          231,
+          230,
+          229
+        ]
+      },
+      "archived_at": "2026-09-14",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "南柯故人",
+      "pick": "bottom",
+      "url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+      "section": "新增的站点",
+      "error": "专属解析未命中指定 257期，禁止回落通用解析",
+      "records": [
+        {
+          "period": 251,
+          "zodiac": "牛"
+        },
+        {
+          "period": 250,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 249,
+          "zodiac": "龙"
+        },
+        {
+          "period": 248,
+          "zodiac": "猪"
+        },
+        {
+          "period": 247,
+          "zodiac": "虎"
+        },
+        {
+          "period": 246,
+          "zodiac": "狗"
+        },
+        {
+          "period": 245,
+          "zodiac": "狗"
+        },
+        {
+          "period": 243,
+          "zodiac": "羊"
+        },
+        {
+          "period": 242,
+          "zodiac": "兔"
+        },
+        {
+          "period": 241,
+          "zodiac": "羊"
+        }
+      ],
+      "fingerprint": "牛蛇龙猪虎狗狗羊兔羊",
+      "record_provenance": {
+        "241": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "evidence_sha256": "f38fccb891585f5185823128604cd4d2d0c9917ba2ad0a8bb34dadf78d61a8d0"
+        },
+        "242": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "evidence_sha256": "9f42236bbf9e9fce2fa906bae7e792d48a493c533ec582659310b06d32837953"
+        },
+        "243": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "evidence_sha256": "82f050f829d69909c8a054659a2d0a5ca95fc43193c668ee8b4dbf9e83a04e0f"
+        },
+        "245": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "evidence_sha256": "c04c89026b4628b2fe8ebd4a03be91114fcf34deff129f7a4c305edf3e3fa891"
+        },
+        "246": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "evidence_sha256": "a44918e5c04299952e4c7577b260442dc741dab741b4831aabef966883489263"
+        },
+        "247": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "evidence_sha256": "5b82909e42538ebdd281ee0e7da9297f406826233b6967fe9f9a66d6834f2fc7"
+        },
+        "248": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "evidence_sha256": "a594eb65117bf356b972b5e24df01149cf54b8e4f047d4d10d2b522969be1ecc"
+        },
+        "249": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "evidence_sha256": "746b9f3757581a226875eba762f032178610f41fd2e496853c661d9e8d9875c1"
+        },
+        "250": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "evidence_sha256": "93efd1b1e88c22287c8cab35e16ddce0857c670ece59848dfc3816e596bf3918"
+        },
+        "251": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "source_url": "https://0130190827.456732.xyz/bbs/topic.php?id=18510",
+          "evidence_sha256": "cce22b0f1c7ccfffcf965452ce02797b8309858d731fc7690d0757913bd2eb0e"
+        }
+      },
+      "onboarding_exception": {
+        "target_period": 238,
+        "exception": "用户批准连续3至5期疑似重复特例",
+        "validated_periods": [
+          238,
+          237,
+          236,
+          235,
+          234,
+          233,
+          232,
+          231,
+          230,
+          229
+        ]
+      },
+      "archived_at": "2026-09-14",
+      "archive_reason": "用户明确要求封存，不再抓取"
     }
   ]
 }
