@@ -2746,6 +2746,82 @@ class GuangdongTitleAuthorCycleParser:
         return tuple(candidates)
 
 
+class Jx438StrawberryStatsParser:
+    """Parse 草莓菇凉's 新澳门 stats post and keep the least-hit zodiac."""
+
+    _site_name = "草莓菇凉"
+    _column = "六助上错九肖统计"
+    _heading = re.compile(r"新澳门\s*(\d{2,4})\s*期")
+    _stat = re.compile(r"[〖【\[]\s*(\d{1,3})\s*次[〗】\]]\s*[:：]\s*(.*)")
+    _zodiac = re.compile(r"[鼠牛虎兔龙蛇马羊猴鸡狗猪]")
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if site.name != self._site_name or site.article_keyword != self._site_name:
+            return ()
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            if document.document_type is not DocumentType.HTML:
+                continue
+            lines = document_lines(document)
+            for index, line in enumerate(lines):
+                heading_match = self._heading.search(line.text)
+                if heading_match is None:
+                    continue
+                if index + 1 >= len(lines) or self._column not in lines[index + 1].text:
+                    continue
+                period = int(heading_match.group(1))
+                stats: list[tuple[int, tuple[str, ...], int, str]] = []
+                block_end = len(lines)
+                for scan in range(index + 2, len(lines)):
+                    text = lines[scan].text
+                    if "新澳门" in text or "旧澳门" in text or "🍓🍓🍓" in text:
+                        block_end = scan
+                        break
+                    stat_match = self._stat.search(text)
+                    if stat_match is not None:
+                        stats.append(
+                            (
+                                int(stat_match.group(1)),
+                                tuple(self._zodiac.findall(stat_match.group(2))),
+                                scan,
+                                text,
+                            )
+                        )
+                if not stats:
+                    continue
+                minimum = min(item[0] for item in stats)
+                top = [
+                    (zodiac, scan, text)
+                    for count, zodiacs, scan, text in stats
+                    if count == minimum
+                    for zodiac in zodiacs
+                ]
+                if len(top) != 1:
+                    continue
+                zodiac, stat_index, stat_text = top[0]
+                candidates.append(
+                    Candidate(
+                        period,
+                        zodiac,
+                        normalize_space(stat_text),
+                        document.source_id,
+                        document.page_order * 1_000_000 + stat_index,
+                        (
+                            f"title-text:{normalize_space(line.text)}",
+                            f"title-period:{period}",
+                            f"title-line:{index}",
+                            f"section-range:{index}-{block_end}",
+                            f"record-offset:{stat_text.index(zodiac)}",
+                            f"stat-count:{minimum}",
+                            "field:上错九肖统计",
+                        ),
+                        record_id=document.record_id,
+                    )
+                )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
 def parser_entries() -> tuple[tuple[str, Parser], ...]:
     entries: list[tuple[str, Parser]] = [
         (
@@ -2799,6 +2875,7 @@ def parser_entries() -> tuple[tuple[str, Parser], ...]:
             ("special.sanguai_period_section", SanguaiPeriodSectionParser()),
             ("special.user_forum_post", UserForumPostParser()),
             ("special.tiankong_shujinguang", TiankongShujinguangParser()),
+            ("special.jx438_strawberry_stats", Jx438StrawberryStatsParser()),
             (
                 "special.feng_named_home",
                 RegexFamilyParser(

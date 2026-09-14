@@ -43,6 +43,7 @@ from zodiac_v2.source.browser import BrowserRenderer, PlaywrightBrowserRenderer,
 from zodiac_v2.source.documents import (
     collect_content_documents,
     discover_content_documents,
+    discover_named_stat_links,
     discover_named_topic_documents,
     discover_period_keyword_links,
     discover_period_page_links,
@@ -76,6 +77,10 @@ class SourceGateway(Protocol):
     def embedded(self, site: SiteConfig, bundle: SourceBundle, timeout: float) -> SourceBundle: ...
 
     def named_topic(self, site: SiteConfig, bundle: SourceBundle, timeout: float) -> SourceBundle: ...
+
+    def named_stat_article(
+        self, site: SiteConfig, bundle: SourceBundle, target_period: int, timeout: float
+    ) -> SourceBundle: ...
 
     def period_keyword_article(
         self, site: SiteConfig, bundle: SourceBundle, target_period: int, timeout: float
@@ -244,6 +249,50 @@ class DefaultSourceGateway:
                 f"scan_complete:{int(scan_complete)}",
             ),
             scan_complete=scan_complete,
+        )
+
+    def named_stat_article(
+        self, site: SiteConfig, bundle: SourceBundle, target_period: int, timeout: float
+    ) -> SourceBundle:
+        if not site.article_keyword:
+            raise SourceFetchError(
+                SourceFetchCode.SOURCE_IDENTITY,
+                "缺少统计作者关键字",
+                url=site.url,
+            )
+        if not bundle.documents:
+            raise SourceFetchError(
+                SourceFetchCode.SOURCE_IDENTITY,
+                "统计入口缺少首页文档",
+                url=site.url,
+            )
+        home = bundle.documents[0]
+        unique = tuple(dict.fromkeys(discover_named_stat_links(home.text, home.final_url, site.article_keyword)))
+        if len(unique) != 1:
+            raise SourceFetchError(
+                SourceFetchCode.SOURCE_IDENTITY,
+                f"首页 {site.article_keyword!r} 的上错统计链接命中 {len(unique)} 个",
+                url=site.url,
+            )
+        period, detail_url = unique[0]
+        if period != target_period:
+            raise SourceFetchError(
+                SourceFetchCode.SOURCE_IDENTITY,
+                f"首页统计行期数 {period} 不等于目标 {target_period}期",
+                url=site.url,
+            )
+        detail = fetch_http_document(
+            self.transport,
+            detail_url,
+            timeout=timeout,
+            identity_url=detail_url,
+            source_id=f"named-stat:{detail_url}",
+            page_order=1,
+        )
+        return SourceBundle(
+            (home, detail),
+            (f"named-stat:200:{period}", "scan_complete:1"),
+            scan_complete=True,
         )
 
     def period_keyword_article(self, site, bundle, target_period, timeout):
@@ -616,6 +665,7 @@ class ScrapeService:
             "http_documents",
             "http_named_topic",
             "http_period_keyword_article",
+            "http_named_stat_article",
             "http_then_browser",
         }:
             return self.gateway.http(site, timeout)
@@ -732,6 +782,8 @@ class ScrapeService:
             bundle = self._fetch(site, remaining())
             if site.source_policy == "http_period_keyword_article":
                 bundle = self.gateway.period_keyword_article(site, bundle, target_period, remaining())
+            if site.source_policy == "http_named_stat_article":
+                bundle = self.gateway.named_stat_article(site, bundle, target_period, remaining())
             if (
                 site.source_policy == "api_then_http"
                 and article_urls

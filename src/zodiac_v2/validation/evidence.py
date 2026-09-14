@@ -249,6 +249,57 @@ def _dynamic_record_matches(document_text: str, candidate: Candidate) -> bool:
     return False
 
 
+def _verified_title_period(
+    candidate: Candidate,
+    lines: tuple[str, ...],
+    local_position: int,
+) -> bool:
+    """True when a verified title-period/title-line pair proves the period.
+
+    The title line is content-checked against the source document, the bound
+    value must equal the candidate period, and one declared range must contain
+    both the title line and the candidate position (same proven data block).
+    """
+    title_indexes: list[int] = []
+    for evidence in candidate.evidence:
+        if not evidence.startswith("title-line:"):
+            continue
+        value = evidence.partition(":")[2].strip()
+        if not value.isdigit():
+            return False
+        index = int(value)
+        if not 0 <= index < len(lines):
+            return False
+        title_indexes.append(index)
+    if not title_indexes:
+        return False
+    bound = False
+    for evidence in candidate.evidence:
+        prefix, _, value = evidence.partition(":")
+        if prefix != "title-period" or not value.strip().isdigit():
+            continue
+        if int(value) != candidate.period:
+            continue
+        if any(
+            re.search(rf"(?<!\d)0*{value}\s*期(?!\d)", lines[index]) is not None
+            for index in title_indexes
+        ):
+            bound = True
+    if not bound:
+        return False
+    for evidence in candidate.evidence:
+        prefix, _, value = evidence.partition(":")
+        if prefix not in _RANGE_EVIDENCE_PREFIXES:
+            continue
+        parsed_range = _parse_evidence_range(value, len(lines))
+        if parsed_range is None:
+            continue
+        start, end = parsed_range
+        if any(start <= index < end for index in title_indexes) and start <= local_position < end:
+            return True
+    return False
+
+
 def validate_candidate_evidence(
     candidate: Candidate,
     bundle: SourceBundle,
@@ -287,7 +338,10 @@ def validate_candidate_evidence(
             f"候选页内位置 {local_position} 超出来源文档有效范围 {len(lines)}",
         )
 
-    if re.search(rf"(?<!\d)0*{candidate.period}(?!\d)", candidate.raw_line) is None:
+    if (
+        re.search(rf"(?<!\d)0*{candidate.period}(?!\d)", candidate.raw_line) is None
+        and not _verified_title_period(candidate, lines, local_position)
+    ):
         return ValidationDecision.failure(
             FailureCode.FIELD,
             f"候选原始行不含自身期数 {candidate.period}：{candidate.raw_line}",

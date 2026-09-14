@@ -96,6 +96,8 @@ def _source_group_key(url: str) -> tuple[object, ...]:
 def _validate_policy_fields(site: SiteConfig, label: str) -> None:
     if site.source_policy == "http_period_keyword_article" and site.article_keyword is None:
         raise ConfigError(f"{label}的期数关键字详情策略缺少 article_keyword")
+    if site.source_policy == "http_named_stat_article" and site.article_keyword is None:
+        raise ConfigError(f"{label}的统计作者策略缺少 article_keyword")
     if site.source_policy == "api_then_http" and site.api_url is None:
         raise ConfigError(f"{label}的 api_then_http 策略缺少 api_url")
 

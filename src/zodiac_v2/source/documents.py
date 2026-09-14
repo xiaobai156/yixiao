@@ -399,6 +399,40 @@ def discover_named_topic_documents(
     return tuple(parser.resources)
 
 
+_STAT_LINK_PATTERN = re.compile(
+    r"<a\b[^>]*href\s*=\s*['\"]([^'\"]+)['\"][^>]*>(.*?)</a>",
+    re.IGNORECASE | re.DOTALL,
+)
+_STAT_PERIOD_PATTERN = re.compile(r"(\d{2,4})\s*期上错统计")
+
+
+def discover_named_stat_links(
+    html: str,
+    base_url: str,
+    author: str,
+) -> tuple[tuple[int, str], ...]:
+    """Find forum links titled “N期上错统计” authored by ``author`` in the same row."""
+    source_identity(base_url)
+    if not author.strip():
+        raise ValueError("统计作者关键字不能为空")
+    marker = f"【{author.strip()}】"
+    links: list[tuple[int, str]] = []
+    for match in _STAT_LINK_PATTERN.finditer(html):
+        text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", match.group(2))).strip()
+        period_match = _STAT_PERIOD_PATTERN.search(text)
+        if period_match is None:
+            continue
+        if marker not in html[match.end() : match.end() + 200]:
+            continue
+        url = urljoin(base_url, match.group(1).strip())
+        try:
+            validate_related_url(base_url, url, require_matching_id=False)
+        except SourceIdentityError:
+            continue
+        links.append((int(period_match.group(1)), url))
+    return tuple(links)
+
+
 class _PeriodKeywordLinkParser(HTMLParser):
     def __init__(self, base_url: str, period: int, keyword: str) -> None:
         super().__init__(convert_charrefs=True)

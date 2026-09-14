@@ -24,6 +24,7 @@ SOURCE_POLICIES = frozenset(
         "http_consensus",
         "http_named_topic",
         "http_period_keyword_article",
+        "http_named_stat_article",
         "api_then_http",
         "browser",
         "browser_user",
