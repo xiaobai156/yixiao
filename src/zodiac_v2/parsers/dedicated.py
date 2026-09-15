@@ -30,6 +30,50 @@ class Parser(Protocol):
     def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]: ...
 
 
+class ShenyiUwuDynamicParser:
+    _record_pattern = re.compile(
+        r"^\s*(\d{2,4})\s*期\s*[:：]\s*.*?杀肖杀码.*?[【\[]\s*"
+        r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[＋+]",
+        re.IGNORECASE,
+    )
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            if not document.source_id.startswith("kxusu-html:"):
+                continue
+            lines = document_lines(document)
+            if not any("作者:神医乌乌" in line.text for line in lines):
+                continue
+            author_line = next(index for index, line in enumerate(lines) if "作者:神医乌乌" in line.text)
+            for line_index, line in enumerate(lines):
+                match = self._record_pattern.search(line.text)
+                if match is None:
+                    continue
+                period = int(match.group(1).lstrip("0") or "0")
+                status = "incomplete" if re.search(r"[开開]\s*[:：]?\s*0{2,4}", line.text) else "complete"
+                candidates.append(
+                    Candidate(
+                        period,
+                        match.group(2),
+                        normalize_space(line.text),
+                        document.source_id,
+                        document.page_order * 1_000_000 + line_index,
+                        (
+                            "author:神医乌乌",
+                            f"author-line:{author_line}",
+                            f"block-range:0-{len(lines)}",
+                            "field:杀肖杀码",
+                            f"record-line:{line_index}",
+                            f"record-status:{status}",
+                        ),
+                        record_id=document.record_id,
+                    )
+                )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
 def _document_record_id(document) -> str | None:
     if document.record_id is not None:
         return document.record_id
@@ -2876,6 +2920,7 @@ def parser_entries() -> tuple[tuple[str, Parser], ...]:
             ("special.user_forum_post", UserForumPostParser()),
             ("special.tiankong_shujinguang", TiankongShujinguangParser()),
             ("special.jx438_strawberry_stats", Jx438StrawberryStatsParser()),
+            ("special.shenyi_uwu_dynamic", ShenyiUwuDynamicParser()),
             (
                 "special.feng_named_home",
                 RegexFamilyParser(

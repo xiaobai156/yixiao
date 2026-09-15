@@ -9,7 +9,7 @@ from html import unescape
 from pathlib import Path
 from time import monotonic
 from typing import Protocol
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, urljoin, urlsplit
 
 from zodiac_v2.cache import (
     load_recent_cache_for_commit,
@@ -56,6 +56,7 @@ from zodiac_v2.source.http import (
     SourceFetchCode,
     SourceFetchError,
     default_http_transport,
+    decode_kxusu_dynamic_html,
     fetch_http_document,
 )
 from zodiac_v2.validation.conflicts import _active_candidates, validate_candidates, validate_period_presence
@@ -73,6 +74,8 @@ CONTENT_CDN_ORIGINS = tuple(
 
 class SourceGateway(Protocol):
     def http(self, site: SiteConfig, timeout: float) -> SourceBundle: ...
+
+    def kxusu_dynamic(self, site: SiteConfig, timeout: float) -> SourceBundle: ...
 
     def embedded(self, site: SiteConfig, bundle: SourceBundle, timeout: float) -> SourceBundle: ...
 
@@ -185,6 +188,53 @@ class DefaultSourceGateway:
             resources,
             fetch,
             allowed_origins=CONTENT_CDN_ORIGINS,
+        )
+
+    def kxusu_dynamic(self, site: SiteConfig, timeout: float) -> SourceBundle:
+        shell = self.http(site, timeout)
+        parent = shell.documents[0]
+        script_urls = re.findall(
+            r"<script\b[^>]*\bsrc\s*=\s*['\"]([^'\"]+)['\"]",
+            parent.text,
+            re.IGNORECASE,
+        )
+        script_url = next(
+            (urljoin(parent.final_url, value) for value in script_urls if "/js-" in urlsplit(urljoin(parent.final_url, value)).path),
+            None,
+        )
+        if script_url is None:
+            raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "页面未找到动态正文脚本", url=site.url)
+        deadline = monotonic() + timeout
+        script = fetch_http_document(
+            self.transport,
+            script_url,
+            timeout=_remaining_budget(deadline, timeout, site.url, "动态正文脚本取源总超时"),
+            max_bytes=site.embedded_max_bytes or EMBEDDED_MAX_BYTES,
+            identity_url=script_url,
+            document_type=DocumentType.SCRIPT,
+            source_id=f"kxusu-script:{script_url}",
+            page_order=1,
+        )
+        try:
+            html = decode_kxusu_dynamic_html(
+                script.text,
+                max_bytes=site.embedded_max_bytes or EMBEDDED_MAX_BYTES,
+            )
+        except ValueError as exc:
+            raise SourceFetchError(SourceFetchCode.DECODE, str(exc), url=script_url) from exc
+        dynamic = SourceDocument(
+            html,
+            parent.final_url,
+            DocumentType.HTML,
+            1,
+            f"kxusu-html:{script_url}",
+            1,
+            parent.record_id,
+        )
+        return SourceBundle(
+            (parent, dynamic),
+            (*shell.diagnostics, "kxusu_script:200", "scan_complete:1"),
+            scan_complete=True,
         )
 
     def named_topic(self, site: SiteConfig, bundle: SourceBundle, timeout: float) -> SourceBundle:
@@ -661,6 +711,8 @@ class ScrapeService:
             return self.gateway.browser(site, timeout)
         if site.source_policy == "http_then_browser" and urlsplit(site.url).fragment:
             return self.gateway.browser(site, timeout)
+        if site.source_policy == "http_kxusu_dynamic":
+            return self.gateway.kxusu_dynamic(site, timeout)
         if site.source_policy in {
             "http_documents",
             "http_named_topic",

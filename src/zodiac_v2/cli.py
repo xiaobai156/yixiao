@@ -21,6 +21,7 @@ from zodiac_v2.services.scrape import DEFAULT_SITE_TIMEOUT, DefaultSourceGateway
 SOURCE_POLICIES = frozenset(
     {
         "http_documents",
+        "http_kxusu_dynamic",
         "http_consensus",
         "http_named_topic",
         "http_period_keyword_article",

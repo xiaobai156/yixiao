@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import ast
+import base64
 import gzip
 import io
+import json
 import re
 import ssl
 import threading
 import warnings
+import zlib
 from dataclasses import dataclass
 from http.client import IncompleteRead
 from time import monotonic
@@ -324,3 +328,33 @@ def fetch_http_document(
         page_order,
         final_identity.topic_id or final_identity.article_id,
     )
+
+
+def decode_kxusu_dynamic_html(script: str, *, max_bytes: int = EMBEDDED_MAX_BYTES) -> str:
+    match = re.search(r"var\s+__jGr\s*=\s*('(?:\\\\.|[^'])*')\s*;", script, re.DOTALL)
+    if match is None:
+        raise ValueError("动态脚本缺少 __jGr 数据")
+    try:
+        payload = json.loads(ast.literal_eval(match.group(1)))
+    except (SyntaxError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise ValueError("动态脚本 __jGr 数据无效") from exc
+    parts = payload.get("_v54gOM") if isinstance(payload, dict) else None
+    if not isinstance(parts, list) or not parts:
+        raise ValueError("动态脚本缺少正文片段")
+    output = bytearray()
+    for encoded in parts:
+        if not isinstance(encoded, str):
+            raise ValueError("动态脚本正文片段无效")
+        try:
+            compressed = base64.b64decode(encoded, validate=True)
+            inflater = zlib.decompressobj(-15)
+            output.extend(inflater.decompress(compressed, max_bytes - len(output) + 1))
+            output.extend(inflater.flush())
+        except (ValueError, zlib.error) as exc:
+            raise ValueError("动态脚本正文解压失败") from exc
+        if len(output) > max_bytes:
+            raise ValueError(f"动态脚本正文超过 {max_bytes} 字节")
+    try:
+        return bytes(output).decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("动态脚本正文不是 UTF-8") from exc
