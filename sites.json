@@ -4443,5 +4443,45 @@
     "parser_id": "special.jx438_strawberry_stats",
     "source_policy": "http_named_stat_article",
     "article_keyword": "草莓菇凉"
+  },
+  {
+    "name": "阳东尖哥",
+    "pick": "bottom",
+    "url": "https://www.353583.cc/18hk/27.html",
+    "section": "新增的站点",
+    "parser_id": "regex.86a7042b2c5a",
+    "source_policy": "http_documents"
+  },
+  {
+    "name": "打风村",
+    "pick": "bottom",
+    "url": "https://www.353583.cc/csf/156.html",
+    "section": "新增的站点",
+    "parser_id": "regex.86a7042b2c5a",
+    "source_policy": "http_documents"
+  },
+  {
+    "name": "薄暮知秋",
+    "pick": "bottom",
+    "url": "https://www.356161c.com/18hk/45.html",
+    "section": "新增的站点",
+    "parser_id": "special.thinmu_zhiqiu_missing",
+    "source_policy": "http_documents"
+  },
+  {
+    "name": "潴潴小狭",
+    "pick": "bottom",
+    "url": "https://www.353583.cc/18hk/5.html",
+    "section": "新增的站点",
+    "parser_id": "regex.86a7042b2c5a",
+    "source_policy": "http_documents"
+  },
+  {
+    "name": "神医乌乌",
+    "pick": "bottom",
+    "url": "https://dh81163.2cv5a08j69.cyou/ZdKOZr7CBi.html",
+    "section": "新增的站点",
+    "parser_id": "special.shenyi_uwu_dynamic",
+    "source_policy": "http_kxusu_dynamic"
   }
 ]
