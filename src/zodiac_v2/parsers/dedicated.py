@@ -7,7 +7,7 @@ import re
 from typing import Protocol
 from urllib.parse import urlsplit
 
-from zodiac_v2.contracts import Candidate, Direction, DocumentType, SiteConfig, SourceBundle
+from zodiac_v2.contracts import Candidate, Direction, DocumentType, SiteConfig, SourceBundle, ZODIACS
 from zodiac_v2.parsers.common import (
     TextLine,
     decoded_script_fragments,
@@ -28,6 +28,62 @@ from zodiac_v2.parsers.families import (
 
 class Parser(Protocol):
     def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]: ...
+
+
+class ThinmuZhiqiuMissingParser:
+    _record_pattern = re.compile(
+        r"^\s*(\d{2,4})\s*期\s*[:：]\s*[（(]([^）)]+)[）)]"
+    )
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        candidates: list[Candidate] = []
+        if site.name != "薄暮知秋":
+            return ()
+        for document in bundle.documents:
+            if not (
+                document.source_id.startswith("thinmu-detail:")
+                or document.final_url.rstrip("/") == site.url.rstrip("/")
+            ):
+                continue
+            lines = document_lines(document)
+            title_index = next(
+                (
+                    index
+                    for index, line in enumerate(lines)
+                    if "薄暮知秋" in line.text and "来料11肖" in line.text
+                ),
+                None,
+            )
+            if title_index is None:
+                continue
+            for line_index, line in enumerate(lines):
+                match = self._record_pattern.search(line.text)
+                if match is None:
+                    continue
+                listed = tuple(character for character in match.group(2) if character in ZODIACS)
+                missing = ZODIACS.difference(listed)
+                if len(listed) != 11 or len(set(listed)) != 11 or len(missing) != 1:
+                    continue
+                candidates.append(
+                    Candidate(
+                        int(match.group(1).lstrip("0") or "0"),
+                        next(iter(missing)),
+                        normalize_space(line.text),
+                        document.source_id,
+                        document.page_order * 1_000_000 + line_index,
+                        (
+                            f"title-text:{normalize_space(lines[title_index].text)}",
+                            f"title-line:{title_index}",
+                            f"block-range:0-{len(lines)}",
+                            "field:来料11肖",
+                            "derived:missing-zodiac",
+                            f"record-line:{line_index}",
+                        ),
+                        record_id=document.record_id,
+                    )
+                )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
 
 
 class ShenyiUwuDynamicParser:
@@ -2921,6 +2977,7 @@ def parser_entries() -> tuple[tuple[str, Parser], ...]:
             ("special.tiankong_shujinguang", TiankongShujinguangParser()),
             ("special.jx438_strawberry_stats", Jx438StrawberryStatsParser()),
             ("special.shenyi_uwu_dynamic", ShenyiUwuDynamicParser()),
+            ("special.thinmu_zhiqiu_missing", ThinmuZhiqiuMissingParser()),
             (
                 "special.feng_named_home",
                 RegexFamilyParser(

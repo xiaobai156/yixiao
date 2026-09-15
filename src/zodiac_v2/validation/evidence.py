@@ -6,7 +6,7 @@ import re
 from contextlib import suppress
 from html.parser import HTMLParser
 
-from zodiac_v2.contracts import Candidate, DocumentType, FailureCode, SourceBundle, ValidationDecision
+from zodiac_v2.contracts import Candidate, DocumentType, FailureCode, SourceBundle, ValidationDecision, ZODIACS
 
 _SPACE_PATTERN = re.compile(r"[\s\u3000]+")
 _TRADITIONAL_ZODIACS = str.maketrans({"馬": "马", "雞": "鸡", "豬": "猪", "龍": "龙"})
@@ -249,6 +249,17 @@ def _dynamic_record_matches(document_text: str, candidate: Candidate) -> bool:
     return False
 
 
+def _derived_missing_zodiac_matches(candidate: Candidate) -> bool:
+    if "derived:missing-zodiac" not in candidate.evidence:
+        return False
+    listed_match = re.search(r"[（(]([^）)]+)[）)]", candidate.raw_line)
+    if listed_match is None:
+        return False
+    listed = tuple(character for character in listed_match.group(1) if character in ZODIACS)
+    missing = ZODIACS.difference(listed)
+    return len(listed) == 11 and len(set(listed)) == 11 and len(missing) == 1 and candidate.zodiac in missing
+
+
 def _verified_title_period(
     candidate: Candidate,
     lines: tuple[str, ...],
@@ -346,7 +357,7 @@ def validate_candidate_evidence(
             FailureCode.FIELD,
             f"候选原始行不含自身期数 {candidate.period}：{candidate.raw_line}",
         )
-    if candidate.zodiac not in candidate.raw_line:
+    if candidate.zodiac not in candidate.raw_line and not _derived_missing_zodiac_matches(candidate):
         return ValidationDecision.failure(
             FailureCode.FIELD,
             f"候选原始行不含自身生肖 {candidate.zodiac}：{candidate.raw_line}",
