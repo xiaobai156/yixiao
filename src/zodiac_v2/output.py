@@ -97,10 +97,11 @@ def _success_text(
     return _format_success_rows(rows, section, extra_names=extra_names)
 
 
-def _failure_text(results: Iterable[ScrapeResult], section: SiteSection) -> str:
+def _failure_text(results: Iterable[ScrapeResult], section: SiteSection) -> str | None:
+    """没有失败站点时返回 None：调用方据此删除该失败清单文件，不留「无」占位文件。"""
     failed = [result for result in results if not result.ok and result.site.section is section]
     if not failed:
-        return "无\n"
+        return None
     rows: list[str] = []
     for result in failed:
         label = FAILURE_LABELS[result.failure_code or FailureCode.OTHER]
@@ -189,46 +190,42 @@ def _read_output_text(path: Path) -> str:
         return "无\n"
 
 
-def _success_rows(text: str, separator: str) -> list[tuple[str, str]]:
+# 成功 TXT 的明细区以空行或排行榜表头结束；不再写入「羽墨/红色」分隔标记行。
+# 历史文件里已有的标记行读取时跳过，下次写入即自然消失。
+_LEGACY_SUCCESS_SEPARATORS = frozenset({"羽墨", "红色"})
+_RANKING_HEADER = ("内容", "次数", "排名")
+
+
+def _detail_region_ends(stripped: str) -> bool:
+    return stripped == "生肖次数排行榜" or tuple(stripped.split()) == _RANKING_HEADER
+
+
+def _success_rows(text: str) -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or stripped == separator:
+        if _detail_region_ends(stripped):
             break
+        if not stripped or stripped in _LEGACY_SUCCESS_SEPARATORS:
+            continue
         parts = stripped.split(maxsplit=1)
         if len(parts) == 2 and len(parts[0]) == 1 and parts[0] in ZODIAC_ORDER:
             rows.append((parts[0], parts[1]))
     return rows
 
 
-def _success_extra_names(text: str, separator: str) -> list[str]:
+def _success_extra_names(text: str) -> list[str]:
     extras: list[str] = []
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or stripped == separator:
+        if _detail_region_ends(stripped):
             break
+        if not stripped or stripped in _LEGACY_SUCCESS_SEPARATORS:
+            continue
         parts = stripped.split(maxsplit=1)
         if len(parts) == 1 and stripped != "无" and stripped not in extras:
             extras.append(stripped)
     return extras
-
-
-def _trailing_success_rows(text: str, separator: str) -> list[tuple[str, str]]:
-    rows: list[tuple[str, str]] = []
-    after_separator = False
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped == "生肖次数排行榜" or stripped.split() == ["内容", "次数", "排名"]:
-            break
-        if stripped == separator:
-            after_separator = True
-            continue
-        if not after_separator or not stripped:
-            continue
-        parts = stripped.split(maxsplit=1)
-        if len(parts) == 2 and len(parts[0]) == 1 and parts[0] in ZODIAC_ORDER:
-            rows.append((parts[0], parts[1]))
-    return rows
 
 
 def _format_success_rows(
@@ -251,10 +248,9 @@ def _format_success_rows(
         return "无\n"
     counter: Counter[str] = Counter(zodiac for zodiac, _name in all_rows)
     ranks = {count: rank for rank, count in enumerate(sorted(set(counter.values()), reverse=True), 1)}
-    separator = "红色" if section is SiteSection.NEW else "羽墨"
+    # section 仅为兼容既有调用签名保留：成功 TXT 不再写「羽墨/红色」分隔标记行。
     lines = [f"{zodiac} {name}" for zodiac, name in materialized]
     lines.extend(extras)
-    lines.append(separator)
     lines.extend(f"{zodiac} {name}" for zodiac, name in trailing)
     lines.extend(
         [
@@ -273,13 +269,23 @@ def _format_success_rows(
 
 
 def _failure_rows(text: str) -> list[str]:
+    """Split the failure file into whole entry blocks (entry line plus its reason续行)."""
     rows: list[str] = []
+    block: list[str] = []
     for line in text.splitlines():
         stripped = line.strip()
         if stripped == "失败分类统计":
             break
-        if stripped and stripped != "无":
-            rows.append(stripped)
+        if not stripped:
+            if block:
+                rows.append("\n".join(block))
+                block = []
+            continue
+        if stripped == "无" and not block:
+            continue
+        block.append(line.rstrip())
+    if block:
+        rows.append("\n".join(block))
     return rows
 
 
@@ -300,26 +306,14 @@ def _is_success_detail_row(value: str) -> tuple[str, str] | None:
     return None
 
 
-def _validate_existing_success_text(text: str, separator: str) -> None:
+def _validate_existing_success_text(text: str) -> None:
     """Reject lossy targeted rewrites when the existing detail section is not understood."""
-    separator_seen = False
-    meaningful = False
-    empty_marker_only = True
     names: dict[str, str] = {}
     for line in text.splitlines():
         stripped = line.strip()
-        if stripped == "生肖次数排行榜" or stripped.split() == ["内容", "次数", "排名"]:
+        if _detail_region_ends(stripped):
             break
-        if not stripped:
-            continue
-        meaningful = True
-        if stripped == "无":
-            continue
-        empty_marker_only = False
-        if stripped == separator:
-            if separator_seen:
-                raise ValueError(f"成功TXT包含重复分隔符：{separator}")
-            separator_seen = True
+        if not stripped or stripped == "无" or stripped in _LEGACY_SUCCESS_SEPARATORS:
             continue
         row = _is_success_detail_row(stripped)
         if row is not None:
@@ -329,12 +323,10 @@ def _validate_existing_success_text(text: str, separator: str) -> None:
                 raise ValueError(f"成功TXT存在重复站点明细，拒绝有损重写：{name}")
             names[key] = zodiac
             continue
-        if not separator_seen and len(stripped.split()) == 1:
-            # Historical extra-name rows such as 华林 are valid before the section separator.
+        if len(stripped.split()) == 1:
+            # Historical extra-name rows such as 华林 stay valid anywhere in the detail region.
             continue
         raise ValueError(f"成功TXT包含无法识别的明细行，拒绝有损重写：{stripped}")
-    if meaningful and not empty_marker_only and not separator_seen:
-        raise ValueError(f"成功TXT缺少分隔符 {separator}，拒绝有损重写")
 
 
 _FAILURE_ROW_IDENTITY = re.compile(r"^(?P<name>.+?)\s+(?:top|bottom)\s+https?://\S+\s+原因：")
@@ -344,10 +336,11 @@ def _failure_name_key(row: str) -> str | None:
     match = _FAILURE_ROW_IDENTITY.match(row.strip())
     return _output_name_key(match.group("name")) if match is not None else None
 
-def _format_failure_rows(rows: Iterable[str]) -> str:
+def _format_failure_rows(rows: Iterable[str]) -> str | None:
+    """没有失败行时返回 None：失败清单文件应被删除，而不是写成「无」。"""
     materialized = tuple(rows)
     if not materialized:
-        return "无\n"
+        return None
     counter: Counter[str] = Counter()
     for row in materialized:
         match = _FAILURE_LABEL.search(row)
@@ -397,23 +390,20 @@ def build_merged_result_payloads(
     if not success_path.name.startswith(expected_prefix) or not failure_path.name.startswith(expected_prefix):
         raise PermissionError("输出文件期数与正式单期写入许可不一致")
 
-    separator = "红色" if is_new else "羽墨"
     read_text = _read_output_text if texts is None else lambda path: texts[path]
     existing_success_text = read_text(success_path)
-    _validate_existing_success_text(existing_success_text, separator)
-    success_rows = _success_rows(existing_success_text, separator)
-    trailing_success_rows = _trailing_success_rows(existing_success_text, separator)
-    success_extra_names = _success_extra_names(existing_success_text, separator)
+    _validate_existing_success_text(existing_success_text)
+    success_rows = _success_rows(existing_success_text)
+    success_extra_names = _success_extra_names(existing_success_text)
     target_name_key = _output_name_key(result.site.name)
-    all_success_rows = (*success_rows, *trailing_success_rows)
     target_indexes = [
         index
-        for index, (_zodiac, name) in enumerate(all_success_rows)
+        for index, (_zodiac, name) in enumerate(success_rows)
         if _output_name_key(name) == target_name_key
     ]
     if result.ok and result.candidate is not None:
         target_row = (result.candidate.zodiac, result.site.name)
-        existing_zodiacs = {all_success_rows[index][0] for index in target_indexes}
+        existing_zodiacs = {success_rows[index][0] for index in target_indexes}
         if (
             existing_zodiacs
             and existing_zodiacs != {result.candidate.zodiac}
@@ -425,12 +415,9 @@ def build_merged_result_payloads(
             )
         if existing_zodiacs and existing_zodiacs != {result.candidate.zodiac}:
             for index in target_indexes:
-                if index < len(success_rows):
-                    success_rows[index] = target_row
-                else:
-                    trailing_success_rows[index - len(success_rows)] = target_row
+                success_rows[index] = target_row
         if not target_indexes:
-            trailing_success_rows.append(target_row)
+            success_rows.append(target_row)
 
     failure_rows = _failure_rows(read_text(failure_path))
     failure_rows = [row for row in failure_rows if _failure_name_key(row) != target_name_key]
@@ -443,7 +430,6 @@ def build_merged_result_payloads(
                 success_rows,
                 result.site.section,
                 extra_names=success_extra_names,
-                trailing_rows=trailing_success_rows,
             ),
             failure_path: _format_failure_rows(failure_rows),
         },

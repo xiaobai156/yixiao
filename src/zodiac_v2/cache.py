@@ -97,7 +97,20 @@ def _validated_records(site: Mapping[str, object]) -> list[tuple[int, str]]:
     if isinstance(provenance, dict):
         record_periods = {str(period) for period, _zodiac in records}
         if set(provenance) != record_periods:
-            raise ValueError("record_provenance 必须与 records 完整对应")
+            # 报错必须指出站名与差异期号，否则只看到一句「必须完整对应」，
+            # 无法定位是哪一站、多了哪一期（孤儿 provenance 曾因此长期隐藏）。
+            site_name = str(site.get("name") or _identity(site)[0])
+            extra = sorted(set(provenance) - record_periods)
+            missing = sorted(record_periods - set(provenance))
+            detail = []
+            if extra:
+                detail.append(f"多出 {extra}")
+            if missing:
+                detail.append(f"缺少 {missing}")
+            raise ValueError(
+                f"站点「{site_name}」的 record_provenance 必须与 records 完整对应"
+                f"（{'；'.join(detail) or '未知差异'}）"
+            )
         for period, value in provenance.items():
             if period not in record_periods or not isinstance(value, dict):
                 raise ValueError(f"record_provenance 期数或记录非法：{period!r}")

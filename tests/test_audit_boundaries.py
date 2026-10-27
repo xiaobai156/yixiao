@@ -16,7 +16,7 @@ from zodiac_v2.contracts import (
     SourceBundle,
     SourceDocument,
 )
-from zodiac_v2.services.scrape import ScrapeService
+from zodiac_v2.services.scrape import CONTENT_CDN_ORIGINS, ScrapeService
 from zodiac_v2.source.browser import BrowserCapture, BrowserResponse, browser_documents
 from zodiac_v2.source.documents import discover_content_documents
 from zodiac_v2.source.http import SourceFetchCode, SourceFetchError
@@ -157,6 +157,32 @@ def test_content_discovery_accepts_current_cdn_origin() -> None:
     assert [resource.url for resource in resources] == [
         "https://xia01.cosds.aohjifv.com/upload/script/08/content.js"
     ]
+
+
+def test_content_discovery_accepts_rotated_cdn_origin_pattern() -> None:
+    html = (
+        '<script src="https://xia04.chypqpfc.dzjunk.com/upload/script/10/content.js"></script>'
+        '<script src="https://evil.dzjunk.com/upload/script/10/content.js"></script>'
+    )
+
+    resources = discover_content_documents(
+        html,
+        "https://example.test/topic/123.html",
+        allowed_origins=CONTENT_CDN_ORIGINS,
+    )
+
+    assert [resource.url for resource in resources] == [
+        "https://xia04.chypqpfc.dzjunk.com/upload/script/10/content.js"
+    ]
+
+
+def test_content_discovery_keeps_rejecting_unknown_origin_with_patterns() -> None:
+    html = '<script src="https://xia04.other.example.net/upload/script/10/content.js"></script>'
+
+    assert (
+        discover_content_documents(html, "https://example.test/topic/123.html", allowed_origins=CONTENT_CDN_ORIGINS)
+        == ()
+    )
 
 
 def test_content_discovery_does_not_treat_upload_image_as_script() -> None:

@@ -208,6 +208,36 @@ def test_hanwuji_accepts_actual_bracket_delimited_current_post() -> None:
     assert (decision.candidate.period, decision.candidate.zodiac) == (251, "蛇")
 
 
+def test_hanwuji_accepts_traditional_period_first_current_post() -> None:
+    row = _row(
+        record_id=16076052,
+        user_id=180502,
+        name="寒武忌",
+        draw=268,
+        topic="268 澳门风云",
+        content="〖期268〗殺雞√〖？00〗",
+    )
+    site = _site(
+        "寒武忌",
+        180502,
+        host="https://uuizld.ytv5j-jva78-vglwnj.work",
+    )
+    bundle = _bundle(
+        180502,
+        row,
+        host="https://uuizld.ytv5j-jva78-vglwnj.work",
+    )
+    parser = UserForumPostParser()
+
+    selected = parser.select_source(site, bundle, 268)
+
+    assert selected is not None
+    candidates = parser.parse(site, selected)
+    decision = validate_candidates(site, selected, candidates, 268)
+    assert decision.ok and decision.candidate is not None
+    assert (decision.candidate.period, decision.candidate.zodiac) == (268, "鸡")
+
+
 def test_fulu_bottom_selects_last_post_when_same_period_value_matches() -> None:
     first = _row(
         record_id=15886292,
@@ -270,7 +300,7 @@ def test_lianzhong_selects_valid_fans_post_and_ignores_cancel_post() -> None:
     valid_row = _row(
         record_id=15827548,
         user_id=166365,
-        name="连中谎言",
+        name="杨家男孩",
         draw=228,
         topic="228  粉丝看就好",
         content="228绝杀一肖兔",
@@ -278,7 +308,7 @@ def test_lianzhong_selects_valid_fans_post_and_ignores_cancel_post() -> None:
     non_result_row = _row(
         record_id=15821032,
         user_id=166365,
-        name="连中谎言",
+        name="杨家男孩",
         draw=228,
         topic="228",
         content="204绝杀一肖猴✔️<div>227绝杀一肖兔错的离谱</div>"

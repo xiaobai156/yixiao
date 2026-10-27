@@ -23,6 +23,7 @@ from zodiac_v2.output import (
     build_output_payloads,
     write_output_payloads,
 )
+from zodiac_v2.services.duplicate_gate import DuplicateGateError, check_duplicates
 from zodiac_v2.storage import locked_paths
 
 
@@ -146,8 +147,11 @@ def commit_full_formal_single(
     results: Iterable[ScrapeResult], *, expected_sites: Iterable[SiteConfig],
     cache_path: Path, paths: OutputPaths, permit: WritePermit,
     existing_success_extra_names: Iterable[str] = (),
+    parser_resolver=None,
 ) -> tuple[ScrapeResult, ...]:
     rows = validate_result_scope(results, expected_sites, permit)
+    # 判重闸门：命中重复站必须在写任何文件之前失败。
+    check_duplicates(rows, cache_path, parser_resolver=parser_resolver)
     payloads = build_output_payloads(rows, paths, existing_success_extra_names=existing_success_extra_names)
     with locked_paths((*payloads, cache_path)):
         write_output_payloads(payloads, permit)
@@ -158,8 +162,11 @@ def commit_full_formal_single(
 def commit_targeted_formal_single(
     results: Iterable[ScrapeResult], *, expected_sites: Iterable[SiteConfig],
     cache_path: Path, paths: OutputPaths, permit: WritePermit,
+    parser_resolver=None,
 ) -> tuple[ScrapeResult, ...]:
     rows = validate_result_scope(results, expected_sites, permit)
+    # 判重闸门：定点写入同样必须先过闸，避免「只报告不阻断」重演。
+    check_duplicates(rows, cache_path, parser_resolver=parser_resolver)
     selected_paths = tuple(dict.fromkeys(path for result in rows for path in _section_paths(paths, result.site.section)))
     with locked_paths((*selected_paths, cache_path)):
         texts = {path: _read_output_text(path) for path in selected_paths}
@@ -167,7 +174,9 @@ def commit_targeted_formal_single(
         for result in rows:
             partial = build_merged_result_payloads(result, paths, permit, texts=texts)
             changed.update(partial)
-            texts.update({path: text for path, text in partial.items() if text is not None})
+            # None 表示该失败清单已无失败行、文件将被删除：后续站点仍按「无」续合并，
+            # 避免把本批前面站点已清掉的行重新写回。
+            texts.update({path: ("无\n" if text is None else text) for path, text in partial.items()})
         payloads = _OutputPayloads(changed, target_period=permit.target_period, token=_OUTPUT_TOKEN)
         write_output_payloads(payloads, permit)
         _persist_cache(rows, cache_path, permit, targeted=True)

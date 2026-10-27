@@ -219,7 +219,13 @@ def _line_windows(lines: tuple[TextLine, ...], index: int) -> tuple[str, ...]:
 
 
 class AnchoredSectionFamilyParser:
-    def __init__(self, specs: Mapping[str, AnchoredSectionSpec]) -> None:
+    def __init__(
+        self,
+        specs: Mapping[str, AnchoredSectionSpec],
+        *,
+        directional_cycle_sites: Collection[str] = (),
+    ) -> None:
+        self.directional_cycle_sites = frozenset(directional_cycle_sites)
         self.specs = MappingProxyType(
             {
                 name: _CompiledAnchoredSectionSpec(
@@ -264,7 +270,10 @@ class AnchoredSectionFamilyParser:
                             (f"section:{normalize_space(anchor_line.text)}", f"anchor:{normalize_space(anchor_line.text)}",
                              f"anchor-line:{anchor_index}", f"section-range:{anchor_index}-{end}", f"record-offset:{match.start(1)}"),
                             record_id=document.record_id))
-        return tuple(sorted(candidates, key=lambda candidate: candidate.page_order))
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        if site.name in self.directional_cycle_sites:
+            return _tag_annual_record_cycles(candidates)
+        return tuple(candidates)
 
 
 class StrictArticleFamilyParser:

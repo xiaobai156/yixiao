@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from zodiac_v2.cli import SOURCE_POLICIES
@@ -303,10 +304,20 @@ def test_two_repaired_exception_sites_are_registered_as_new_bottom_sites() -> No
     )
     selected = {site.name: site for site in sites if site.name in expected}
 
-    assert set(selected) == set(expected)
+    # 决杀一肖 已于 281 期按用户点名去重封存：活跃集合只剩孤守半岛
+    assert set(selected) == {"孤守半岛"}
     assert all(site.section is SiteSection.NEW for site in selected.values())
     assert all(site.direction is Direction.BOTTOM for site in selected.values())
-    assert {name: site.parser_id for name, site in selected.items()} == expected
+    assert {name: site.parser_id for name, site in selected.items()} == {
+        "孤守半岛": expected["孤守半岛"]
+    }
+
+    archive = json.loads(Path("archived_sites.json").read_text(encoding="utf-8"))
+    archived = {item["name"]: item for item in archive["sites"] if item["name"] in expected}
+    assert set(archived) == {"决杀一肖"}
+    assert archived["决杀一肖"]["parser_id"] == expected["决杀一肖"]
+    assert archived["决杀一肖"]["section"] == "新增的站点"
+    assert archived["决杀一肖"]["pick"] == "bottom"
 
 
 def test_three_js_sites_use_fixed_browser_source_policy() -> None:

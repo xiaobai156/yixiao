@@ -14,6 +14,7 @@ from zodiac_v2.duplicate import find_duplicate_matches
 from zodiac_v2.output import output_paths
 from zodiac_v2.parsers.registry import build_registry
 from zodiac_v2.services.onboarding import validate_new_site
+from zodiac_v2.services.duplicate_gate import DuplicateGateError
 from zodiac_v2.services.persistence import CachePersistenceError, commit_targeted_formal_single
 from zodiac_v2.services.repair import repair_sites, sites_from_failure_text
 from zodiac_v2.services.scrape import DEFAULT_SITE_TIMEOUT, DefaultSourceGateway, ScrapeService, commit_formal_single
@@ -144,6 +145,16 @@ def _runtime(sites_file: Path) -> tuple[tuple[SiteConfig, ...], ScrapeService]:
     return sites, ScrapeService(DefaultSourceGateway(), registry)
 
 
+def _duplicate_parser_resolver(registry):
+    """给判重闸门提供「站点 → 解析器」的解析函数，用本轮文档重解析出全部候选。"""
+
+    def resolve(site):
+        # registry.parse 需要 bundle，这里只校验解析器是否已注册，实际解析在闸门内完成
+        return registry if site.parser_id in registry.parser_ids else None
+
+    return resolve
+
+
 def _print_results(results) -> None:
     for result in results:
         if result.ok and result.candidate is not None:
@@ -215,6 +226,7 @@ def _run_duplicate(args: argparse.Namespace, data: object) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     sites, scraper = _runtime(args.sites_file)
+    registry = getattr(scraper, "registry", None) or build_registry()
     if args.command == "single":
         mode = RunMode.FORMAL_SINGLE if args.formal else RunMode.READ_ONLY
         start = monotonic()
@@ -235,7 +247,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                     paths=output_paths(args.period, args.success_dir, args.failure_dir),
                     permit=WritePermit.formal_single(args.period),
                     expected_sites=sites,
+                    parser_resolver=_duplicate_parser_resolver(registry),
                 )
+            except DuplicateGateError as exc:
+                _print_results(results)
+                print(f"{exc}；本次命令返回状态码 4", flush=True)
+                return 4
             except CachePersistenceError:
                 _print_results(results)
                 print("正式 TXT 已发布，但缓存更新失败；本次命令返回状态码 3", flush=True)
@@ -243,7 +260,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         _print_results(results)
         return 0
     if args.command in {"retry", "repair"}:
-        text = "\n".join(path.read_text(encoding="utf-8-sig") for path in args.retry_errors)
+        missing = [path for path in args.retry_errors if not path.exists()]
+        if missing:
+            print(
+                "失败清单文件不存在（无失败时已自动删除）："
+                + "、".join(path.name for path in missing),
+                flush=True,
+            )
+        text = "\n".join(
+            path.read_text(encoding="utf-8-sig") for path in args.retry_errors if path.exists()
+        )
         selected = sites_from_failure_text(text, sites)
         if not selected:
             print("失败清单没有匹配到任何站点，未抓取、未写入")
@@ -256,7 +282,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             try:
                 results = commit_targeted_formal_single(results, expected_sites=selected,
                     cache_path=args.cache_file, paths=output_paths(args.period, args.success_dir, args.failure_dir),
-                    permit=WritePermit.formal_single(args.period))
+                    permit=WritePermit.formal_single(args.period),
+                    parser_resolver=_duplicate_parser_resolver(registry))
+            except DuplicateGateError as exc:
+                _print_results(results)
+                print(f"{exc}；本次命令返回状态码 4", flush=True)
+                return 4
             except CachePersistenceError:
                 _print_results(results)
                 print("正式 TXT 已发布，但缓存更新失败；本次命令返回状态码 3", flush=True)

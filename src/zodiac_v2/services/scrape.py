@@ -65,10 +65,22 @@ DEFAULT_SITE_TIMEOUT = 60.0
 HTTP_CONSENSUS_ATTEMPTS = 5
 HTTP_CONSENSUS_CONFIRMATIONS = 2
 CACHE_SUCCESS_RATE_PERCENT = 85
+# 按发布时间的聚合栏目列表会把一整期（乃至相邻期）的全部栏目文章铺满十几页，
+# 「本页观测期数最大值 < 目标期」的完成证明要翻到那之后才成立，上限必须容得下这种体量。
+PERIOD_LIST_MAX_PAGES = 30
+CONTENT_CDN_LABELS = (
+    ("cosds", "ahsccn.com"),
+    ("cosds", "aohjifv.com"),
+    ("chypqpfc", "dzjunk.com"),
+)
 CONTENT_CDN_ORIGINS = tuple(
-    f"https://xia{index:02}.cosds.{domain}"
-    for domain in ("ahsccn.com", "aohjifv.com")
+    f"https://xia{index:02}.{label}.{domain}"
+    for label, domain in CONTENT_CDN_LABELS
     for index in range(1, 7)
+) + tuple(
+    # 平台换 CDN 子域时（如 cosds → chypqpfc）不必改代码，仅换域名时需要补一行。
+    f"https://xia??.*.{domain}"
+    for _, domain in CONTENT_CDN_LABELS
 )
 
 
@@ -87,6 +99,10 @@ class SourceGateway(Protocol):
 
     def period_keyword_article(
         self, site: SiteConfig, bundle: SourceBundle, target_period: int, timeout: float
+    ) -> SourceBundle: ...
+
+    def browser_period_keyword_article(
+        self, site: SiteConfig, target_period: int, timeout: float
     ) -> SourceBundle: ...
 
     def api_then_http(self, site: SiteConfig, timeout: float) -> SourceBundle: ...
@@ -381,8 +397,8 @@ class DefaultSourceGateway:
                 if page_urls and any(int(parse_qs(urlsplit(url).query)["page"][0]) > current_page for url in page_urls):
                     raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "缺少连续下一页，不能证明扫描完整", url=site.url)
                 break
-            if len(following) != 1 or scanned >= 10:
-                raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "同栏目分页不唯一或超过安全上限 10 页", url=site.url)
+            if len(following) != 1 or scanned >= PERIOD_LIST_MAX_PAGES:
+                raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, f"同栏目分页不唯一或超过安全上限 {PERIOD_LIST_MAX_PAGES} 页", url=site.url)
             document = fetch_http_document(self.transport, following[0],
                 timeout=_remaining_budget(deadline, timeout, site.url, "栏目分页取源总超时"),
                 identity_url=following[0], source_id=f"period-list:{following[0]}")
@@ -391,6 +407,95 @@ class DefaultSourceGateway:
             raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, f"{target_period}期完整关键字 {site.article_keyword!r} 详情链接命中 {len(unique)} 个", url=site.url)
         detail = fetch_http_document(self.transport, unique[0], timeout=_remaining_budget(deadline, timeout, site.url, "文章详情取源总超时"), identity_url=unique[0], source_id=f"ttss-article:{unique[0]}")
         return self.embedded(site, SourceBundle((detail,), (f"period-list-pages:{scanned}", "period-keyword-match:1"), scan_complete=False), _remaining_budget(deadline, timeout, site.url, "文章详情取源总超时"))
+
+    def browser_period_keyword_article(self, site, target_period, timeout):
+        if not site.article_keyword:
+            raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "缺少文章关键字", url=site.url)
+        deadline = monotonic() + timeout
+        document_bundle = browser_documents(
+            self.renderer,
+            site.url,
+            timeout=_remaining_budget(deadline, timeout, site.url, "栏目首页浏览器取源总超时"),
+            max_chars=site.embedded_max_bytes or DEFAULT_MAX_BYTES,
+        )
+        if not document_bundle.documents:
+            raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "栏目首页浏览器正文为空", url=site.url)
+        document = document_bundle.documents[0]
+        seen_pages = set()
+        matches = []
+        scanned = 0
+        cross_year_target: bool | None = None
+        wrapped_to_previous_cycle = False
+        while True:
+            if document.final_url in seen_pages:
+                raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "栏目分页循环", url=site.url)
+            seen_pages.add(document.final_url)
+            scanned += 1
+            article_urls, page_urls, periods = discover_period_page_links(
+                document.text,
+                document.final_url,
+                target_period,
+                site.article_keyword,
+            )
+            matches.extend(article_urls)
+            if periods:
+                if cross_year_target is None:
+                    cross_year_target = max(periods) <= 20 and target_period >= 100
+                if cross_year_target and any(period >= 100 for period in periods):
+                    wrapped_to_previous_cycle = True
+                if (not cross_year_target or wrapped_to_previous_cycle) and max(periods) < target_period:
+                    break
+            current_page = int(
+                parse_qs(urlsplit(document.final_url).query).get("page", ["1"])[0]
+            )
+            following = sorted({
+                url for url in page_urls
+                if int(parse_qs(urlsplit(url).query)["page"][0]) == current_page + 1
+            })
+            if not following:
+                if page_urls and any(
+                    int(parse_qs(urlsplit(url).query)["page"][0]) > current_page
+                    for url in page_urls
+                ):
+                    raise SourceFetchError(
+                        SourceFetchCode.SOURCE_IDENTITY,
+                        "缺少连续下一页，不能证明扫描完整",
+                        url=site.url,
+                    )
+                break
+            if len(following) != 1 or scanned >= PERIOD_LIST_MAX_PAGES:
+                raise SourceFetchError(
+                    SourceFetchCode.SOURCE_IDENTITY,
+                    f"同栏目分页不唯一或超过安全上限 {PERIOD_LIST_MAX_PAGES} 页",
+                    url=site.url,
+                )
+            document_bundle = browser_documents(
+                self.renderer,
+                following[0],
+                timeout=_remaining_budget(deadline, timeout, site.url, "栏目分页浏览器取源总超时"),
+                max_chars=site.embedded_max_bytes or DEFAULT_MAX_BYTES,
+            )
+            if not document_bundle.documents:
+                raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "栏目分页浏览器正文为空", url=following[0])
+            document = document_bundle.documents[0]
+        unique = tuple(dict.fromkeys(matches))
+        if len(unique) != 1:
+            raise SourceFetchError(
+                SourceFetchCode.SOURCE_IDENTITY,
+                f"{target_period}期完整关键字 {site.article_keyword!r} 详情链接命中 {len(unique)} 个",
+                url=site.url,
+            )
+        detail_bundle = browser_documents(
+            self.renderer,
+            unique[0],
+            timeout=_remaining_budget(deadline, timeout, site.url, "文章详情浏览器取源总超时"),
+            max_chars=site.embedded_max_bytes or DEFAULT_MAX_BYTES,
+        )
+        return SourceBundle(
+            detail_bundle.documents,
+            (*detail_bundle.diagnostics, f"period-list-pages:{scanned}", "period-keyword-match:1"),
+            scan_complete=True,
+        )
 
     def api_then_http(self, site: SiteConfig, timeout: float) -> SourceBundle:
         if site.api_url is None:
@@ -799,6 +904,25 @@ class ScrapeService:
         def remaining() -> float:
             return _remaining_budget(deadline, timeout, site.url, "站点总超时")
 
+        def source_attempt_timeout() -> float:
+            if site.source_policy in {"http_then_browser", "http_period_keyword_article"}:
+                reserve = min(15.0, max(5.0, timeout * 0.25))
+                return max(1.0, timeout - reserve)
+            return timeout
+
+        primary_deadline = monotonic() + source_attempt_timeout()
+
+        def primary_remaining() -> float:
+            return min(
+                remaining(),
+                _remaining_budget(
+                    primary_deadline,
+                    source_attempt_timeout(),
+                    site.url,
+                    "HTTP 主取源总超时",
+                ),
+            )
+
         documents = ()
         try:
             if site.source_policy == "http_consensus":
@@ -831,9 +955,9 @@ class ScrapeService:
                 result = self._evaluate(site, target_period, browser_bundle, mode)
                 remaining()
                 return result
-            bundle = self._fetch(site, remaining())
+            bundle = self._fetch(site, primary_remaining())
             if site.source_policy == "http_period_keyword_article":
-                bundle = self.gateway.period_keyword_article(site, bundle, target_period, remaining())
+                bundle = self.gateway.period_keyword_article(site, bundle, target_period, primary_remaining())
             if site.source_policy == "http_named_stat_article":
                 bundle = self.gateway.named_stat_article(site, bundle, target_period, remaining())
             if (
@@ -850,7 +974,7 @@ class ScrapeService:
                 )
                 bundle = target_bundle
             if site.source_policy == "http_then_browser" and not bundle.scan_complete:
-                bundle = self.gateway.embedded(site, bundle, remaining())
+                bundle = self.gateway.embedded(site, bundle, primary_remaining())
                 remaining()
             if site.source_policy in {"api_then_http", "browser_user"}:
                 selector = getattr(self.registry, "select_source", None)
@@ -907,6 +1031,24 @@ class ScrapeService:
                 return self._evaluate(site, target_period, browser_bundle, mode)
             return result
         except SourceFetchError as exc:
+            retryable = (
+                exc.code is SourceFetchCode.NETWORK
+                or exc.status in {408, 429, 500, 502, 503, 504}
+            )
+            if retryable and site.source_policy in {"http_then_browser", "http_period_keyword_article"}:
+                try:
+                    if site.source_policy == "http_period_keyword_article":
+                        browser_bundle = self.gateway.browser_period_keyword_article(
+                            site, target_period, remaining()
+                        )
+                    else:
+                        browser_bundle = self.gateway.browser(site, remaining())
+                    documents = browser_bundle.documents
+                    return self._evaluate(site, target_period, browser_bundle, mode)
+                except SourceFetchError as browser_exc:
+                    return ScrapeResult.failure(
+                        site, target_period, _failure_code(browser_exc), str(browser_exc), documents
+                    )
             return ScrapeResult.failure(
                 site,
                 target_period,
@@ -1007,10 +1149,12 @@ def _report_cache_issue(reason: str) -> None:
     print(f"缓存更新未完成（仅影响新增站点判重，不影响本轮抓取结果）：{reason}", flush=True)
 
 
-def commit_formal_single(results, *, cache_path, paths, permit, expected_sites=None, existing_success_extra_names=()):
+def commit_formal_single(results, *, cache_path, paths, permit, expected_sites=None,
+                         existing_success_extra_names=(), parser_resolver=None):
     """Compatibility name for a full batch; scope must be explicitly supplied."""
     from zodiac_v2.services.persistence import commit_full_formal_single
     if expected_sites is None:
         raise ValueError("全量正式提交必须提供 expected_sites，禁止子集覆盖")
     return commit_full_formal_single(results, expected_sites=expected_sites, cache_path=cache_path, paths=paths,
-        permit=permit, existing_success_extra_names=existing_success_extra_names)
+        permit=permit, existing_success_extra_names=existing_success_extra_names,
+        parser_resolver=parser_resolver)

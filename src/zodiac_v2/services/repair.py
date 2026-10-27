@@ -36,12 +36,18 @@ class RepairReport:
 def sites_from_failure_text(text: str, sites: Iterable[SiteConfig]) -> tuple[SiteConfig, ...]:
     known = {site.name: site for site in sites}
     selected = []
+    inside_entry = False
     for line in text.splitlines():
-        if URL_PATTERN.search(line) is None:
+        if not line.strip():
+            inside_entry = False
             continue
         match = re.match(r"^(?P<name>.+?)\s+(?P<pick>top|bottom)\s+(?P<url>https?://\S+)", line.strip())
         if match is None:
+            # 失败原因可能自带多行（例如浏览器错误的 Call log），段内非条目行一律视为续行
+            if inside_entry or URL_PATTERN.search(line) is None:
+                continue
             raise ValueError(f"失败清单行缺少明确站名/方向：{line}")
+        inside_entry = True
         name = re.sub(r"[\u200b-\u200d\ufeff]", "", match['name']).strip()
         site = known.get(name)
         if site is None or site.direction.value != match['pick'] or not same_source_identity(site.url, match['url']):

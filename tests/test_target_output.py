@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -22,6 +23,7 @@ from zodiac_v2.output import (
     output_paths,
     write_output_payloads,
 )
+from zodiac_v2.services.persistence import CachePersistenceError, commit_targeted_formal_single
 
 _URL = "https://rpczmj.flzw4-yz5wn-mlrxxt.xyz/"
 
@@ -105,9 +107,10 @@ def test_merges_success_without_erasing_other_site_rows(tmp_path: Path) -> None:
     assert "猴 其他新增站点" in paths.new_success.read_text(encoding="utf-8")
     success_text = paths.new_success.read_text(encoding="utf-8")
     assert "鼠 新竹论坛" in success_text
-    assert success_text.index("红色") < success_text.index("鼠 新竹论坛")
+    assert "红色" not in success_text
+    assert success_text.index("猴 其他新增站点") < success_text.index("鼠 新竹论坛")
     assert success_text.index("鼠 新竹论坛") < success_text.index("内容\t次数\t排名")
-    assert paths.new_failure.read_text(encoding="utf-8") == "无\n"
+    assert not paths.new_failure.exists()  # 无失败即删除失败清单，不留「无」占位文件
 
 
 def test_repaired_success_removes_failure_row_with_previous_url(tmp_path: Path) -> None:
@@ -140,6 +143,7 @@ def test_merge_keeps_existing_same_value_row_without_appending_duplicate(tmp_pat
     assert success_text.count("新竹论坛") == 1
     assert "鼠 \u200c新竹论坛\n" in success_text
     assert "猴 其他新增站点" in success_text
+    assert "红色" not in success_text
 
 
 def test_failed_repair_keeps_existing_success_row(tmp_path: Path) -> None:
@@ -196,7 +200,8 @@ def test_authorized_repair_corrects_existing_different_value_in_place(tmp_path: 
     )
 
     success_text = paths.new_success.read_text(encoding="utf-8")
-    assert "猴 其他新增站点\n鼠 新竹论坛\n红色" in success_text
+    assert "猴 其他新增站点\n鼠 新竹论坛\n" in success_text
+    assert "红色" not in success_text
     assert "牛 新竹论坛" not in success_text
 
 
@@ -246,8 +251,9 @@ def test_single_success_can_append_existing_section_extra_name(tmp_path: Path) -
     success_text = paths.new_success.read_text(encoding="utf-8")
     existing_text = paths.existing_success.read_text(encoding="utf-8")
     assert "华林" not in success_text
-    assert existing_text.index("华林") < existing_text.index("羽墨")
     assert "华林" in existing_text
+    assert "羽墨" not in existing_text
+    assert existing_text.index("华林") < existing_text.index("内容\t次数\t排名")
 
 
 def test_formal_single_does_not_automatically_append_hualin(monkeypatch, tmp_path: Path) -> None:
@@ -308,9 +314,10 @@ def test_targeted_existing_merge_preserves_success_extra_names(tmp_path: Path) -
 
     success_text = paths.existing_success.read_text(encoding="utf-8")
     assert "鼠 已有目标站" in success_text
-    assert success_text.index("华林") < success_text.index("羽墨")
-    assert success_text.index("羽墨") < success_text.index("鼠 已有目标站")
-    assert success_text.index("鼠 已有目标站") < success_text.index("内容\t次数\t排名")
+    assert "华林" in success_text
+    assert "羽墨" not in success_text
+    assert success_text.index("鼠 已有目标站") < success_text.index("华林")
+    assert success_text.index("华林") < success_text.index("内容\t次数\t排名")
 
 
 def test_targeted_merge_recognizes_existing_row_above_ranking(tmp_path: Path) -> None:
@@ -326,7 +333,7 @@ def test_targeted_merge_recognizes_existing_row_above_ranking(tmp_path: Path) ->
 
     success_text = paths.new_success.read_text(encoding="utf-8")
     assert success_text.count("鼠 新竹论坛") == 1
-    assert success_text.index("红色") < success_text.index("鼠 新竹论坛")
+    assert "红色" not in success_text
     assert success_text.index("鼠 新竹论坛") < success_text.index("内容\t次数\t排名")
 
 
@@ -350,6 +357,34 @@ def test_success_ranking_uses_dense_ranks_and_columns() -> None:
     assert "次\n" not in text
 
 
+def test_merge_drops_multiline_reason_of_repaired_site_without_orphans(tmp_path: Path) -> None:
+    paths = output_paths(224, tmp_path / "success", tmp_path / "failure")
+    _write(paths.new_success, "无\n")
+    _write(
+        paths.new_failure,
+        f"新竹论坛 top {_URL} 原因：[浏览器取源失败] 浏览器取源失败：Page.goto: net::ERR_TIMED_OUT\n"
+        "Call log:\n"
+        f'  - navigating to "{_URL}", waiting until "domcontentloaded"\n\n'
+        "其他新增站点 top https://example.test/ 原因：[方向失败] 其他\n"
+        "Call log:\n"
+        '  - navigating to "https://example.test/", waiting until "domcontentloaded"\n\n'
+        "失败分类统计\n浏览器取源失败 1条\n方向失败 1条\n",
+    )
+
+    merge_formal_single_result_output(_success(), paths, WritePermit.formal_single(224))
+
+    failure_text = paths.new_failure.read_text(encoding="utf-8")
+    assert "新竹论坛" not in failure_text
+    assert _URL not in failure_text
+    assert (
+        "其他新增站点 top https://example.test/ 原因：[方向失败] 其他\n"
+        "Call log:\n"
+        '  - navigating to "https://example.test/", waiting until "domcontentloaded"\n'
+    ) in failure_text
+    assert "浏览器取源失败" not in failure_text
+    assert "方向失败 1条" in failure_text
+
+
 def test_both_success_files_use_ranked_columns(tmp_path: Path) -> None:
     paths = output_paths(224, tmp_path / "success", tmp_path / "failure")
     payloads = build_output_payloads((_existing_success(), _success()), paths)
@@ -360,3 +395,61 @@ def test_both_success_files_use_ranked_columns(tmp_path: Path) -> None:
         assert "内容\t次数\t排名" in text
         assert "鼠\t1\t1" in text
         assert "生肖次数排行榜" not in text
+
+
+def _renamed_success(name: str) -> ScrapeResult:
+    site = replace(_site(), name=name)
+    return ScrapeResult._validated_success(site, 224, _success().candidate, (_document(),))
+
+
+def test_full_single_deletes_failure_files_when_no_failure(tmp_path: Path) -> None:
+    paths = output_paths(224, tmp_path / "success", tmp_path / "failure")
+    _write(paths.new_failure, "其他新增站点 top https://example.test/ 原因：[方向失败] 旧失败\n")
+    _write(paths.existing_failure, "无\n")
+
+    payloads = build_output_payloads((_existing_success(), _success()), paths)
+    assert payloads[paths.new_failure] is None
+    assert payloads[paths.existing_failure] is None
+    write_output_payloads(payloads, WritePermit.formal_single(224))
+
+    assert not paths.new_failure.exists()
+    assert not paths.existing_failure.exists()
+    assert paths.new_success.exists()
+    assert paths.existing_success.exists()
+
+
+def test_targeted_merge_deletes_failure_file_when_last_row_is_repaired(tmp_path: Path) -> None:
+    paths = output_paths(224, tmp_path / "success", tmp_path / "failure")
+    _write(paths.new_success, "无\n")
+    _write(
+        paths.new_failure,
+        f"新竹论坛 top {_URL} 原因：[锚点失败] 旧锚点失败\n\n失败分类统计\n锚点失败 1条\n",
+    )
+
+    merge_formal_single_result_output(_success(), paths, WritePermit.formal_single(224))
+
+    assert not paths.new_failure.exists()
+    assert "鼠 新竹论坛" in paths.new_success.read_text(encoding="utf-8")
+
+
+def test_targeted_batch_deletion_does_not_resurrect_cleared_rows(tmp_path: Path) -> None:
+    paths = output_paths(224, tmp_path / "success", tmp_path / "failure")
+    _write(paths.new_success, "无\n")
+    _write(
+        paths.new_failure,
+        f"新竹论坛 top {_URL} 原因：[锚点失败] 旧锚点失败\n\n失败分类统计\n锚点失败 1条\n",
+    )
+    cache_path = tmp_path / "recent_10_cache.json"
+    cache_path.write_text("{broken-json", encoding="utf-8")
+    other = "另一新增站点"
+
+    with pytest.raises(CachePersistenceError):
+        commit_targeted_formal_single(
+            (_success(), _renamed_success(other)),
+            expected_sites=(_site(), replace(_site(), name=other)),
+            cache_path=cache_path,
+            paths=paths,
+            permit=WritePermit.formal_single(224),
+        )
+
+    assert not paths.new_failure.exists()

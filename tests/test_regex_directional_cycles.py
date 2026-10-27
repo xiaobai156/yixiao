@@ -9,8 +9,13 @@ from zodiac_v2.contracts import (
     SourceBundle,
     SourceDocument,
 )
-from zodiac_v2.parsers.dedicated import COMMON_PATTERN_ID, DIRECTIONAL_CYCLE_REGEX_SITES, PATTERN_SETS
-from zodiac_v2.parsers.families import RegexFamilyParser
+from zodiac_v2.parsers.dedicated import (
+    ANCHORED_SECTION_SPECS,
+    COMMON_PATTERN_ID,
+    DIRECTIONAL_CYCLE_REGEX_SITES,
+    PATTERN_SETS,
+)
+from zodiac_v2.parsers.families import AnchoredSectionFamilyParser, RegexFamilyParser
 from zodiac_v2.validation.conflicts import validate_candidates
 
 
@@ -105,6 +110,129 @@ def test_gongche_bottom_uses_the_last_annual_record_cycle() -> None:
     candidates = parser.parse(site, bundle)
     decision = validate_candidates(site, bundle, candidates, 249)
 
+    assert decision.ok and decision.candidate is not None
+    assert decision.candidate.zodiac == "兔"
+
+
+def test_wanjie_bufu_bottom_uses_the_last_annual_record_cycle() -> None:
+    site = SiteConfig(
+        "万刼不复",
+        "https://example.test/topic/485973.html",
+        Direction.BOTTOM,
+        SiteSection.NEW,
+        "regex.86a7042b2c5a",
+        "http_documents",
+    )
+    parser = RegexFamilyParser(
+        PATTERN_SETS[COMMON_PATTERN_ID],
+        anchor_aliases={"万刼不复": "万刼不复"},
+        directional_cycle_sites=DIRECTIONAL_CYCLE_REGEX_SITES,
+    )
+    bundle = _bundle(
+        "万刼不复\n"
+        "274期:@绝杀一肖‡【牛】开:狗44√\n"
+        "365期:@绝杀一肖‡【马】开:兔27√\n"
+        "001期:@绝杀一肖‡【鼠】开:牛29√\n"
+        "273期:@绝杀一肖‡【虎】开:虎05错\n"
+        "274期:@绝杀一肖‡【狗】开:？00√"
+    )
+
+    candidates = parser.parse(site, bundle)
+    decision = validate_candidates(site, bundle, candidates, 274)
+
+    assert "万刼不复" in DIRECTIONAL_CYCLE_REGEX_SITES
+    assert decision.ok and decision.candidate is not None
+    assert decision.candidate.zodiac == "狗"
+
+
+def test_huyanluanyu_anchored_section_top_uses_the_first_annual_record_cycle() -> None:
+    site = SiteConfig(
+        "胡言乱语",
+        "https://example.test/topic/680702.html",
+        Direction.TOP,
+        SiteSection.NEW,
+        "family.anchored_section",
+        "http_documents",
+    )
+    parser = AnchoredSectionFamilyParser(
+        ANCHORED_SECTION_SPECS,
+        directional_cycle_sites=DIRECTIONAL_CYCLE_REGEX_SITES,
+    )
+    bundle = _bundle(
+        "胡言乱语 发表于\n"
+        "276期：【绝杀一肖】❁猪猪猪❁开0000准\n"
+        "275期：【绝杀一肖】❁狗狗狗❁开兔44准\n"
+        "001期：【绝杀一肖】❁鼠鼠鼠❁开牛01准\n"
+        "365期：【绝杀一肖】❁马马马❁开龙38准\n"
+        "276期：【绝杀一肖】❁兔兔兔❁开0000准"
+    )
+
+    candidates = parser.parse(site, bundle)
+    decision = validate_candidates(site, bundle, candidates, 276)
+
+    assert {"胡言乱语", "行云流水"} <= DIRECTIONAL_CYCLE_REGEX_SITES
+    assert decision.ok and decision.candidate is not None
+    assert decision.candidate.zodiac == "猪"
+
+
+def test_laotieshaxiao_top_uses_the_first_annual_record_cycle() -> None:
+    site = SiteConfig(
+        "老铁杀肖",
+        "https://example.test/topic/430711.html",
+        Direction.TOP,
+        SiteSection.EXISTING,
+        "regex.86a7042b2c5a",
+        "http_documents",
+    )
+    parser = RegexFamilyParser(
+        PATTERN_SETS[COMMON_PATTERN_ID],
+        anchor_aliases={"老铁杀肖": "老铁杀肖"},
+        directional_cycle_sites=DIRECTIONAL_CYCLE_REGEX_SITES,
+    )
+    bundle = _bundle(
+        "老铁杀肖\n"
+        "280期:铁杀一肖【猪】开0000准↑\n"
+        "279期:铁杀一肖【龙】开鸡10准↑\n"
+        "001期:铁杀一肖【鼠】开牛01准↑\n"
+        "365期:铁杀一肖【马】开龙38准↑\n"
+        "280期:铁杀一肖【蛇】开鼠42准↑"
+    )
+
+    candidates = parser.parse(site, bundle)
+    decision = validate_candidates(site, bundle, candidates, 280)
+
+    assert "老铁杀肖" in DIRECTIONAL_CYCLE_REGEX_SITES
+    assert decision.ok and decision.candidate is not None
+    assert decision.candidate.zodiac == "猪"
+
+
+def test_jingdaiziji_top_uses_the_first_annual_record_cycle() -> None:
+    site = SiteConfig(
+        "惊呆自己",
+        "https://example.test/topic/453977.html",
+        Direction.TOP,
+        SiteSection.EXISTING,
+        "regex.86a7042b2c5a",
+        "http_documents",
+    )
+    parser = RegexFamilyParser(
+        PATTERN_SETS[COMMON_PATTERN_ID],
+        anchor_aliases={"惊呆自己": "惊呆自己"},
+        directional_cycle_sites=DIRECTIONAL_CYCLE_REGEX_SITES,
+    )
+    bundle = _bundle(
+        "惊呆自己\n"
+        "282期精杀一肖【兔】开0000准↑\n"
+        "281期精杀一肖【龙】开鸡10准↑\n"
+        "001期精杀一肖【鼠】开牛01准↑\n"
+        "365期精杀一肖【马】开龙38准↑\n"
+        "282期精杀一肖【羊】开鼠42准↑"
+    )
+
+    candidates = parser.parse(site, bundle)
+    decision = validate_candidates(site, bundle, candidates, 282)
+
+    assert "惊呆自己" in DIRECTIONAL_CYCLE_REGEX_SITES
     assert decision.ok and decision.candidate is not None
     assert decision.candidate.zodiac == "兔"
 

@@ -123,6 +123,7 @@ def test_targeted_merge_reads_utf8_bom_without_losing_first_row(tmp_path: Path) 
     text = paths.new_success.read_text(encoding="utf-8")
     assert "牛 其他站" in text
     assert "鼠 修复站" in text
+    assert "红色" not in text
 
 
 def test_targeted_merge_refuses_unknown_detail_line_without_touching_file(tmp_path: Path) -> None:

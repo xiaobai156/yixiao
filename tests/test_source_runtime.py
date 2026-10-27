@@ -18,6 +18,7 @@ from zodiac_v2.services.scrape import (
 )
 from zodiac_v2.source.api import derived_article_api_urls
 from zodiac_v2.source.documents import source_identity
+from zodiac_v2.source.http import SourceFetchCode, SourceFetchError
 
 
 def _site(policy: str, url: str = "https://example.test/source") -> SiteConfig:
@@ -113,6 +114,83 @@ def test_http_then_browser_fallback_requires_an_empty_http_shell() -> None:
     empty_gateway = Gateway(_document("<html><script>shell()</script></html>"))
     ScrapeService(empty_gateway, EmptyParser()).scrape_site(_site("http_then_browser"), 225)
     assert empty_gateway.calls == ["http", "browser"]
+
+
+def test_http_then_browser_falls_back_after_http_network_failure() -> None:
+    class Gateway:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def http(self, site: SiteConfig, timeout: float) -> SourceBundle:
+            self.calls.append("http")
+            raise SourceFetchError(SourceFetchCode.NETWORK, "TLS/timeout", url=site.url)
+
+        def browser(self, site: SiteConfig, timeout: float) -> SourceBundle:
+            self.calls.append("browser")
+            return SourceBundle((_document("杀肖\n265期：鼠", url=site.url),), scan_complete=True)
+
+    class Parser:
+        def parse(self, site: SiteConfig, bundle: SourceBundle):
+            return (
+                Candidate(
+                    265,
+                    "鼠",
+                    "265期：鼠",
+                    "test-source",
+                    0,
+                    ("section:杀肖", "anchor-line:0", "block-range:0-2"),
+                ),
+            )
+
+    gateway = Gateway()
+    result = ScrapeService(gateway, Parser()).scrape_site(_site("http_then_browser"), 265)
+
+    assert result.ok
+    assert gateway.calls == ["http", "browser"]
+
+
+def test_period_keyword_article_falls_back_to_browser_after_http_failure() -> None:
+    class Gateway:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def http(self, site: SiteConfig, timeout: float) -> SourceBundle:
+            self.calls.append("http")
+            raise SourceFetchError(SourceFetchCode.NETWORK, "栏目超时", url=site.url)
+
+        def browser_period_keyword_article(
+            self, site: SiteConfig, target_period: int, timeout: float
+        ) -> SourceBundle:
+            self.calls.append("browser-period")
+            return SourceBundle((_document("杀肖\n265期：兔", url=site.url),), scan_complete=True)
+
+    class Parser:
+        def parse(self, site: SiteConfig, bundle: SourceBundle):
+            return (
+                Candidate(
+                    265,
+                    "兔",
+                    "265期：兔",
+                    "test-source",
+                    0,
+                    ("section:杀肖", "anchor-line:0", "block-range:0-2"),
+                ),
+            )
+
+    site = SiteConfig(
+        "测试栏目",
+        "https://example.test/list.aspx?id=79&page=1",
+        Direction.TOP,
+        SiteSection.EXISTING,
+        "test-parser",
+        "http_period_keyword_article",
+        article_keyword="测试栏目",
+    )
+    gateway = Gateway()
+    result = ScrapeService(gateway, Parser()).scrape_site(site, 265)
+
+    assert result.ok
+    assert gateway.calls == ["http", "browser-period"]
 
 
 def test_http_then_browser_completes_http_content_scan_before_validation() -> None:

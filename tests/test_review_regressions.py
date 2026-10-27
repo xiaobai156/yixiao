@@ -76,6 +76,10 @@ def snapshot(paths, cache):
     return {path: path.read_bytes() for path in (paths.existing_success, paths.new_success, paths.existing_failure, paths.new_failure, cache)}
 
 
+def bytes_or_none(path):
+    return path.read_bytes() if path.exists() else None
+
+
 @pytest.mark.parametrize('kind', ['empty', 'subset', 'duplicate', 'foreign', 'readonly', 'wrong-period', 'changed-config'])
 def test_full_scope_failure_touches_no_production_bytes(tmp_path, kind):
     paths, cache = prepared(tmp_path)
@@ -122,11 +126,11 @@ def test_targeted_success_keeps_unselected_outputs_and_cache_entries(tmp_path):
     commit_full_formal_single((success(a), success(b)), expected_sites=(a, b), cache_path=cache, paths=paths, permit=WritePermit.formal_single(224))
     previous = json.loads(cache.read_text(encoding='utf-8'))
     old_b = next(entry for entry in previous['sites'] if entry['name'] == 'b')
-    unselected = (paths.existing_success.read_bytes(), paths.existing_failure.read_bytes())
+    unselected = (bytes_or_none(paths.existing_success), bytes_or_none(paths.existing_failure))
     commit_targeted_formal_single((success(a),), expected_sites=(a,), cache_path=cache, paths=paths, permit=WritePermit.formal_single(224))
     assert '鼠 b' in paths.new_success.read_text(encoding='utf-8')
     assert next(entry for entry in json.loads(cache.read_text(encoding='utf-8'))['sites'] if entry['name'] == 'b') == old_b
-    assert (paths.existing_success.read_bytes(), paths.existing_failure.read_bytes()) == unselected
+    assert (bytes_or_none(paths.existing_success), bytes_or_none(paths.existing_failure)) == unselected
 
 
 def test_targeted_batch_is_preflighted_before_any_file_write(tmp_path):
@@ -198,6 +202,14 @@ def test_empty_retry_cli_does_not_commit(tmp_path, monkeypatch):
     errors.write_text('无\n', encoding='utf-8')
     monkeypatch.setattr(cli, '_runtime', lambda path: ((site(),), object()))
     assert cli.main(('retry', '--period', '224', '--formal', '--retry-errors', str(errors))) == 2
+
+
+def test_missing_retry_cli_failure_file_does_not_commit(tmp_path, monkeypatch, capsys):
+    import zodiac_v2.cli as cli
+    errors = tmp_path / '275期-肖-失败.txt'  # 无失败时该文件已被自动删除
+    monkeypatch.setattr(cli, '_runtime', lambda path: ((site(),), object()))
+    assert cli.main(('retry', '--period', '224', '--formal', '--retry-errors', str(errors))) == 2
+    assert '失败清单文件不存在' in capsys.readouterr().out
 
 
 def test_failure_selector_never_falls_back_to_another_name():

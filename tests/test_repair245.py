@@ -16,7 +16,7 @@ def forum(name, content, topic=None, user_id=None):
                       api_url=f'https://example.test/api/v1/users/{uid}/forums?per_page=20')
     row = dict(id=15933847, status='published', user_id=uid if user_id is None else user_id,
                draw=245, topic=topic or ('245 澳门风云' if uid == 180502 else '244 杀肖只能参考'),
-               content=content, user=dict(id=uid, nickname=name))
+               content=content, user=dict(id=uid, nickname='杨家男孩' if uid == 166365 else name))
     doc = SourceDocument(json.dumps([row], ensure_ascii=False), site.api_url,
                          DocumentType.JSON, 0, f'user:{uid}:record:15933847', 0, '15933847')
     return site, SourceBundle((doc,), (), scan_complete=True)

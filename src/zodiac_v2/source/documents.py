@@ -4,6 +4,7 @@ import json
 import re
 from collections.abc import Callable, Collection, Iterable
 from dataclasses import dataclass
+from fnmatch import fnmatchcase
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, parse_qsl, urljoin, urlsplit
 
@@ -217,6 +218,26 @@ def validate_related_url(
     return related
 
 
+def origin_allowed(origin: str, allowed_origins: Collection[str]) -> bool:
+    """判断来源是否在允许清单内；清单项可以是精确来源，也可以是 glob（平台 CDN 会换子域）。"""
+    for pattern in allowed_origins:
+        if pattern == origin:
+            return True
+        if ("*" in pattern or "?" in pattern) and fnmatchcase(origin, pattern):
+            return True
+    return False
+
+
+def normalize_allowed_origins(allowed_origins: Collection[str]) -> frozenset[str]:
+    normalized: set[str] = set()
+    for value in allowed_origins:
+        if "*" in value or "?" in value:
+            normalized.add(value.rstrip("/"))
+            continue
+        normalized.add(source_identity(value).origin)
+    return frozenset(normalized)
+
+
 def _normalized_key(value: object) -> str:
     return re.sub(r"[^a-z0-9]", "", str(value).lower())
 
@@ -272,7 +293,7 @@ class _EmbeddedParser(HTMLParser):
         try:
             base = source_identity(self.base_url)
             related = source_identity(url)
-            if related.origin != base.origin and related.origin not in self.allowed_origins:
+            if related.origin != base.origin and not origin_allowed(related.origin, self.allowed_origins):
                 return
             if self.content_only and not _is_content_document(
                 self.base_url,
@@ -360,7 +381,7 @@ def discover_content_documents(
     allowed_origins: Collection[str] = (),
 ) -> tuple[DiscoveredDocument, ...]:
     source_identity(base_url)
-    normalized_origins = frozenset(source_identity(url).origin for url in allowed_origins)
+    normalized_origins = normalize_allowed_origins(allowed_origins)
     parser = _EmbeddedParser(
         base_url,
         content_only=True,
@@ -374,7 +395,7 @@ def discover_content_documents(
         try:
             base = source_identity(base_url)
             related = source_identity(url)
-            if related.origin != base.origin and related.origin not in normalized_origins:
+            if related.origin != base.origin and not origin_allowed(related.origin, normalized_origins):
                 continue
         except SourceIdentityError:
             continue

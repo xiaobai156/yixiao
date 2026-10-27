@@ -281,8 +281,9 @@ DIRECTIONAL_CYCLE_REGEX_SITES = frozenset(
         '一呼百应', '百依百顺', '附录吸血', '兰烬缀梦', '算法吟游',
         '关心则乱', '九鹭非香', '电子宠物', '放虎归山', '四面楚歌', '宫车晏驾', '张廖握子',
         '八面玲珑', '外强中干', '顾名思义', '旧岛听风', '情癌晚期',
-        '废然而反', '鱼轩莅止',
-        '山海经', '任我发', '卢九', '横财富',
+        '废然而反', '鱼轩莅止', '衣不曳地', '愁绪入梦', '锦书难寄', '白胜',
+        '山海经', '任我发', '卢九', '横财富', '万刼不复',
+        '胡言乱语', '行云流水', '老铁杀肖', '惊呆自己',
     }
 )
 
@@ -389,10 +390,10 @@ STRICT_ARTICLE_SPECS: dict[str, StrictArticleSpec] = {
     '前仆后继': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]\\s*前仆后继【绝杀一肖】\\s*$', '第?\\s*(\\d{2,4})\\s*期[:：]\\s*前仆后继【绝杀一肖】【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】'),
     '防晒情欲': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【绝杀一肖】稳稳稳\\s*$', '第?\\s*(\\d{2,4})\\s*期【绝杀一肖】【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '防晒情欲\\s+发表于'),
     '自由自在': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?【绝杀一肖】自由自在\\s*$', '第?\\s*(\\d{2,4})\\s*期【绝杀一肖】【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\\2)*\\s*】', '自由自在\\s+发表于'),
-    '怨声载路': StrictArticleSpec('热?第?\\s*(\\d{2,4})\\s*期【绝杀一肖】专业料', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*怨声载路'),
+    '怨声载路': StrictArticleSpec('热?第?\\s*(\\d{2,4})\\s*期【绝杀一肖】专业料', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*怨声载路', directional_cycles=True),
     '老奇人肖尾': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【老奇人】绝杀肖尾已公开\\s*$', '第?\\s*(\\d{2,4})\\s*期\\s*绝杀1\\.肖1\\.尾【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*肖\\s*[.。]?\\s*\\d+\\s*尾\\s*】'),
     '钧天广乐': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[:：]?\\s*[【\\[]?强杀①肖[】\\]]?', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀1肖\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '钧天广乐\\s+(?:发表于|作者)', allow_pending_title=True),
-    '恩重如山': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*恩重如山〖准杀壹肖〗166605[a-z]\\.com', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*\\{杀壹肖\\}\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*166605[a-z]\\.com'),
+    '恩重如山': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*恩重如山〖准杀壹肖〗\\s*\\S*?\\.[a-zA-Z]{2,}', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*\\{杀壹肖\\}\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*\\S*?\\.[a-zA-Z]{2,}', directional_cycles=True),
     '素雪怜影': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【绝杀①肖】〓\\s*发财之道', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【素雪怜影】\\s*🎉?绝杀①肖🎉?【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*素雪怜影'),
     '马到成功': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期【绝杀一肖】已公开', '第?\\s*(\\d{2,4})\\s*期\\s*绝杀一肖\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】', '作者[:：]\\s*马到成功'),
     '红颜知己': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]\\s*澳利澳论坛【铁杀一肖】长期免费', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*铁杀一肖→\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\2\\2←', '红颜知己\\s+发表于'),
@@ -411,7 +412,7 @@ STRICT_ARTICLE_SPECS: dict[str, StrictArticleSpec] = {
     '听天委命': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[:：]?\\s*[【\\[]\\s*精杀一肖\\s*[】\\]]', '第?\\s*(\\d{2,4})\\s*期\\s*精杀一肖\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '作者\\s*[:：]\\s*听天委命'),
     '群魔乱舞': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[:：]?\\s*[【\\[]\\s*绝杀一肖\\s*[】\\]]', '第?\\s*(\\d{2,4})\\s*期\\s*[:：]?\\s*绝杀1肖\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '作者\\s*[:：]\\s*群魔乱舞'),
     '西东字宙': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期\\s*[〖【]\\s*[\\u200b-\\u200d\\ufeff]*西东字宙\\s*[〗】]\\s*【\\s*绝杀一肖\\s*】', '第?\\s*(\\d{2,4})\\s*期\\s*[:：]?\\s*@?绝杀一肖‡\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '[\\u200b-\\u200d\\ufeff]*西东字宙\\s+发表于.*', directional_cycles=True),
-    '黄大仙': StrictArticleSpec('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*黄大仙\\s*【\\s*绝杀一肖\\s*】\\s*稳赚不赔$', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*肖\\s*】\\s*开', allow_pending_title=True),
+    '黄大仙': StrictArticleSpec('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*黄大仙\\s*【\\s*绝杀一肖\\s*】\\s*稳赚不赔$', '第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀一肖\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*(?:肖)?[^】\\n]{0,4}】\\s*开', allow_pending_title=True),
     '天天发财': StrictArticleSpec('^(?:网红帖\\s*)?第?\\s*(\\d{2,4})\\s*期[:：]?\\s*【\\s*绝杀一肖\\s*】$', '第?\\s*(\\d{2,4})\\s*期\\s*【\\s*绝杀一肖\\s*】\\s*【\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*】\\s*开', '^作者\\s*[:：]\\s*天天发财$'),
     '发财之道': StrictArticleSpec('^第?\\s*(\\d{2,4})\\s*期[:：]?\\s*绝杀高手\\s*【\\s*精杀一肖\\s*】\\s*发财之道$', '第?\\s*(\\d{2,4})\\s*期\\s*【\\s*精杀一肖\\s*】\\s*《\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*》\\s*开', '^绝杀高手\\s+发表于(?:\\s+.*)?$', directional_cycles=True),
     '精杀一肖': StrictArticleSpec('第?\\s*(\\d{2,4})\\s*期[:：]?\\s*[【\\[]\\s*精杀一肖\\s*[】\\]]', '第?\\s*(\\d{2,4})\\s*期\\s*精杀一肖\\s*[【\\[]\\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\\s*[】\\]]\\s*开', '作者\\s*[:：]\\s*艳绝千秋'),
@@ -484,9 +485,9 @@ ANCHORED_SECTION_SPECS: dict[str, AnchoredSectionSpec] = {
         r'^澳门横财富域名',
     ),
     '何仙姑': AnchoredSectionSpec(
-        r'绝杀一肖\s*984440c[.]com',
+        r'绝杀一肖\s*988807c[.]com',
         r'(?<!\d)(\d{2,4})\s*期\s*杀一肖\s*[:：]?\s*[【\[]\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[】\]]',
-        r'984440c[.]com',
+        r'988807c[.]com',
     ),
     '心胸开阔': AnchoredSectionSpec(r'心胸开阔', r'第?\s*(\d{2,4})\s*期[:：]?\s*心胸开阔\s*.*?绝杀一肖.*?[【\[]\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[】\]]', include_anchor_line=True),
     '无地自容': AnchoredSectionSpec(r'无地自容【绝杀一肖】资料已公开', r'第?\s*(\d{2,4})\s*期[:：]?\s*绝杀一肖\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*】\s*开', r'看完资料,观赏一下美女'),
@@ -1527,6 +1528,7 @@ class UserForumPostParser:
         "妞妞女神": "妮妮女神",
         "拥挤编蓝": "拥挤编篮",
         "吉祥熊蕊": "吉祥雄蕊",
+        "连中谎言": "杨家男孩",
     }
     _topic_patterns = {
         "高亢毛栗": re.compile(r"^\s*绝杀一肖\s*$"),
@@ -1559,8 +1561,9 @@ class UserForumPostParser:
         "连中谎言": re.compile(r"^\s*\d{2,4}(?:\s+(?:重头来过|粉丝看就好|杀肖只能参考))?\s*$"),
         "请叫我菲菲": re.compile(r"^\s*\d{2,4}\s*$"),
         "钟哥啊": re.compile(r"稳杀一肖"),
+        "俊少": re.compile(r"^\s*绝杀一肖\s*$"),
         "幸运尘客": re.compile(r"^\s*挑战一下杀肖"),
-        "寒武忌": re.compile(r"^\s*\d{2,4}\s+澳门风云\s*$"),
+        "寒武忌": re.compile(r"^\s*\d{2,4}\s+(?:澳门风云|雄心荣耀|志在千里)\s*$"),
         "捡料糊口的曾白温": re.compile(r"^\s*杀一肖\s*$"),
         "钟哥割": re.compile(r"^\s*杀肖\s*$"),
     }
@@ -1595,15 +1598,22 @@ class UserForumPostParser:
         "连中谎言": re.compile(r"(?<!\d)(\d{2,4})\s*(?:绝杀一肖|杀)\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\s*开)?"),
         "请叫我菲菲": re.compile(r"(?<!\d)(\d{2,4})\s*杀\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"),
         "钟哥啊": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*杀\s*[:：]?\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"),
+        # 俊少：正文形如「233.杀猪准」「252杀牛准」「299.杀马」（未完赛不带准字）。
+        # 点号可有可无；行尾必须紧跟准/错/结束，避免把「248.杀牛次兔准」
+        # 这类双生肖行误读成单一杀肖（该行直接不匹配，交由上层跳过）。
+        "俊少": re.compile(
+            r"(?<!\d)(\d{2,4})\s*[.．]?\s*杀\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
+            r"(?=\s*(?:准|错|$|<))"
+        ),
         "幸运尘客": re.compile(
             r"(?<!\d)<\s*(\d{2,4})\s*>\s*杀\s*[-—]{2,}\s*"
             r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
         ),
         "寒武忌": re.compile(
-            r"(?<!\d)(\d{2,4})\s*期\s*[:：〗]?\s*"
-            r"(?:杀(?:肖)?(?:\s*[<＜〈《✦])?|✦\s*杀)\s*"
+            r"(?<!\d)(?:〖\s*期\s*)?(\d{2,4})\s*期?\s*[:：〗〖]?\s*"
+            r"(?:[杀殺](?:肖)?(?:\s*[<＜〈《✦])?|✦\s*[杀殺])\s*"
             r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
-            r"(?=\s*(?:[>＞〉》✦√✓✕✖×❌（(]|$))"
+            r"(?=\s*(?:[>＞〉》✦√✓✕✖×❌（(〗]|$))"
         ),
         "捡料糊口的曾白温": re.compile(
             r"(?<!\d)(\d{2,4})\s*(?:期|起)\s*[:：]\s*杀\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
@@ -1685,6 +1695,9 @@ class UserForumPostParser:
 
         if not matching_rows:
             return None
+        # 注意：同一期多条帖子时按方向取首/尾，是这些站的既有业务规则
+        # （福禄寿喜财取最后一条、钟哥啊取第一条，已有测试锁定），
+        # 不属于跨期借值，这里保持原行为。
         row, source = matching_rows[0] if site.direction is Direction.TOP else matching_rows[-1]
         record_id = str(row["id"]).strip()
         selected_document = type(source)(
@@ -2386,6 +2399,16 @@ class TtssPeriodArticleParser:
         lines,
         titles: list[tuple[int, re.Match[str]]],
     ) -> list[Candidate]:
+        """防跨期借值：值行必须紧邻标题行，且该块内只能有一条合格值行。
+
+        页面为「标题行 + 值行」交替（如 298期: 神剑山庄【绝杀一肖】/【龙】 开:00准）。
+        值行本身不带期号，期号完全来自标题，因此若标题与值行之间混入广告行、
+        上一期残留行或其它栏目行，旧逻辑会把别人的值记成本期值。
+        这里收紧为：
+          1. 值行与标题行之间最多允许 1 行无关内容（MAX_VALUE_GAP）；
+          2. 整个标题块内合格值行必须唯一，出现多条即视为不可判定，放弃该期。
+        """
+        MAX_VALUE_GAP = 1
         candidates: list[Candidate] = []
         for title_position, (title_index, title_match) in enumerate(titles):
             end_index = (
@@ -2394,27 +2417,37 @@ class TtssPeriodArticleParser:
                 else len(lines)
             )
             title_line = lines[title_index].text
+            hits: list[tuple[int, re.Match[str]]] = []
             for index in range(title_index + 1, end_index):
                 result_match = self._result.match(lines[index].text)
-                if result_match is None:
-                    continue
-                candidates.append(
-                    self._candidate(
-                        document,
-                        int(title_match.group(1)),
-                        result_match.group(1),
-                        normalize_space(f"{title_line} {lines[index].text}"),
-                        title_index,
-                        (
-                            "block:0",
-                            f"title-line:{title_index}",
-                            f"title-period:{title_match.group(1)}",
-                            f"title-text:{site.article_keyword}",
-                            "field:杀一肖",
-                        ),
-                    )
+                if result_match is not None:
+                    hits.append((index, result_match))
+            if not hits:
+                continue
+            first_index, first_match = hits[0]
+            # 值行必须紧邻标题；块内多条值行属不可判定，禁止猜值。
+            if first_index - title_index - 1 > MAX_VALUE_GAP:
+                continue
+            if len(hits) > 1:
+                continue
+            candidates.append(
+                self._candidate(
+                    document,
+                    int(title_match.group(1)),
+                    first_match.group(1),
+                    normalize_space(f"{title_line} {lines[first_index].text}"),
+                    title_index,
+                    (
+                        "block:0",
+                        f"title-line:{title_index}",
+                        f"title-period:{title_match.group(1)}",
+                        f"value-line:{first_index}",
+                        f"value-gap:{first_index - title_index - 1}",
+                        f"title-text:{site.article_keyword}",
+                        "field:杀一肖",
+                    ),
                 )
-                break
+            )
         return candidates
 
     def _parse_manager_json(self, site: SiteConfig, document, lines) -> list[Candidate]:
@@ -2648,6 +2681,493 @@ class GushouBandaoCycleParser:
         return tuple(candidates)
 
 
+class ShaohuashengjiHistoryParser:
+    """Parse 韶华胜极's authored article, keeping only the real history block.
+
+    该站页面顶部另有一块「未来期已开奖」的模板区（期数倒序、含目标期之后的期号，
+    且都给「准」），与正文正序历史区在目标期上冲突。只取正文区：
+    以页面顺序正序推进、遇到期号回退即视为换块，只保留最长的一段连续正序记录。
+    """
+
+    _site_name = "韶华胜极"
+    _invisible = re.compile(r"[\u200b-\u200d\ufeff]")
+    _title = re.compile(r"^\s*(\d{1,4})\s*期\s*[:：]\s*韶华胜极\s*[【\[]\s*绝杀一肖\s*[】\]]")
+    _author = re.compile(r"^\s*作者\s*[:：]\s*韶华胜极\s*$")
+    _record = re.compile(
+        r"^\s*(\d{1,4})\s*期\s*[:：]\s*绝杀一肖\s*[【\[]\s*"
+        r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[】\]]\s*开\s*(\S+?)\s*(?:准|错)?\s*$"
+    )
+
+    @classmethod
+    def _semantic(cls, value: str) -> str:
+        return cls._invisible.sub("", normalize_space(value))
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if site.name != self._site_name:
+            return ()
+
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            lines = document_lines(document)
+            semantic_lines = tuple(self._semantic(line.text) for line in lines)
+
+            title_index = next(
+                (
+                    index
+                    for index, text in enumerate(semantic_lines)
+                    if self._title.match(text) is not None
+                ),
+                None,
+            )
+            # 作者行是锚点证据的落地行，必须真实存在于原文。
+            author_index = next(
+                (
+                    index
+                    for index, text in enumerate(semantic_lines)
+                    if self._author.match(text) is not None
+                ),
+                None,
+            )
+            if author_index is None:
+                continue
+
+            records: list[tuple[int, str, str, int, int]] = []
+            for index, text in enumerate(semantic_lines):
+                match = self._record.match(text)
+                if match is None:
+                    continue
+                records.append(
+                    (
+                        int(match.group(1).lstrip("0") or "0"),
+                        match.group(2),
+                        lines[index].text,
+                        index,
+                        match.start(1),
+                    )
+                )
+            if not records:
+                continue
+
+            # 按期号切块：期号回退即新块。真实历史区是唯一「从早期一路正序到当期」的长块，
+            # 顶部模板区期数倒序且夹带未来期，取不到从最小值起算的连续正序，故被排除。
+            chunks: list[list[tuple[int, str, str, int, int]]] = [[]]
+            previous: int | None = None
+            for record in records:
+                period = record[0]
+                if previous is not None and period < previous:
+                    chunks.append([])
+                chunks[-1].append(record)
+                previous = period
+
+            def _score(chunk: list[tuple[int, str, str, int, int]]) -> tuple[int, int]:
+                # 优先「起始期最早」的块（历史区从 1-2 位数起步），再看长度。
+                return (-min(item[0] for item in chunk), len(chunk))
+
+            longest = max(chunks, key=_score)
+            if len(longest) < 2:
+                continue
+            block_start = longest[0][3]
+            block_end = longest[-1][3] + 1
+
+            for period, zodiac, raw_line, line_index, offset in longest:
+                evidence = [
+                    "author:韶华胜极",
+                    f"author-line:{author_index}",
+                    "pattern:history-block",
+                    "field:绝杀一肖",
+                    f"block-range:{block_start}-{block_end}",
+                    f"record-offset:{offset}",
+                ]
+                if title_index is not None:
+                    evidence.append(f"title-line:{title_index}")
+                candidates.append(
+                    Candidate(
+                        period,
+                        zodiac,
+                        raw_line,
+                        document.source_id,
+                        document.page_order * 1_000_000 + line_index,
+                        tuple(evidence),
+                        record_id=document.record_id,
+                    )
+                )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
+class XiangruyimoDrawVerifiedParser:
+    """Parse 相濡以沫's article, keeping only the block that is genuinely published.
+
+    该页有两条「精杀一肖」序列，行号连续无法靠位置切分，两条在目标期都出现：
+      - 真实发布序列：目标期开奖号为占位（0000 / ？00），表示站方尚未开奖；
+      - 模板序列：目标期就写着具体开奖号（如「开鼠18准」），等于提前知道结果。
+    判据：只采用「目标期开奖号为占位」的那条记录，模板序列天然被排除。
+    若占位记录不是唯一，拒绝输出，避免猜值。
+    """
+
+    _site_name = "相濡以沫"
+    _invisible = re.compile(r"[\u200b-\u200d\ufeff]")
+    _author = re.compile(r"^\s*相濡以沫\s+发表于")
+    _record = re.compile(
+        r"^\s*(\d{1,4})\s*期\s*[:：]\s*[【\[]\s*精杀一肖\s*[】\]]\s*"
+        r"[【\[]\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[】\]]\s*開?\s*[:：]?\s*(\S+)"
+    )
+    # 未开奖占位：0000 / ？00 / 00 之类，不含生肖
+    _placeholder = re.compile(r"^[0?？]{2,}$")
+
+    @classmethod
+    def _semantic(cls, value: str) -> str:
+        return cls._invisible.sub("", normalize_space(value))
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if site.name != self._site_name:
+            return ()
+
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            lines = document_lines(document)
+            semantic_lines = tuple(self._semantic(line.text) for line in lines)
+
+            author_index = next(
+                (
+                    index
+                    for index, text in enumerate(semantic_lines)
+                    if self._author.match(text) is not None
+                ),
+                None,
+            )
+
+            records: list[tuple[int, str, str, int, int, str]] = []
+            for index, text in enumerate(semantic_lines):
+                match = self._record.match(text)
+                if match is None:
+                    continue
+                records.append(
+                    (
+                        int(match.group(1).lstrip("0") or "0"),
+                        match.group(2),
+                        lines[index].text,
+                        index,
+                        match.start(1),
+                        match.group(3).strip(),
+                    )
+                )
+            if not records:
+                continue
+
+            # 两段序列行号完全连续（无断档），只能靠「开奖号状态」区分：
+            # 真实发布序列里，各期最新一条的开奖号是占位（未开奖）；
+            # 模板序列则给当期就填了具体开奖号。据此只保留占位记录。
+            pending: list[tuple[int, str, str, int, int, str]] = [
+                record
+                for record in records
+                if self._placeholder.match(record[5].rstrip("准错"))
+            ]
+            if len(pending) != 1:
+                continue
+            block = pending
+            block_start = block[0][3]
+            block_end = block[-1][3] + 1
+
+            for period, zodiac, raw_line, line_index, offset, draw in block:
+                evidence = [
+                    "author:相濡以沫",
+                    f"author-line:{author_index}" if author_index is not None else "author-line:none",
+                    "pattern:published-block",
+                    f"draw-status:{'pending' if self._placeholder.match(draw.rstrip('准错')) else 'drawn'}",
+                    "field:精杀一肖",
+                    f"block-range:{block_start}-{block_end}",
+                    f"record-offset:{offset}",
+                ]
+                candidates.append(
+                    Candidate(
+                        period,
+                        zodiac,
+                        raw_line,
+                        document.source_id,
+                        document.page_order * 1_000_000 + line_index,
+                        tuple(evidence),
+                        record_id=document.record_id,
+                    )
+                )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
+class TripleZodiacBlockParser:
+    """Parse 鳞次栉比 / 万川境身: 生肖写成三字重复（【鸡鸡鸡】）。
+
+    这两站通用解析器完全匹配不到（括号内是三字重复而非单字），因此单独处理。
+    万川境身页面另有一块「当期已开奖」的模板区，与真实发布区在目标期冲突：
+    真实区当期开奖号是占位（0000），模板区当期就填了具体开奖号。
+    判据：只取占位记录所在的连续期号段；占位不唯一则拒绝输出。
+    """
+
+    _site_names = frozenset({"鳞次栉比", "万川境身"})
+    _invisible = re.compile(r"[\u200b-\u200d\ufeff]")
+    _record = re.compile(
+        r"^\s*(\d{1,4})\s*期\s*[【\[]\s*绝杀一肖\s*[】\]]\s*"
+        r"[【\[]\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\2){0,2}\s*[】\]]\s*"
+        r"开\s*[:：]?\s*(\S+?)(?:准|错)?\s*$"
+    )
+    _placeholder = re.compile(r"^[0?？]{2,}$")
+
+    @classmethod
+    def _semantic(cls, value: str) -> str:
+        return cls._invisible.sub("", normalize_space(value))
+
+    def _author_index(self, site_name: str, semantic_lines: tuple[str, ...]) -> int | None:
+        pattern = re.compile(rf"^\s*{re.escape(site_name)}\s+发表于")
+        return next(
+            (index for index, text in enumerate(semantic_lines) if pattern.match(text) is not None),
+            None,
+        )
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if site.name not in self._site_names:
+            return ()
+
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            lines = document_lines(document)
+            semantic_lines = tuple(self._semantic(line.text) for line in lines)
+            author_index = self._author_index(site.name, semantic_lines)
+
+            records: list[tuple[int, str, str, int, int, str]] = []
+            for index, text in enumerate(semantic_lines):
+                match = self._record.match(text)
+                if match is None:
+                    continue
+                records.append(
+                    (
+                        int(match.group(1).lstrip("0") or "0"),
+                        match.group(2),
+                        lines[index].text,
+                        index,
+                        match.start(1),
+                        match.group(3).strip(),
+                    )
+                )
+            if not records:
+                continue
+
+            # 找占位（未开奖）记录作为真实区锚点
+            anchors = [pos for pos, rec in enumerate(records) if self._placeholder.match(rec[5])]
+            if len(anchors) > 1:
+                continue
+            if anchors:
+                anchor = anchors[0]
+                start = anchor
+                end = anchor
+                # 页面顺序为倒序：records[i][0] - records[i+1][0] == 1 表示连续
+                while start > 0 and records[start - 1][0] - records[start][0] == 1:
+                    start -= 1
+                while end < len(records) - 1 and records[end][0] - records[end + 1][0] == 1:
+                    end += 1
+                block = records[start : end + 1]
+            else:
+                # 防跨期借值：没有「当期未开奖」占位记录时，无法区分真实块与模板块。
+                # 旧逻辑回退成全部记录，会把两块混在一起、让模板值冒充当期值；
+                # 这里与 XiangruyimoDrawVerifiedParser 保持一致，直接放弃该期。
+                continue
+
+            block_start = block[0][3]
+            block_end = block[-1][3] + 1
+            for period, zodiac, raw_line, line_index, offset, draw in block:
+                evidence = [
+                    f"author:{site.name}",
+                    f"author-line:{author_index}" if author_index is not None else "author-line:none",
+                    "pattern:triple-zodiac-block",
+                    f"draw-status:{'pending' if self._placeholder.match(draw) else 'drawn'}",
+                    "field:绝杀一肖",
+                    f"block-range:{block_start}-{block_end}",
+                    f"record-offset:{offset}",
+                ]
+                candidates.append(
+                    Candidate(
+                        period,
+                        zodiac,
+                        raw_line,
+                        document.source_id,
+                        document.page_order * 1_000_000 + line_index,
+                        tuple(evidence),
+                        record_id=document.record_id,
+                    )
+                )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
+class ZhongBukejianPaddedParser:
+    """Parse 忠不可兼: 期号三位补零（024期）且行尾带「准/错」状态。
+
+    通用解析器对这种补零期号 + 行尾状态的组合完全匹配不到，因此单独处理。
+    页面为单块、期号正序，当期开奖号为占位（？00）。
+    """
+
+    _site_name = "忠不可兼"
+    _invisible = re.compile(r"[\u200b-\u200d\ufeff]")
+    _author = re.compile(r"^\s*作者\s*[:：]\s*忠不可兼\s*$")
+    _record = re.compile(
+        r"^\s*(\d{1,4})\s*期\s*[:：]\s*绝杀1肖\s*[【\[]\s*"
+        r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[】\]]\s*"
+        r"开\s*[:：]?\s*(\S+?)(?:准|错)?\s*$"
+    )
+    _placeholder = re.compile(r"^[0?？]{2,}$")
+
+    @classmethod
+    def _semantic(cls, value: str) -> str:
+        return cls._invisible.sub("", normalize_space(value))
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if site.name != self._site_name:
+            return ()
+
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            lines = document_lines(document)
+            semantic_lines = tuple(self._semantic(line.text) for line in lines)
+            author_index = next(
+                (
+                    index
+                    for index, text in enumerate(semantic_lines)
+                    if self._author.match(text) is not None
+                ),
+                None,
+            )
+
+            records: list[tuple[int, str, str, int, int, str]] = []
+            for index, text in enumerate(semantic_lines):
+                match = self._record.match(text)
+                if match is None:
+                    continue
+                records.append(
+                    (
+                        int(match.group(1).lstrip("0") or "0"),
+                        match.group(2),
+                        lines[index].text,
+                        index,
+                        match.start(1),
+                        match.group(3).strip(),
+                    )
+                )
+            if not records:
+                continue
+
+            block_start = records[0][3]
+            block_end = records[-1][3] + 1
+            for period, zodiac, raw_line, line_index, offset, draw in records:
+                evidence = [
+                    "author:忠不可兼",
+                    f"author-line:{author_index}" if author_index is not None else "author-line:none",
+                    "pattern:padded-period",
+                    f"draw-status:{'pending' if self._placeholder.match(draw) else 'drawn'}",
+                    "field:绝杀1肖",
+                    f"block-range:{block_start}-{block_end}",
+                    f"record-offset:{offset}",
+                ]
+                candidates.append(
+                    Candidate(
+                        period,
+                        zodiac,
+                        raw_line,
+                        document.source_id,
+                        document.page_order * 1_000_000 + line_index,
+                        tuple(evidence),
+                        record_id=document.record_id,
+                    )
+                )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
+class JugongJincuiKillZodiacParser:
+    """Parse 鞠躬尽瘁: 栏目为《综合杀料》，生肖写在「杀X-…」里。
+
+    行形如：294期:《综合杀料》【杀猪-3尾-绿单】开0000准
+    「杀猪」即杀一个生肖，取「杀」后面那个生肖作为本栏目的唯一值；
+    横线后是尾数/颜色等附加信息，不参与取值。
+    页面单块、期号正序，当期开奖号为占位（0000）。
+    """
+
+    _site_name = "鞠躬尽瘁"
+    _invisible = re.compile(r"[\u200b-\u200d\ufeff]")
+    # 站名只出现在标题行：294期：【综合杀料】鞠躬尽瘁
+    _title = re.compile(r"^\s*\d{1,4}\s*期\s*[:：]\s*[【\[]\s*综合杀料\s*[】\]]\s*鞠躬尽瘁\s*$")
+    _record = re.compile(
+        r"^\s*(\d{1,4})\s*期\s*[:：]\s*《综合杀料》\s*[【\[]\s*杀\s*"
+        r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[-－—][^】\]]*[】\]]\s*"
+        r"开\s*[:：]?\s*(\S+?)(?:准|错)?\s*$"
+    )
+    _placeholder = re.compile(r"^[0?？]{2,}$")
+
+    @classmethod
+    def _semantic(cls, value: str) -> str:
+        return cls._invisible.sub("", normalize_space(value))
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if site.name != self._site_name:
+            return ()
+
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            lines = document_lines(document)
+            semantic_lines = tuple(self._semantic(line.text) for line in lines)
+
+            anchor_index = next(
+                (
+                    index
+                    for index, text in enumerate(semantic_lines)
+                    if self._title.match(text) is not None
+                ),
+                None,
+            )
+
+            records: list[tuple[int, str, str, int, int, str]] = []
+            for index, text in enumerate(semantic_lines):
+                match = self._record.match(text)
+                if match is None:
+                    continue
+                records.append(
+                    (
+                        int(match.group(1).lstrip("0") or "0"),
+                        match.group(2),
+                        lines[index].text,
+                        index,
+                        match.start(1),
+                        match.group(3).strip(),
+                    )
+                )
+            if not records:
+                continue
+
+            block_start = records[0][3]
+            block_end = records[-1][3] + 1
+            for period, zodiac, raw_line, line_index, offset, draw in records:
+                evidence = [
+                    "author:鞠躬尽瘁",
+                    f"author-line:{anchor_index}" if anchor_index is not None else "author-line:none",
+                    "pattern:kill-zodiac-section",
+                    f"draw-status:{'pending' if self._placeholder.match(draw) else 'drawn'}",
+                    "field:综合杀料",
+                    f"block-range:{block_start}-{block_end}",
+                    f"record-offset:{offset}",
+                ]
+                candidates.append(
+                    Candidate(
+                        period,
+                        zodiac,
+                        raw_line,
+                        document.source_id,
+                        document.page_order * 1_000_000 + line_index,
+                        tuple(evidence),
+                        record_id=document.record_id,
+                    )
+                )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
 class MoranBeihuanCycleParser:
     """Parse 墨染悲欢's authored article and keep yearly record cycles separate."""
 
@@ -2854,6 +3374,8 @@ class Jx438StrawberryStatsParser:
     _heading = re.compile(r"新澳门\s*(\d{2,4})\s*期")
     _stat = re.compile(r"[〖【\[]\s*(\d{1,3})\s*次[〗】\]]\s*[:：]\s*(.*)")
     _zodiac = re.compile(r"[鼠牛虎兔龙蛇马羊猴鸡狗猪]")
+    # 说明性文字（如「从286期开始记录」），其中的期号不代表本块归属。
+    _period_note = re.compile(r"从\s*\d{2,4}\s*期\s*开始|开始记录|统计结果")
 
     def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
         if site.name != self._site_name or site.article_keyword != self._site_name:
@@ -2872,8 +3394,11 @@ class Jx438StrawberryStatsParser:
                 period = int(heading_match.group(1))
                 stats: list[tuple[int, tuple[str, ...], int, str]] = []
                 block_end = len(lines)
+                period_conflict = False
                 for scan in range(index + 2, len(lines)):
                     text = lines[scan].text
+                    # 先判块边界：「新澳门/旧澳门/🍓🍓🍓」是下一块的开始，
+                    # 必须先终止本块，否则会把下一块的标题误判成期号冲突。
                     if "新澳门" in text or "旧澳门" in text or "🍓🍓🍓" in text:
                         block_end = scan
                         break
@@ -2887,6 +3412,21 @@ class Jx438StrawberryStatsParser:
                                 text,
                             )
                         )
+                        continue
+                    # 防跨期借值：统计行以外若出现「NNN期」且与本块标题期不一致，
+                    # 说明标题与统计块不是同一期（如标题写「下期」）。
+                    # 仅当该行不是说明性文字（「从N期开始记录」等）时才判冲突。
+                    echo = re.search(r"(\d{2,4})\s*期", text)
+                    if (
+                        echo is not None
+                        and int(echo.group(1)) != period
+                        and not self._period_note.match(text)
+                    ):
+                        period_conflict = True
+                        break
+                # 块内出现冲突期号时放弃该期，禁止借值。
+                if period_conflict:
+                    continue
                 if not stats:
                     continue
                 minimum = min(item[0] for item in stats)
@@ -2922,6 +3462,199 @@ class Jx438StrawberryStatsParser:
         return tuple(candidates)
 
 
+class SijiuHuangbinhongKillZodiacParser:
+    """Parse 四舅黄宾虹黄肖：首页「无敌杀码」标签页的《杀一肖》列。
+
+    首页把四个标签页全部渲染进 DOM，非当前标签只是 display:none，
+    所以不需要点击标签：用导航项「无敌杀码」的标签 id 把标题块
+    （含「黄宾虹黄【无敌杀码】」）和内容块（六列：期数/杀一肖/杀半波/
+    杀一尾/禁一段/开奖结果）绑在一起，再取「杀一肖」列。
+
+    站方域名会换，因此不拿域名当关键字，只认栏目名、作者名和列语义。
+    内容块的表格与页面纯文本两路解析结果必须逐期一致，否则整块丢弃。
+    """
+
+    _site_name = "四舅黄宾虹黄肖"
+    _tag = "无敌杀码"
+    _title_marker = "【无敌杀码】"
+    _headers = ("期数", "杀一肖", "杀半波", "杀一尾", "禁一段", "开奖结果")
+    _period = re.compile(r"^(\d{2,4})\s*期$")
+    _zodiac = re.compile(r"^[（(]?\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[）)]?$")
+    _pending = re.compile(r"^[?？0]{1,8}$")
+    _nav = re.compile(r"toggleItemsV2\(\s*(\d+)\s*,\s*\d+\s*,\s*['\"]([^'\"]+)['\"]")
+    _content_open = re.compile(r"<div\b[^<>]*class\s*=\s*['\"][^'\"]*\btab_tuku05v3Content(\d+)")
+    _table = re.compile(r"<table\b.*?</table>", re.IGNORECASE | re.DOTALL)
+    _row = re.compile(r"<tr\b.*?</tr>", re.IGNORECASE | re.DOTALL)
+    _cell = re.compile(r"<t[dh]\b.*?</t[dh]>", re.IGNORECASE | re.DOTALL)
+
+    @staticmethod
+    def _cell_text(value: str) -> str:
+        return _fragment_text(value)
+
+    @staticmethod
+    def _same_endpoint(site: SiteConfig, document) -> bool:
+        expected = urlsplit(site.url)
+        actual = urlsplit(document.final_url)
+        return (
+            expected.scheme.lower() == actual.scheme.lower()
+            and expected.netloc.lower() == actual.netloc.lower()
+            and (expected.path or "/") == (actual.path or "/")
+        )
+
+    @classmethod
+    def _nav_ids(cls, source: str) -> tuple[str, ...]:
+        ids: list[str] = []
+        for match in cls._nav.finditer(source):
+            tag_end = source.find(">", match.end())
+            if tag_end < 0:
+                continue
+            block_end = source.find("</div>", tag_end)
+            if block_end < 0:
+                continue
+            if cls._cell_text(source[tag_end + 1 : block_end]) != cls._tag:
+                continue
+            if match.group(1) not in ids:
+                ids.append(match.group(1))
+        return tuple(ids)
+
+    @classmethod
+    def _table_rows(cls, block: str) -> tuple[tuple[str, ...], list[tuple[str, ...]]]:
+        for table in cls._table.findall(block):
+            rows = cls._row.findall(table)
+            if not rows:
+                continue
+            header = tuple(cls._cell_text(value) for value in cls._cell.findall(rows[0]))
+            if header != cls._headers:
+                continue
+            body = [
+                tuple(cls._cell_text(value) for value in cls._cell.findall(row))
+                for row in rows[1:]
+            ]
+            return header, body
+        return (), []
+
+    @classmethod
+    def _panel_records(
+        cls, source: str
+    ) -> tuple[str, list[tuple[int, str, str]]]:
+        """返回 (标签 id, [(期数, 杀一肖, 开奖结果)])；结构不符时返回空。"""
+        openings = tuple(cls._content_open.finditer(source))
+        if not openings:
+            return "", []
+        for nav_id in cls._nav_ids(source):
+            title_open = re.compile(
+                rf"<div\b[^<>]*class\s*=\s*['\"][^'\"]*\btab_tuku05v3Title{nav_id}\b",
+                re.IGNORECASE,
+            )
+            title_match = title_open.search(source)
+            if title_match is None:
+                continue
+            title_end = source.find(">", title_match.end())
+            title_close = source.find("</div>", title_end) if title_end >= 0 else -1
+            if title_end < 0 or title_close < 0:
+                continue
+            if cls._title_marker not in source[title_end + 1 : title_close]:
+                continue
+            for index, opening in enumerate(openings):
+                if opening.group(1) != nav_id:
+                    continue
+                end = openings[index + 1].start() if index + 1 < len(openings) else len(source)
+                _header, body = cls._table_rows(source[opening.end() : end])
+                records: list[tuple[int, str, str]] = []
+                for cells in body:
+                    if len(cells) != len(cls._headers):
+                        break
+                    period_match = cls._period.fullmatch(cells[0])
+                    zodiac_match = cls._zodiac.fullmatch(cells[1])
+                    if period_match is None or zodiac_match is None:
+                        break
+                    records.append(
+                        (int(period_match.group(1)), zodiac_match.group(1), cells[-1])
+                    )
+                if records:
+                    return nav_id, records
+        return "", []
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if site.name != self._site_name:
+            return ()
+        all_candidates: list[Candidate] = []
+        for document in bundle.documents:
+            if document.document_type not in {DocumentType.HTML, DocumentType.BROWSER}:
+                continue
+            if not self._same_endpoint(site, document):
+                continue
+            content_id, records = self._panel_records(document.text)
+            if not records:
+                continue
+            lines = document_lines(document)
+            texts = tuple(line.text for line in lines)
+            header_size = len(self._headers)
+            header_indexes = [
+                index
+                for index in range(len(texts) - header_size + 1)
+                if texts[index : index + header_size] == self._headers
+            ]
+            # 同页可能有其它六列表：只接受与「无敌杀码」块逐期一致的那一个表头，
+            # 命中 0 个或 1 个以上都无法唯一证明来源，整块丢弃。
+            matches: list[tuple[int, int, list[tuple[int, str, int, str]]]] = []
+            for header_index in header_indexes:
+                parsed: list[tuple[int, str, int, str]] = []
+                cursor = header_index + header_size
+                for period, zodiac, draw in records:
+                    if cursor + header_size > len(texts):
+                        break
+                    period_match = self._period.fullmatch(texts[cursor])
+                    zodiac_match = self._zodiac.fullmatch(texts[cursor + 1])
+                    if period_match is None or zodiac_match is None:
+                        break
+                    if int(period_match.group(1)) != period or zodiac_match.group(1) != zodiac:
+                        break
+                    parsed.append((period, zodiac, cursor, draw))
+                    cursor += header_size
+                if [(item[0], item[1]) for item in parsed] == [
+                    (item[0], item[1]) for item in records
+                ]:
+                    matches.append((header_index, cursor, parsed))
+            if len(matches) != 1:
+                continue
+            header_index, table_end, parsed = matches[0]
+            title_index = next(
+                (
+                    index
+                    for index in range(header_index - 1, -1, -1)
+                    if self._title_marker in texts[index]
+                ),
+                None,
+            )
+            if title_index is None:
+                continue
+            title_text = texts[title_index]
+            for period, zodiac, position, draw in parsed:
+                raw_line = normalize_space(" ".join(texts[position : position + header_size]))
+                pending = self._pending.match(draw) is not None
+                all_candidates.append(
+                    Candidate(
+                        period,
+                        zodiac,
+                        raw_line,
+                        document.source_id,
+                        document.page_order * 1_000_000 + position,
+                        (
+                            f"tab-content:{content_id}",
+                            "table-columns:期数/杀一肖/杀半波/杀一尾/禁一段/开奖结果",
+                            f"anchor-line:{title_index}",
+                            f"section:{title_text}",
+                            f"section-range:{header_index}-{table_end}",
+                            f"draw-status:{'pending' if pending else 'drawn'}",
+                        ),
+                        record_id=document.record_id,
+                    )
+                )
+        all_candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(all_candidates)
+
+
 def parser_entries() -> tuple[tuple[str, Parser], ...]:
     entries: list[tuple[str, Parser]] = [
         (
@@ -2936,12 +3669,21 @@ def parser_entries() -> tuple[tuple[str, Parser], ...]:
     ]
     entries.extend(
         (
-            ("family.anchored_section", AnchoredSectionFamilyParser(ANCHORED_SECTION_SPECS)),
+            (
+                "family.anchored_section",
+                AnchoredSectionFamilyParser(
+                    ANCHORED_SECTION_SPECS,
+                    directional_cycle_sites=DIRECTIONAL_CYCLE_REGEX_SITES,
+                ),
+            ),
             ("family.strict_article", StrictArticleFamilyParser(STRICT_ARTICLE_SPECS)),
             (
                 "special.demon_title_author",
                 TitleAuthorParser(
-                    r"第?\s*(\d{2,4})\s*期.*?(599983[a-g]\.com)",
+                    # 作者名是站方发布的域名（形如 030368d.com / 599983a.com）。
+                    # 不要写死具体域名：站方会换。这里按「字母数字段 + 点 + 顶级域」取，
+                    # 且用负向环视排除前面的〖绝杀一肖〗等中文括号内容。
+                    r"第?\s*(\d{2,4})\s*期.*?(?<![〖【\w])([0-9a-z]{2,}[0-9a-z.]*\.[a-z]{2,})",
                     r"第?\s*(\d{2,4})\s*期[:：]?\s*[【\[]\s*绝杀一肖\s*[】\]]\s*[【\[]\s*"
                     r"([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[】\]]",
                 ),
@@ -2955,6 +3697,26 @@ def parser_entries() -> tuple[tuple[str, Parser], ...]:
                 MoranBeihuanCycleParser(),
             ),
             (
+                "special.shaohuashengji_history",
+                ShaohuashengjiHistoryParser(),
+            ),
+            (
+                "special.xiangruyimo_draw_verified",
+                XiangruyimoDrawVerifiedParser(),
+            ),
+            (
+                "special.triple_zodiac_block",
+                TripleZodiacBlockParser(),
+            ),
+            (
+                "special.zhong_bukejian_padded",
+                ZhongBukejianPaddedParser(),
+            ),
+            (
+                "special.jugong_jincui_kill_zodiac",
+                JugongJincuiKillZodiacParser(),
+            ),
+            (
                 "special.gushou_bandao_cycle",
                 GushouBandaoCycleParser(),
             ),
@@ -2965,6 +3727,10 @@ def parser_entries() -> tuple[tuple[str, Parser], ...]:
             ("special.article_40783e", TopicArticleCycleParser()),
             ("special.xinzhu_forum", XinzhuForumParser()),
             ("special.macau_caixianzhi_table", MacauCaixianzhiTableParser()),
+            (
+                "special.sijiu_huangbinhong_kill_zodiac",
+                SijiuHuangbinhongKillZodiacParser(),
+            ),
             ("special.kaijiang_facai_table", KaijiangFacaiTableParser()),
             ("special.yizhixia_article", YizhixiaArticleParser()),
             ("special.ar_content_period_article", ArContentPeriodArticleParser()),

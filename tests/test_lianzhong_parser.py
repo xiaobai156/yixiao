@@ -36,7 +36,7 @@ def _row(record_id: int, draw: int, topic_period: int, zodiac: str) -> dict[str,
         "draw": draw,
         "topic": f"{topic_period} 重头来过",
         "content": content,
-        "user": {"id": 166365, "nickname": "连中谎言"},
+        "user": {"id": 166365, "nickname": "杨家男孩"},
     }
 
 
@@ -110,7 +110,7 @@ def test_236_reference_topic_and_short_kill_record_are_supported() -> None:
         "draw": 236,
         "topic": "236 杀肖只能参考",
         "content": "236杀猪开",
-        "user": {"id": 166365, "nickname": "连中谎言"},
+        "user": {"id": 166365, "nickname": "杨家男孩"},
     }
     bundle = _bundle(row)
 
