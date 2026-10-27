@@ -3471,7 +3471,9 @@ class SijiuHuangbinhongKillZodiacParser:
     杀一尾/禁一段/开奖结果）绑在一起，再取「杀一肖」列。
 
     站方域名会换，因此不拿域名当关键字，只认栏目名、作者名和列语义。
-    内容块的表格与页面纯文本两路解析结果必须逐期一致，否则整块丢弃。
+    来源唯一性靠两道硬约束：同一标签块里表头相符的表必须恰好一张；
+    表格解析结果还要与页面纯文本逐期一致（结构自检，防线性化错位）。
+    任何一处对不上都整块丢弃，绝不带着残留记录继续。
     """
 
     _site_name = "四舅黄宾虹黄肖"
@@ -3518,7 +3520,9 @@ class SijiuHuangbinhongKillZodiacParser:
         return tuple(ids)
 
     @classmethod
-    def _table_rows(cls, block: str) -> tuple[tuple[str, ...], list[tuple[str, ...]]]:
+    def _tables(cls, block: str) -> list[list[tuple[str, ...]]]:
+        """块内所有表头逐字相等的表（按出现顺序），用于「必须唯一」判定。"""
+        tables: list[list[tuple[str, ...]]] = []
         for table in cls._table.findall(block):
             rows = cls._row.findall(table)
             if not rows:
@@ -3526,12 +3530,38 @@ class SijiuHuangbinhongKillZodiacParser:
             header = tuple(cls._cell_text(value) for value in cls._cell.findall(rows[0]))
             if header != cls._headers:
                 continue
-            body = [
-                tuple(cls._cell_text(value) for value in cls._cell.findall(row))
-                for row in rows[1:]
-            ]
-            return header, body
-        return (), []
+            tables.append(
+                [
+                    tuple(cls._cell_text(value) for value in cls._cell.findall(row))
+                    for row in rows[1:]
+                ]
+            )
+        return tables
+
+    @classmethod
+    def _read_rows(
+        cls, body: list[tuple[str, ...]]
+    ) -> tuple[list[tuple[int, str, str]], bool]:
+        """返回 (记录, 是否可信)。
+
+        期数行里的生肖格为空或非法时返回不可信：宁可整站失败，也不能像以前那样
+        静默截断成「少了后面几期还是成功」。
+        """
+        header_size = len(cls._headers)
+        records: list[tuple[int, str, str]] = []
+        for cells in body:
+            period_match = cls._period.fullmatch(cells[0]) if cells else None
+            if period_match is None:
+                break  # 不是期数行：数据区到此结束
+            if len(cells) != header_size:
+                return [], False  # 期数行缺列/合并单元格：列已错位
+            zodiac_match = cls._zodiac.fullmatch(cells[1])
+            if zodiac_match is None:
+                return [], False  # 期数行的取值格为空或不是单个生肖
+            records.append(
+                (int(period_match.group(1)), zodiac_match.group(1), cells[-1])
+            )
+        return records, True
 
     @classmethod
     def _panel_records(
@@ -3559,19 +3589,12 @@ class SijiuHuangbinhongKillZodiacParser:
                 if opening.group(1) != nav_id:
                     continue
                 end = openings[index + 1].start() if index + 1 < len(openings) else len(source)
-                _header, body = cls._table_rows(source[opening.end() : end])
-                records: list[tuple[int, str, str]] = []
-                for cells in body:
-                    if len(cells) != len(cls._headers):
-                        break
-                    period_match = cls._period.fullmatch(cells[0])
-                    zodiac_match = cls._zodiac.fullmatch(cells[1])
-                    if period_match is None or zodiac_match is None:
-                        break
-                    records.append(
-                        (int(period_match.group(1)), zodiac_match.group(1), cells[-1])
-                    )
-                if records:
+                tables = cls._tables(source[opening.end() : end])
+                # 同块出现多张同表头的表时无法证明取的是栏目正文，直接整块放弃。
+                if len(tables) != 1:
+                    continue
+                records, trustworthy = cls._read_rows(tables[0])
+                if trustworthy and records:
                     return nav_id, records
         return "", []
 

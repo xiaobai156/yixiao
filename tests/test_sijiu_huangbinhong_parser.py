@@ -40,6 +40,9 @@ def _page(
     target_rows: tuple[tuple[int, str, str], ...] = ((300, "猪", "？00"), (299, "鼠", "猴23")),
     with_target_tab: bool = True,
     with_title_marker: bool = True,
+    extra_target_table: bool = False,
+    empty_zodiac_period: int | None = None,
+    short_row_period: int | None = None,
 ) -> str:
     nav = (
         '<div class="item_nr1 item item1" onclick="toggleItemsV2(111,1,\'tab_tuku05v3a01\',\'#ff0000\',\'#07C160\')"> 绝杀⑤码 </div>'
@@ -53,12 +56,28 @@ def _page(
         '<div class="tab_tuku05v3Content111 tab_tuku05v3Content" style="display: none">'
         f"<table>{_headers()}{_row(300, decoy_zodiac)}</table></div>"
     )
+    def _target_row(period: int, zodiac: str, draw: str) -> str:
+        if period == empty_zodiac_period:
+            zodiac = ""
+        if period == short_row_period:
+            return f"<tr><td>{period}期</td><td>{zodiac}</td><td>蓝双</td><td>2尾</td></tr>"
+        return _row(period, zodiac, draw)
+
+    target_table = (
+        "<table>"
+        + _headers()
+        + "".join(_target_row(period, zodiac, draw) for period, zodiac, draw in target_rows)
+        + "</table>"
+    )
+    if extra_target_table:
+        # 同块内多一张同表头的表：来源无法唯一证明，解析器必须整块放弃。
+        target_table = (
+            "<table>" + _headers() + _row(300, "鼠") + "</table>" + target_table
+        )
     target = (
         '<div class="tab_tuku05v3Content222 tab_tuku05v3Content" style="display: none">'
-        + "<table>"
-        + _headers()
-        + "".join(_row(period, zodiac, draw) for period, zodiac, draw in target_rows)
-        + "</table></div>"
+        + target_table
+        + "</div>"
         if with_target_tab
         else ""
     )
@@ -142,6 +161,24 @@ def test_missing_tab_or_marker_returns_empty() -> None:
     parser = SijiuHuangbinhongKillZodiacParser()
     assert parser.parse(_site(), _bundle(_page(with_target_tab=False))) == ()
     assert parser.parse(_site(), _bundle(_page(with_title_marker=False))) == ()
+
+
+def test_two_tables_with_same_header_in_one_tab_are_rejected() -> None:
+    """同块两张同表头的表无法唯一证明来源，必须整块放弃，不能取第一张。"""
+    parser = SijiuHuangbinhongKillZodiacParser()
+    assert parser.parse(_site(), _bundle(_page(extra_target_table=True))) == ()
+
+
+def test_empty_zodiac_cell_fails_instead_of_truncating() -> None:
+    """期数行的取值格为空时必须失败，不能静默只剩前几期。"""
+    parser = SijiuHuangbinhongKillZodiacParser()
+    assert parser.parse(_site(), _bundle(_page(empty_zodiac_period=299))) == ()
+
+
+def test_short_period_row_fails_instead_of_truncating() -> None:
+    """期数行缺列（合并单元格）同样视为列错位，整块失败。"""
+    parser = SijiuHuangbinhongKillZodiacParser()
+    assert parser.parse(_site(), _bundle(_page(short_row_period=299))) == ()
 
 
 def test_other_site_and_other_endpoint_return_empty() -> None:
