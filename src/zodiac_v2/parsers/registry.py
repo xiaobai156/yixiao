@@ -15,6 +15,14 @@ class RegistryError(ValueError):
     pass
 
 
+class ParserRejection(ValueError):
+    """专属解析已识别到文档，但按站点规则主动拒绝（结构不符/来源不唯一/截断）。
+
+    与「返回空候选」的区别只在可观测性：服务层会把这里的原因写进失败诊断，
+    让运维能区分「网站没数据」和「解析器自己拦下了」，失败码保持不变。
+    """
+
+
 class ParserRegistry:
     def __init__(self, entries: Iterable[tuple[str, Parser]]) -> None:
         parsers: dict[str, Parser] = {}

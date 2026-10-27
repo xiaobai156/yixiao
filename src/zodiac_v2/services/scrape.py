@@ -32,7 +32,7 @@ from zodiac_v2.contracts import (
 )
 from zodiac_v2.output import OutputPaths, build_output_payloads, write_output_payloads
 from zodiac_v2.parsers.common import decoded_script_fragments
-from zodiac_v2.parsers.registry import ParserRegistry
+from zodiac_v2.parsers.registry import ParserRegistry, ParserRejection
 from zodiac_v2.source.api import (
     bind_user_forum_target,
     derived_article_api_urls,
@@ -709,6 +709,15 @@ class ScrapeService:
             if sum(len(document.text.encode("utf-8")) for document in bundle.documents) > 64_000_000:
                 return ScrapeResult.failure(site, target_period, FailureCode.BOUNDARY, "站点文档累计超过 64000000 字节", bundle.documents)
             candidates = tuple(self.registry.parse(site, bundle))
+        except ParserRejection as exc:
+            # 解析器主动拒绝：仍是「专属解析未命中」，但把原因带进失败诊断。
+            return ScrapeResult.failure(
+                site,
+                target_period,
+                FailureCode.DEDICATED_PARSER_MISS,
+                f"专属解析拒绝 {target_period}期：{exc}",
+                bundle.documents,
+            )
         except Exception as exc:
             return ScrapeResult.failure(
                 site,

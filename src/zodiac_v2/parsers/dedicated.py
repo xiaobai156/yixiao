@@ -24,6 +24,7 @@ from zodiac_v2.parsers.families import (
     StrictArticleSpec,
     TitleAuthorParser,
 )
+from zodiac_v2.parsers.registry import ParserRejection
 
 
 class Parser(Protocol):
@@ -3594,15 +3595,16 @@ class SijiuHuangbinhongKillZodiacParser:
     def _panel_records(
         cls, source: str
     ) -> tuple[str, list[tuple[int, str, str]]]:
-        """返回 (标签 id, [(期数, 杀一肖, 开奖结果)])；来源不唯一时返回空。
+        """返回 (标签 id, [(期数, 杀一肖, 开奖结果)])；来源不唯一时抛 ParserRejection。
 
         全页范围内按「同标签 id」收口：每个块只允许一张表头相符的表，
         且所有块给出的数据必须完全一致（响应式重复渲染属合法重复）。
-        任何一处多表、缺表或数据冲突都整页失败，不取先出现的那一块。
+        任何一处多表、缺表或数据冲突都整页失败，不取先出现的那一块；
+        拒绝原因会带进失败诊断，便于区分「网站没数据」和「解析器拦下」。
         """
         openings = tuple(cls._content_open.finditer(source))
         if not openings:
-            return "", []
+            raise ParserRejection(f"页面没有「{cls._tag}」标签内容块")
         found: list[tuple[str, tuple[tuple[int, str, str], ...]]] = []
         for nav_id in cls._nav_ids(source):
             if not cls._has_title(source, nav_id):
@@ -3613,15 +3615,21 @@ class SijiuHuangbinhongKillZodiacParser:
                 end = openings[index + 1].start() if index + 1 < len(openings) else len(source)
                 tables = cls._tables(source[opening.end() : end])
                 if len(tables) != 1:
-                    return "", []  # 单块多表或没有表：无法证明取的是栏目正文
+                    raise ParserRejection(
+                        f"「{cls._tag}」块内表头相符的表有 {len(tables)} 张，来源不唯一或缺失"
+                    )
                 records, trustworthy = cls._read_rows(tables[0])
-                if not trustworthy or not records:
-                    return "", []  # 结构可疑（截断/装饰/缺列）：整站失败
+                if not trustworthy:
+                    raise ParserRejection(
+                        f"「{cls._tag}」表格结构可疑：期数行缺列、取值格为空或数据区被切断"
+                    )
+                if not records:
+                    raise ParserRejection(f"「{cls._tag}」表格没有数据行")
                 found.append((nav_id, tuple(records)))
         if not found:
-            return "", []
+            raise ParserRejection(f"页面没有「{cls._tag}」标签或它的标题块")
         if len({records for _nav_id, records in found}) != 1:
-            return "", []  # 多个块给出不同数据：来源冲突
+            raise ParserRejection(f"「{cls._tag}」出现多个数据不一致的块")
         nav_id, records = found[0]
         return nav_id, list(records)
 
@@ -3667,7 +3675,9 @@ class SijiuHuangbinhongKillZodiacParser:
                 ]:
                     matches.append((header_index, cursor, parsed))
             if not matches:
-                continue
+                raise ParserRejection(
+                    f"「{self._tag}」表格 {len(records)} 期与页面纯文本不一致（结构自检失败）"
+                )
             header_index, table_end, parsed = matches[0]
             title_index = next(
                 (
@@ -3678,7 +3688,7 @@ class SijiuHuangbinhongKillZodiacParser:
                 None,
             )
             if title_index is None:
-                continue
+                raise ParserRejection(f"「{self._tag}」标题行未出现在文本层")
             title_text = texts[title_index]
             for period, zodiac, position, draw in parsed:
                 raw_line = normalize_space(" ".join(texts[position : position + header_size]))

@@ -160,9 +160,23 @@ def test_selected_16_sites_are_registered_in_new_section() -> None:
     )
     selected = {site.name: site for site in sites if site.name in expected}
 
-    assert set(selected) == set(expected)
+    # 其中的站后来被封存：允许从配置移出，但必须能在封存档案里找到，
+    # 否则就是「站点凭空消失」，仍应报错。
+    missing = set(expected) - set(selected)
+    archived = _archived_names()
+    assert missing <= archived, f"期望站点既不在配置也不在封存档案：{sorted(missing - archived)}"
+    assert selected, "在册的期望站点为空"
     assert all(site.section is SiteSection.NEW for site in selected.values())
-    assert {name: site.direction for name, site in selected.items()} == expected
+    assert {name: site.direction for name, site in selected.items()} == {
+        name: expected[name] for name in selected
+    }
+
+
+def _archived_names() -> set[str]:
+    import json
+
+    archive = json.loads(Path("archived_sites.json").read_text(encoding="utf-8-sig"))
+    return {item.get("name") for item in archive["sites"] if isinstance(item, dict)}
 
 
 def test_four_236_suspected_duplicate_exceptions_are_registered() -> None:

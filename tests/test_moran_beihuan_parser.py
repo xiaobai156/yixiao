@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from zodiac_v2.cli import SOURCE_POLICIES
 from zodiac_v2.config import load_sites
 from zodiac_v2.contracts import (
     Direction,
@@ -142,16 +143,7 @@ def test_formal_site_binds_dedicated_parser() -> None:
     sites = load_sites(
         Path("sites.json"),
         parser_ids=registry.parser_ids,
-        source_policies={
-            "http_documents",
-            "http_consensus",
-            "http_named_topic",
-            "http_period_keyword_article",
-            "api_then_http",
-            "browser",
-            "browser_user",
-            "http_then_browser",
-        },
+        source_policies=SOURCE_POLICIES,
     )
 
     site = next(item for item in sites if item.name == "墨染悲欢")

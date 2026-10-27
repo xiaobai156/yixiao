@@ -4,18 +4,23 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from zodiac_v2.cli import SOURCE_POLICIES
 from zodiac_v2.config import load_sites
 from zodiac_v2.contracts import (
     Direction,
     DocumentType,
+    FailureCode,
+    RunMode,
     SiteConfig,
     SiteSection,
     SourceBundle,
     SourceDocument,
 )
 from zodiac_v2.parsers.dedicated import SijiuHuangbinhongKillZodiacParser
-from zodiac_v2.parsers.registry import build_registry
+from zodiac_v2.parsers.registry import ParserRejection, build_registry
+from zodiac_v2.services.scrape import ScrapeService
 from zodiac_v2.validation.conflicts import validate_candidates
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -96,12 +101,7 @@ def _page(
     ]
     if conflicting_block:
         # 同标签同 id 的另一个块给出不同数据：来源不唯一，必须整页失败。
-        parts.extend(
-            [
-                _nav(222, "无敌杀码"),
-                _content(222, _table(_row(300, "马") + _row(299, "羊"))),
-            ]
-        )
+        parts.extend([_nav(222, "无敌杀码"), _content(222, _table(_row(300, "马") + _row(299, "羊")))])
     parts.append(_content(111, _table(_row(300, decoy_zodiac))))
     if with_target_tab:
         parts.append(_content(222, target_table))
@@ -119,6 +119,12 @@ def _bundle(html: str) -> SourceBundle:
 
 def _site(name: str = "四舅黄宾虹黄肖", direction: Direction = Direction.TOP) -> SiteConfig:
     return SiteConfig(name, URL, direction, SiteSection.NEW, PARSER_ID, "browser")
+
+
+def _reject(html: str) -> str:
+    with pytest.raises(ParserRejection) as info:
+        SijiuHuangbinhongKillZodiacParser().parse(_site(), _bundle(html))
+    return str(info.value)
 
 
 def test_site_binds_dedicated_parser() -> None:
@@ -172,24 +178,21 @@ def test_history_window_via_left_direction() -> None:
     assert values == {item[0]: item[1] for item in rows}
 
 
-def test_missing_tab_or_marker_returns_empty() -> None:
-    parser = SijiuHuangbinhongKillZodiacParser()
-    assert parser.parse(_site(), _bundle(_page(with_target_tab=False))) == ()
-    assert parser.parse(_site(), _bundle(_page(with_title_marker=False))) == ()
+def test_missing_tab_or_marker_is_rejected_with_reason() -> None:
+    assert "无敌杀码" in _reject(_page(with_target_tab=False))
+    assert "无敌杀码" in _reject(_page(with_title_marker=False))
 
 
 def test_two_tables_with_same_header_in_one_block_are_rejected() -> None:
     """同块两张同表头的表无法唯一证明来源，必须整块放弃，不能取第一张。"""
-    parser = SijiuHuangbinhongKillZodiacParser()
-    assert parser.parse(_site(), _bundle(_page(extra_table_in_block=True))) == ()
+    assert "2 张" in _reject(_page(extra_table_in_block=True))
     # 同一套解析器在正常页面上仍然出值，避免「整体坏掉也绿」。
-    assert len(parser.parse(_site(), _bundle(_page()))) == 2
+    assert len(SijiuHuangbinhongKillZodiacParser().parse(_site(), _bundle(_page()))) == 2
 
 
 def test_conflicting_second_block_is_rejected() -> None:
     """同标签另一个块给出不同数据时冲突，不能取先出现的那块。"""
-    parser = SijiuHuangbinhongKillZodiacParser()
-    assert parser.parse(_site(), _bundle(_page(conflicting_block=True))) == ()
+    assert "不一致" in _reject(_page(conflicting_block=True))
 
 
 def test_identical_duplicate_block_is_accepted() -> None:
@@ -200,26 +203,22 @@ def test_identical_duplicate_block_is_accepted() -> None:
 
 def test_empty_zodiac_cell_fails_instead_of_truncating() -> None:
     """期数行的取值格为空时必须失败，不能静默只剩前几期。"""
-    parser = SijiuHuangbinhongKillZodiacParser()
-    assert parser.parse(_site(), _bundle(_page(empty_zodiac_period=299))) == ()
+    assert "结构可疑" in _reject(_page(empty_zodiac_period=299))
 
 
 def test_short_period_row_fails_instead_of_truncating() -> None:
     """期数行缺列（合并单元格）同样视为列错位，整块失败。"""
-    parser = SijiuHuangbinhongKillZodiacParser()
-    assert parser.parse(_site(), _bundle(_page(short_row_period=299))) == ()
+    assert "结构可疑" in _reject(_page(short_row_period=299))
 
 
 def test_banner_row_between_records_fails_instead_of_truncating() -> None:
     """数据行中间插横幅/合并行后若还接着出现期数行，属中途断裂，必须失败。"""
-    parser = SijiuHuangbinhongKillZodiacParser()
-    assert parser.parse(_site(), _bundle(_page(banner_after_period=300))) == ()
+    assert "结构可疑" in _reject(_page(banner_after_period=300))
 
 
 def test_decorated_period_cell_fails_instead_of_truncating() -> None:
     """期数格被加装饰（如「300期已开」）时不能当成数据区结束。"""
-    parser = SijiuHuangbinhongKillZodiacParser()
-    assert parser.parse(_site(), _bundle(_page(decorate_period=299))) == ()
+    assert "结构可疑" in _reject(_page(decorate_period=299))
 
 
 def test_trailing_footer_row_still_parses() -> None:
@@ -231,6 +230,7 @@ def test_trailing_footer_row_still_parses() -> None:
 
 
 def test_other_site_and_other_endpoint_return_empty() -> None:
+    """不是本站、或文档不是本站端点时保持静默空结果，不算拒绝。"""
     parser = SijiuHuangbinhongKillZodiacParser()
     assert parser.parse(_site(name="别的站"), _bundle(_page())) == ()
     other = SourceDocument(
@@ -238,3 +238,24 @@ def test_other_site_and_other_endpoint_return_empty() -> None:
     )
     bundle = SourceBundle((other,), ("browser:200", "scan_complete:1"), scan_complete=True)
     assert parser.parse(_site(), bundle) == ()
+
+
+class _FixedBundleGateway:
+    """最小取源桩：只为验证拒绝原因能进失败诊断。"""
+
+    def __init__(self, bundle: SourceBundle) -> None:
+        self._bundle = bundle
+
+    def browser(self, site: SiteConfig, timeout: float) -> SourceBundle:
+        return self._bundle
+
+
+def test_rejection_reason_reaches_failure_diagnostic() -> None:
+    """拒绝原因必须出现在失败原因里，失败码仍是「专属解析未命中」。"""
+    site = _site()
+    service = ScrapeService(_FixedBundleGateway(_bundle(_page(extra_table_in_block=True))), build_registry())
+    result = service.scrape_site(site, 300, RunMode.READ_ONLY)
+    assert not result.ok
+    assert result.failure_code is FailureCode.DEDICATED_PARSER_MISS
+    assert "专属解析拒绝" in result.reason
+    assert "2 张" in result.reason
