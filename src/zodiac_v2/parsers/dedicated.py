@@ -3481,6 +3481,7 @@ class SijiuHuangbinhongKillZodiacParser:
     _title_marker = "【无敌杀码】"
     _headers = ("期数", "杀一肖", "杀半波", "杀一尾", "禁一段", "开奖结果")
     _period = re.compile(r"^(\d{2,4})\s*期$")
+    _period_prefix = re.compile(r"^\s*\d{2,4}\s*期")
     _zodiac = re.compile(r"^[（(]?\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*[）)]?$")
     _pending = re.compile(r"^[?？0]{1,8}$")
     _nav = re.compile(r"toggleItemsV2\(\s*(\d+)\s*,\s*\d+\s*,\s*['\"]([^'\"]+)['\"]")
@@ -3544,15 +3545,24 @@ class SijiuHuangbinhongKillZodiacParser:
     ) -> tuple[list[tuple[int, str, str]], bool]:
         """返回 (记录, 是否可信)。
 
-        期数行里的生肖格为空或非法时返回不可信：宁可整站失败，也不能像以前那样
-        静默截断成「少了后面几期还是成功」。
+        数据区的判定是「期数行连续出现」：只有表尾允许出现说明/横幅/空行，
+        一旦这些行后面又冒出期数行，说明数据区中途被打断，整块判为不可信。
+        期数行里的取值格为空或不是单个生肖、期数格被加装饰（如「300期已开」）
+        同样判不可信——宁可整站失败，也不静默截断成「少了后几期还是成功」。
         """
         header_size = len(cls._headers)
         records: list[tuple[int, str, str]] = []
+        trailing = False
         for cells in body:
-            period_match = cls._period.fullmatch(cells[0]) if cells else None
+            first = cells[0] if cells else ""
+            period_match = cls._period.fullmatch(first)
             if period_match is None:
-                break  # 不是期数行：数据区到此结束
+                if cls._period_prefix.match(first):
+                    return [], False  # 期数格被加装饰/变形，期数不可信
+                trailing = True  # 表尾的横幅、空行、重复表头
+                continue
+            if trailing:
+                return [], False  # 非期数行之后又出现期数行：数据区被切断
             if len(cells) != header_size:
                 return [], False  # 期数行缺列/合并单元格：列已错位
             zodiac_match = cls._zodiac.fullmatch(cells[1])
@@ -3564,39 +3574,56 @@ class SijiuHuangbinhongKillZodiacParser:
         return records, True
 
     @classmethod
+    def _has_title(cls, source: str, nav_id: str) -> bool:
+        title_open = re.compile(
+            rf"<div\b[^<>]*class\s*=\s*['\"][^'\"]*\btab_tuku05v3Title{nav_id}\b",
+            re.IGNORECASE,
+        )
+        for match in title_open.finditer(source):
+            title_end = source.find(">", match.end())
+            if title_end < 0:
+                continue
+            title_close = source.find("</div>", title_end)
+            if title_close < 0:
+                continue
+            if cls._title_marker in source[title_end + 1 : title_close]:
+                return True
+        return False
+
+    @classmethod
     def _panel_records(
         cls, source: str
     ) -> tuple[str, list[tuple[int, str, str]]]:
-        """返回 (标签 id, [(期数, 杀一肖, 开奖结果)])；结构不符时返回空。"""
+        """返回 (标签 id, [(期数, 杀一肖, 开奖结果)])；来源不唯一时返回空。
+
+        全页范围内按「同标签 id」收口：每个块只允许一张表头相符的表，
+        且所有块给出的数据必须完全一致（响应式重复渲染属合法重复）。
+        任何一处多表、缺表或数据冲突都整页失败，不取先出现的那一块。
+        """
         openings = tuple(cls._content_open.finditer(source))
         if not openings:
             return "", []
+        found: list[tuple[str, tuple[tuple[int, str, str], ...]]] = []
         for nav_id in cls._nav_ids(source):
-            title_open = re.compile(
-                rf"<div\b[^<>]*class\s*=\s*['\"][^'\"]*\btab_tuku05v3Title{nav_id}\b",
-                re.IGNORECASE,
-            )
-            title_match = title_open.search(source)
-            if title_match is None:
-                continue
-            title_end = source.find(">", title_match.end())
-            title_close = source.find("</div>", title_end) if title_end >= 0 else -1
-            if title_end < 0 or title_close < 0:
-                continue
-            if cls._title_marker not in source[title_end + 1 : title_close]:
+            if not cls._has_title(source, nav_id):
                 continue
             for index, opening in enumerate(openings):
                 if opening.group(1) != nav_id:
                     continue
                 end = openings[index + 1].start() if index + 1 < len(openings) else len(source)
                 tables = cls._tables(source[opening.end() : end])
-                # 同块出现多张同表头的表时无法证明取的是栏目正文，直接整块放弃。
                 if len(tables) != 1:
-                    continue
+                    return "", []  # 单块多表或没有表：无法证明取的是栏目正文
                 records, trustworthy = cls._read_rows(tables[0])
-                if trustworthy and records:
-                    return nav_id, records
-        return "", []
+                if not trustworthy or not records:
+                    return "", []  # 结构可疑（截断/装饰/缺列）：整站失败
+                found.append((nav_id, tuple(records)))
+        if not found:
+            return "", []
+        if len({records for _nav_id, records in found}) != 1:
+            return "", []  # 多个块给出不同数据：来源冲突
+        nav_id, records = found[0]
+        return nav_id, list(records)
 
     def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
         if site.name != self._site_name:
@@ -3639,7 +3666,7 @@ class SijiuHuangbinhongKillZodiacParser:
                     (item[0], item[1]) for item in records
                 ]:
                     matches.append((header_index, cursor, parsed))
-            if len(matches) != 1:
+            if not matches:
                 continue
             header_index, table_end, parsed = matches[0]
             title_index = next(
