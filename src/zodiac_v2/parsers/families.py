@@ -91,12 +91,14 @@ class RegexFamilyParser:
         require_anchor: bool = True,
         period_marker_required: bool = True,
         directional_cycle_sites: Collection[str] = (),
+        restart_cycle_sites: Collection[str] = (),
     ) -> None:
         self.patterns = tuple(re.compile(pattern, re.IGNORECASE) for pattern in patterns)
         self.anchor_aliases = MappingProxyType(dict(anchor_aliases or {}))
         self.require_anchor = require_anchor
         self.period_marker_required = period_marker_required
         self.directional_cycle_sites = frozenset(directional_cycle_sites)
+        self.restart_cycle_sites = frozenset(restart_cycle_sites)
 
     def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
         anchor = self.anchor_aliases.get(site.name, site.name)
@@ -168,7 +170,44 @@ class RegexFamilyParser:
         candidates.sort(key=lambda candidate: candidate.page_order)
         if site.name in self.directional_cycle_sites:
             return _tag_annual_record_cycles(candidates)
+        if site.name in self.restart_cycle_sites:
+            return _tag_restart_record_cycles(candidates)
         return tuple(candidates)
+
+
+def _tag_restart_record_cycles(candidates: list[Candidate]) -> tuple[Candidate, ...]:
+    """Split one page that keeps several descending lists back to back.
+
+    同一篇文章里常见「今年 301→…」后面又接一段「去年 306→…」。单段内期数只应
+    严格递减，一旦出现「本期 >= 上一期」就是下一段开始了；按段打 record-cycle，
+    方向窗口取首段（top）或末段（bottom）即可唯一确定取值。
+    """
+    by_document: dict[str, list[Candidate]] = {}
+    for candidate in candidates:
+        by_document.setdefault(candidate.document_id, []).append(candidate)
+
+    tagged: list[Candidate] = []
+    for document_candidates in by_document.values():
+        cycles: list[list[Candidate]] = [[]]
+        previous_period: int | None = None
+        for candidate in document_candidates:
+            if previous_period is not None and candidate.period >= previous_period:
+                cycles.append([])
+            cycles[-1].append(candidate)
+            previous_period = candidate.period
+        if len(cycles) == 1:
+            tagged.extend(document_candidates)
+            continue
+        tagged.extend(
+            replace(
+                candidate,
+                evidence=(*candidate.evidence, f"record-cycle:{cycle_index}"),
+            )
+            for cycle_index, cycle in enumerate(cycles)
+            for candidate in cycle
+        )
+    tagged.sort(key=lambda candidate: candidate.page_order)
+    return tuple(tagged)
 
 
 def _tag_annual_record_cycles(candidates: list[Candidate]) -> tuple[Candidate, ...]:

@@ -1536,7 +1536,7 @@ class UserForumPostParser:
         "分心猫咪": re.compile(r"^\s*【\s*绝杀一肖\s*】\s*$"),
         "王木木儿涂涂": re.compile(r"^\s*🍻干杯朋友🍻\s*$"),
         "暴躁骨衬": re.compile(r"^\s*绝杀一肖\s*$"),
-        "妮最可爱": re.compile(r"^\s*大吉大利\s*$"),
+        "妮最可爱": re.compile(r"^\s*(?:大吉大利|招财进宝)\s*$"),
         "朱红山峰": re.compile(r"^\s*绝杀一肖\s*$"),
         "鼓舞木料": re.compile(r"^\s*绝杀一肖\s*$"),
         "强烈电视": re.compile(r"^\s*绝杀一肖\s*$"),
@@ -1599,11 +1599,11 @@ class UserForumPostParser:
         "连中谎言": re.compile(r"(?<!\d)(\d{2,4})\s*(?:绝杀一肖|杀)\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\s*开)?"),
         "请叫我菲菲": re.compile(r"(?<!\d)(\d{2,4})\s*杀\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"),
         "钟哥啊": re.compile(r"(?<!\d)(\d{2,4})\s*期\s*杀\s*[:：]?\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"),
-        # 俊少：正文形如「233.杀猪准」「252杀牛准」「299.杀马」（未完赛不带准字）。
-        # 点号可有可无；行尾必须紧跟准/错/结束，避免把「248.杀牛次兔准」
-        # 这类双生肖行误读成单一杀肖（该行直接不匹配，交由上层跳过）。
+        # 俊少：正文形如「233.杀猪准」「252杀牛准」「299.杀马」；当期那行常省掉
+        # 「杀」字（如「301.猴」）。点号与「杀」都可有可无；行尾必须紧跟准/错/结束，
+        # 避免把「248.杀牛次兔准」这类双生肖行误读成单一杀肖（该行直接不匹配）。
         "俊少": re.compile(
-            r"(?<!\d)(\d{2,4})\s*[.．]?\s*杀\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
+            r"(?<!\d)(\d{2,4})\s*[.．]?\s*(?:杀)?\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
             r"(?=\s*(?:准|错|$|<))"
         ),
         "幸运尘客": re.compile(
@@ -3715,6 +3715,15 @@ class SijiuHuangbinhongKillZodiacParser:
         return tuple(all_candidates)
 
 
+RESTART_CYCLE_REGEX_SITES = frozenset(
+    {
+        # 伤夷折衄：同一篇文章里有「今年 301→…」和「去年 306→…」两段递减列表，
+        # 单段内期数严格递减，出现回升即换段；top 取首段（当年正文）。
+        "伤夷折衄",
+    }
+)
+
+
 def parser_entries() -> tuple[tuple[str, Parser], ...]:
     entries: list[tuple[str, Parser]] = [
         (
@@ -3723,6 +3732,7 @@ def parser_entries() -> tuple[tuple[str, Parser], ...]:
                 patterns,
                 anchor_aliases=ANCHOR_ALIASES,
                 directional_cycle_sites=DIRECTIONAL_CYCLE_REGEX_SITES,
+                restart_cycle_sites=RESTART_CYCLE_REGEX_SITES,
             ),
         )
         for identifier, patterns in PATTERN_SETS.items()
