@@ -4348,5 +4348,14 @@
     "parser_id": "special.sijiu_huangbinhong_kill_zodiac",
     "source_policy": "browser",
     "embedded_max_bytes": 12000000
+  },
+  {
+    "name": "短发紫薯",
+    "pick": "top",
+    "url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/#/users/28306",
+    "section": "新增的站点",
+    "parser_id": "special.user_forum_post",
+    "source_policy": "api_then_http",
+    "api_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/28306/forums?per_page=20"
   }
 ]

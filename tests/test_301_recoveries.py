@@ -125,3 +125,28 @@ def test_shangyi_two_descending_lists_pick_first_for_top() -> None:
     decision = validate_candidates(site, bundle, candidates, 301)
     assert decision.ok and decision.candidate is not None
     assert decision.candidate.zodiac == "蛇"
+
+
+def test_duanfazishu_parses_current_post_and_inline_history() -> None:
+    """短发紫薯：正文「301期：【绝杀一肖】【猪】开00准」，当期取猪，LEFT 可取整段历史。"""
+    content = (
+        '<p>301期：【绝杀一肖】【猪】开<span style="color: rgb(230, 0, 0);">00</span>准</p>'
+        '<p>300期：【绝杀一肖】【龙】开<span style="color: rgb(230, 0, 0);">蛇38</span>准</p>'
+    )
+    row = _user_row(28306, "短发紫薯", "绝杀一肖", content)
+
+    top_site = _user_site("短发紫薯", 28306, Direction.TOP)
+    top_bundle = _user_bundle(28306, row)
+    top_decision = validate_candidates(
+        top_site, top_bundle, UserForumPostParser().parse(top_site, top_bundle), 301
+    )
+    assert top_decision.ok and top_decision.candidate is not None
+    assert top_decision.candidate.zodiac == "猪"
+
+    left_site = _user_site("短发紫薯", 28306, Direction.LEFT)
+    left_bundle = _user_bundle(28306, row)
+    history = {
+        item.period: item.zodiac
+        for item in UserForumPostParser().parse(left_site, left_bundle)
+    }
+    assert history == {301: "猪", 300: "龙"}

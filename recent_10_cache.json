@@ -63421,6 +63421,128 @@
           "evidence_sha256": "5cf877cb992cec19ba98d62557f4d007a3212387a785a91e3cacbf695cd5bcaa"
         }
       }
+    },
+    {
+      "name": "短发紫薯",
+      "pick": "top",
+      "url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/#/users/28306",
+      "section": "新增的站点",
+      "error": "",
+      "records": [
+        {
+          "period": 301,
+          "zodiac": "猪"
+        },
+        {
+          "period": 300,
+          "zodiac": "龙"
+        },
+        {
+          "period": 299,
+          "zodiac": "猪"
+        },
+        {
+          "period": 298,
+          "zodiac": "虎"
+        },
+        {
+          "period": 297,
+          "zodiac": "龙"
+        },
+        {
+          "period": 296,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 295,
+          "zodiac": "牛"
+        },
+        {
+          "period": 294,
+          "zodiac": "龙"
+        },
+        {
+          "period": 293,
+          "zodiac": "虎"
+        },
+        {
+          "period": 292,
+          "zodiac": "猴"
+        }
+      ],
+      "fingerprint": "猪龙猪虎龙鼠牛龙虎猴",
+      "record_provenance": {
+        "301": {
+          "validation_status": "validated",
+          "source_id": "user:28306:record:16288082",
+          "source_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/28306/forums?per_page=20",
+          "evidence_sha256": "eec01ae2040b2a3d9c46b10862ba5d0248d6d5413d02cf798715450fed160a08",
+          "record_id": "16288082"
+        },
+        "300": {
+          "validation_status": "validated",
+          "source_id": "user:28306:record:16288082",
+          "source_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/28306/forums?per_page=20",
+          "evidence_sha256": "e5fc2f7282ddb78acf07896f28c348ada0cbc526432a5fc43b3a3fdca8977b22",
+          "record_id": "16288082"
+        },
+        "299": {
+          "validation_status": "validated",
+          "source_id": "user:28306:record:16288082",
+          "source_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/28306/forums?per_page=20",
+          "evidence_sha256": "ec3631c6e6d4ad090f17ca1714260f1ee119ddbb3881542d520f9abb5c84ca7e",
+          "record_id": "16288082"
+        },
+        "298": {
+          "validation_status": "validated",
+          "source_id": "user:28306:record:16288082",
+          "source_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/28306/forums?per_page=20",
+          "evidence_sha256": "6f70ba1788503a50a372dd191ada764bd88a2c2db1e04691afdd4a00a76c2104",
+          "record_id": "16288082"
+        },
+        "297": {
+          "validation_status": "validated",
+          "source_id": "user:28306:record:16288082",
+          "source_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/28306/forums?per_page=20",
+          "evidence_sha256": "74bf637903ed48e83f839ecbf8d8560684ce83c9293b3003ef3e6c0d074f6dae",
+          "record_id": "16288082"
+        },
+        "296": {
+          "validation_status": "validated",
+          "source_id": "user:28306:record:16288082",
+          "source_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/28306/forums?per_page=20",
+          "evidence_sha256": "5efe15bcaaaa1a38fef94d3a6afc4de0149dd8cb2cd28ded5d39eaea2e67d24f",
+          "record_id": "16288082"
+        },
+        "295": {
+          "validation_status": "validated",
+          "source_id": "user:28306:record:16288082",
+          "source_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/28306/forums?per_page=20",
+          "evidence_sha256": "3b1a038189868929288c08a943798a10acc409be2c07b0c71bc17f861d89713d",
+          "record_id": "16288082"
+        },
+        "294": {
+          "validation_status": "validated",
+          "source_id": "user:28306:record:16288082",
+          "source_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/28306/forums?per_page=20",
+          "evidence_sha256": "041756eb8fd8f7daaad44ec6a60ae2db941835aa795a8583ddfabb08b518d9c2",
+          "record_id": "16288082"
+        },
+        "293": {
+          "validation_status": "validated",
+          "source_id": "user:28306:record:16288082",
+          "source_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/28306/forums?per_page=20",
+          "evidence_sha256": "7bd56fb5c9914700b1ef8b22bcddb23172a426a62ba518ce6706655f6d5c655c",
+          "record_id": "16288082"
+        },
+        "292": {
+          "validation_status": "validated",
+          "source_id": "user:28306:record:16288082",
+          "source_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/28306/forums?per_page=20",
+          "evidence_sha256": "21d9304bfc15b2aa6deda05321e4ad0f2ea217b228d664706c550a834abb4214",
+          "record_id": "16288082"
+        }
+      }
     }
   ]
 }
