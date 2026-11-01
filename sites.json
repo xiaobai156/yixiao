@@ -4080,7 +4080,7 @@
     "pick": "top",
     "url": "https://mltrrdlq.aqfrt-jgk8o-avlxnn.work:17477/topic/800309.html",
     "section": "新增的站点",
-    "parser_id": "regex.86a7042b2c5a",
+    "parser_id": "family.strict_article",
     "source_policy": "browser"
   },
   {

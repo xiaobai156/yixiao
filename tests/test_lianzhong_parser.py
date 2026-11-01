@@ -121,3 +121,26 @@ def test_236_reference_topic_and_short_kill_record_are_supported() -> None:
     assert selected.documents[0].record_id == "15899999"
     assert decision.ok and decision.candidate is not None
     assert (decision.candidate.period, decision.candidate.zodiac) == (236, "猪")
+
+
+def test_305_period_suffixed_reference_topic_binds_short_record() -> None:
+    """305 期帖栏目改成「305期  只能做参考的杀」，正文当期行是「305杀一肖猪」。"""
+    row = {
+        "id": 16308238,
+        "status": "published",
+        "user_id": 166365,
+        "draw": 305,
+        "topic": "305期  只能做参考的杀",
+        "content": "304杀一肖猪✔️<div>305杀一肖猪</div>",
+        "user": {"id": 166365, "nickname": "杨家男孩"},
+    }
+    bundle = _bundle(row)
+
+    selected = bind_user_forum_target(_site().url, bundle, 305)
+    candidates = UserForumPostParser().parse(_site(), selected)
+    decision = validate_candidates(_site(), selected, candidates, 305)
+
+    assert selected.documents[0].record_id == "16308238"
+    assert [(candidate.period, candidate.zodiac) for candidate in candidates] == [(305, "猪")]
+    assert decision.ok and decision.candidate is not None
+    assert (decision.candidate.period, decision.candidate.zodiac) == (305, "猪")
