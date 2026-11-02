@@ -465,6 +465,12 @@ STRICT_ARTICLE_SPECS: dict[str, StrictArticleSpec] = {
         r'^作者:语惊四座$',
         directional_cycles=True,
     ),
+    # 爆竹声中：页面下半部有「最新帖」列表，会把别站「306期:…绝杀一头…鸡」也算成候选
+    # （该列表时有时无，导致同期结果随机冲突）。锁标题块，只收正文的「【猪猪猪】」三连写法。
+    '爆竹声中': StrictArticleSpec(
+        r'^(\d{2,4})期:爆竹声中【绝杀一肖】资料已公开$',
+        r'^(\d{2,4})期：绝杀一肖【([鼠牛虎兔龙蛇马羊猴鸡狗猪])(?:\2){2}】开',
+    ),
 }
 
 ANCHORED_SECTION_SPECS: dict[str, AnchoredSectionSpec] = {
