@@ -17,13 +17,15 @@ _URL = "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html"
 
 
 def test_cmpk13_config_uses_semantic_site_name() -> None:
-    config = json.loads(
-        (Path(__file__).resolve().parents[1] / "sites.json").read_text(encoding="utf-8")
-    )
-    entry = next(item for item in config if item.get("url") == _URL)
+    root = Path(__file__).resolve().parents[1]
+    config = json.loads((root / "sites.json").read_text(encoding="utf-8-sig"))
+    assert all(item.get("url") != _URL for item in config)
+
+    archived = json.loads((root / "archived_sites.json").read_text(encoding="utf-8-sig"))
+    entry = next(item for item in archived["sites"] if item.get("url") == _URL)
 
     assert entry["name"] == "神剑山庄"
-    assert entry["article_keyword"] == "神剑山庄"
+    assert entry["archive_reason"]
 
 
 def test_semantic_site_name_parses_top_period_cycle() -> None:

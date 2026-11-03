@@ -3013,78 +3013,6 @@
     "article_keyword": "百变娘子【绝杀一肖】"
   },
   {
-    "name": "神剑山庄",
-    "pick": "top",
-    "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
-    "section": "已有站点",
-    "parser_id": "special.ttss_period_article",
-    "source_policy": "http_documents",
-    "article_keyword": "神剑山庄"
-  },
-  {
-    "name": "九阳真经",
-    "pick": "top",
-    "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
-    "section": "已有站点",
-    "parser_id": "special.ttss_period_article",
-    "source_policy": "http_documents",
-    "article_keyword": "九阳真经"
-  },
-  {
-    "name": "华佗神医",
-    "pick": "top",
-    "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
-    "section": "已有站点",
-    "parser_id": "special.ttss_period_article",
-    "source_policy": "http_documents",
-    "article_keyword": "华佗神医"
-  },
-  {
-    "name": "一丈青三",
-    "pick": "top",
-    "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
-    "section": "已有站点",
-    "parser_id": "special.ttss_period_article",
-    "source_policy": "http_documents",
-    "article_keyword": "立地太岁"
-  },
-  {
-    "name": "三霄娘娘",
-    "pick": "top",
-    "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
-    "section": "已有站点",
-    "parser_id": "special.ttss_period_article",
-    "source_policy": "http_documents",
-    "article_keyword": "及时雨江"
-  },
-  {
-    "name": "降龙掌门",
-    "pick": "top",
-    "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
-    "section": "已有站点",
-    "parser_id": "special.ttss_period_article",
-    "source_policy": "http_documents",
-    "article_keyword": "青面兽志"
-  },
-  {
-    "name": "元始天尊",
-    "pick": "top",
-    "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
-    "section": "已有站点",
-    "parser_id": "special.ttss_period_article",
-    "source_policy": "http_documents",
-    "article_keyword": "元始天尊"
-  },
-  {
-    "name": "白骨夫人",
-    "pick": "top",
-    "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
-    "section": "已有站点",
-    "parser_id": "special.ttss_period_article",
-    "source_policy": "http_documents",
-    "article_keyword": "白骨夫人"
-  },
-  {
     "name": "招福纳财",
     "pick": "bottom",
     "url": "https://rwraojf.l54vq-9httr-cmdnip.work:29477/article/manager/6a62404bb3f65fed7d61b60b?url=xdr",
@@ -4357,5 +4285,77 @@
     "parser_id": "special.user_forum_post",
     "source_policy": "api_then_http",
     "api_url": "https://qvuuqqs.8imf7-hteuh-ylwuqv.xyz/api/v1/users/28306/forums?per_page=20"
+  },
+  {
+    "name": "创富千里眼",
+    "pick": "top",
+    "url": "https://eyxcfxcw.0nmq7-eh2st-jeifgu.work:17455/",
+    "section": "已有站点",
+    "parser_id": "special.chuangfu_qianliyan_kill_zodiac",
+    "source_policy": "browser"
+  },
+  {
+    "name": "天外有天",
+    "pick": "bottom",
+    "url": "https://eyxcfxcw.0nmq7-eh2st-jeifgu.work:17455/topic/479827.html",
+    "section": "已有站点",
+    "parser_id": "regex.86a7042b2c5a",
+    "source_policy": "browser"
+  },
+  {
+    "name": "爆竹声中",
+    "pick": "top",
+    "url": "https://boarsyqo.n14p6-phtp6-njdhzx.work:17466/topic/504953.html",
+    "section": "已有站点",
+    "parser_id": "family.strict_article",
+    "source_policy": "browser"
+  },
+  {
+    "name": "开心蒙蒙",
+    "pick": "top",
+    "url": "https://gprakaak.9gr47-3du2a-erzanc.work:17477/topic/457925.html",
+    "section": "已有站点",
+    "parser_id": "regex.86a7042b2c5a",
+    "source_policy": "browser"
+  },
+  {
+    "name": "打鸣小鸡",
+    "pick": "bottom",
+    "url": "https://gprakaak.9gr47-3du2a-erzanc.work:17477/topic/463898.html",
+    "section": "已有站点",
+    "parser_id": "regex.86a7042b2c5a",
+    "source_policy": "browser"
+  },
+  {
+    "name": "高手网论坛",
+    "pick": "top",
+    "url": "https://799689.cc/",
+    "section": "已有站点",
+    "parser_id": "special.gaoshou_wang_luntan_kill_zodiac",
+    "source_policy": "http_documents"
+  },
+  {
+    "name": "九五之尊",
+    "pick": "top",
+    "url": "https://nedmannv.ueihu-xk88p-uvbyxa.xyz:16677/topic/461732.html",
+    "section": "已有站点",
+    "parser_id": "special.jiujiu_zhizun_kill_zodiac",
+    "source_policy": "browser"
+  },
+  {
+    "name": "旧梦思维",
+    "pick": "top",
+    "url": "https://mm.198864.com:1888/bbs/144.html",
+    "section": "已有站点",
+    "parser_id": "special.jiumeng_siwei_kill_zodiac",
+    "source_policy": "browser"
+  },
+  {
+    "name": "六合心经最专业",
+    "pick": "top",
+    "url": "https://cc.979545m.com:1888/bbs/7977",
+    "section": "已有站点",
+    "parser_id": "special.liuhe_xinjing_zhuanye_kill_zodiac",
+    "source_policy": "browser"
   }
 ]

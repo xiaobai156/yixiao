@@ -3749,6 +3749,515 @@ class SijiuHuangbinhongKillZodiacParser:
         return tuple(all_candidates)
 
 
+class ChuangfuQianliyanKillZodiacParser:
+    """Parse 创富千里眼：首页「澳门创富『精打细算』」板块的《千里眼杀一肖》列。
+
+    站点把每期资料渲染成一个表格行，行内是「302期精打细算(特开0000)」加若干
+    行「某某杀某：」栏目，要取的是其中的「千里眼杀一肖：【猴肖】√」。
+
+    站方域名会换，因此不拿域名当关键字，只认板块标题（澳门创富 + 『精打细算』）
+    和列语义。来源唯一性靠三道硬约束：板块标题在整页必须唯一；每一条期数行
+    后面必须紧跟一条「千里眼杀一肖」取值行，页面上的取值行总数也要与期数行数
+    相等；表格解析结果必须与页面纯文本逐期一致。任何一处对不上都整块丢弃并
+    写明原因，绝不猜值，也不把「少了后几期」当成成功。
+    """
+
+    _site_name = "创富千里眼"
+    _brand = "澳门创富"
+    _column = "『精打细算』"
+    _period_line = re.compile(r"^(\d{2,4})\s*期\s*精打细算")
+    _value_line = re.compile(
+        r"^千里眼杀一肖\s*[:：]\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*肖\s*】"
+    )
+    _period_in_row = re.compile(r"(\d{2,4})\s*期\s*精打细算")
+    _value_in_row = re.compile(
+        r"千里眼杀一肖\s*[:：]\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*肖"
+    )
+    _draw = re.compile(r"特开\s*([0-9?？]{2,8})")
+    _title_line = re.compile(r"^『[^』]+』$")
+    _title_open = re.compile(r"<div\b[^<>]*class\s*=\s*['\"][^'\"]*\bdz_title13\b")
+    _table = re.compile(r"<table\b.*?</table>", re.IGNORECASE | re.DOTALL)
+    _row = re.compile(r"<tr\b.*?</tr>", re.IGNORECASE | re.DOTALL)
+
+    @staticmethod
+    def _same_endpoint(site: SiteConfig, document) -> bool:
+        expected = urlsplit(site.url)
+        actual = urlsplit(document.final_url)
+        return (
+            expected.scheme.lower() == actual.scheme.lower()
+            and expected.netloc.lower() == actual.netloc.lower()
+            and (expected.path or "/") == (actual.path or "/")
+        )
+
+    @classmethod
+    def _title_end(cls, source: str) -> int:
+        """返回本板块标题块的结束偏移；标题必须整页唯一。"""
+        ends: list[int] = []
+        for match in cls._title_open.finditer(source):
+            tag_end = source.find(">", match.end())
+            if tag_end < 0:
+                continue
+            close = source.find("</div>", tag_end)
+            if close < 0:
+                continue
+            text = _fragment_text(source[tag_end + 1 : close]).replace(" ", "")
+            if text != f"{cls._brand}{cls._column}":
+                continue
+            ends.append(close + len("</div>"))
+        if not ends:
+            raise ParserRejection(f"页面没有「{cls._brand}{cls._column}」标题块")
+        if len(ends) > 1:
+            raise ParserRejection(
+                f"「{cls._brand}{cls._column}」标题块出现 {len(ends)} 个，来源不唯一"
+            )
+        return ends[0]
+
+    @classmethod
+    def _html_records(cls, source: str) -> tuple[list[tuple[int, str]], bool]:
+        """返回 ([(期数, 千里眼杀一肖)], 是否可信)。"""
+        start = cls._title_end(source)
+        table_match = cls._table.search(source, start)
+        if table_match is None:
+            raise ParserRejection(f"「{cls._brand}{cls._column}」标题块后面没有表格")
+        if cls._title_open.search(source, start, table_match.start()) is not None:
+            raise ParserRejection(
+                f"「{cls._brand}{cls._column}」标题块与表格之间还夹着别的板块标题"
+            )
+        records: list[tuple[int, str]] = []
+        trailing = False
+        for row in cls._row.findall(table_match.group(0)):
+            text = _fragment_text(row)
+            period_match = cls._period_in_row.search(text)
+            value_match = cls._value_in_row.search(text)
+            if period_match is None:
+                if value_match is not None:
+                    return [], False  # 有取值却没有期数：来源错位
+                trailing = True
+                continue
+            if trailing:
+                return [], False  # 数据区被非期数行打断后又有期数行
+            if value_match is None or value_match.start() < period_match.start():
+                return [], False  # 期数行缺少「千里眼杀一肖」取值
+            records.append((int(period_match.group(1)), value_match.group(1)))
+        return records, True
+
+    @classmethod
+    def _text_records(
+        cls, lines: tuple[TextLine, ...]
+    ) -> tuple[int, list[tuple[int, str, int, int]]]:
+        """返回 (标题行号, [(期数, 生肖, 期数行号, 取值行号)])。"""
+        texts = tuple(line.text for line in lines)
+        title_indexes = [index for index, text in enumerate(texts) if cls._column in text]
+        if not title_indexes:
+            raise ParserRejection(f"页面没有「{cls._column}」标题行")
+        if len(title_indexes) > 1:
+            raise ParserRejection(
+                f"「{cls._column}」标题行出现 {len(title_indexes)} 次，来源不唯一"
+            )
+        title_index = title_indexes[0]
+        if cls._brand not in texts[title_index] and (
+            title_index == 0 or cls._brand not in texts[title_index - 1]
+        ):
+            raise ParserRejection(f"「{cls._column}」标题行旁边没有「{cls._brand}」")
+        # 板块边界：本板块标题行到下一个『…』板块标题行之间，避免把别的板块
+        # 里同名的「千里眼杀一肖」列算进来。
+        region_end = next(
+            (
+                index
+                for index in range(title_index + 1, len(texts))
+                if cls._title_line.match(texts[index])
+            ),
+            len(texts),
+        )
+        records: list[tuple[int, str, int, int]] = []
+        for index in range(title_index + 1, region_end):
+            period_match = cls._period_line.match(texts[index])
+            if period_match is None:
+                continue
+            if index + 1 >= region_end:
+                raise ParserRejection(f"第 {index} 行「{texts[index]}」后面没有取值行")
+            value_match = cls._value_line.match(texts[index + 1])
+            if value_match is None:
+                raise ParserRejection(
+                    f"第 {index} 行「{texts[index]}」后面没有「千里眼杀一肖」取值行"
+                )
+            records.append(
+                (int(period_match.group(1)), value_match.group(1), index, index + 1)
+            )
+        if not records:
+            raise ParserRejection(f"「{cls._column}」板块没有「千里眼杀一肖」数据行")
+        value_total = sum(
+            1
+            for text in texts[title_index + 1 : region_end]
+            if cls._value_line.match(text) is not None
+        )
+        if value_total != len(records):
+            raise ParserRejection(
+                f"「{cls._column}」板块有 {value_total} 条「千里眼杀一肖」取值行，"
+                f"只对上 {len(records)} 条期数行"
+            )
+        periods = [record[0] for record in records]
+        if periods != sorted(periods, reverse=True) or len(set(periods)) != len(periods):
+            raise ParserRejection("「千里眼杀一肖」期数不是严格递减的单一列表")
+        return title_index, records
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if site.name != self._site_name:
+            return ()
+        all_candidates: list[Candidate] = []
+        for document in bundle.documents:
+            if document.document_type not in {DocumentType.HTML, DocumentType.BROWSER}:
+                continue
+            if not self._same_endpoint(site, document):
+                continue
+            html_records, trustworthy = self._html_records(document.text)
+            if not trustworthy:
+                raise ParserRejection(
+                    f"「{self._column}」表格结构可疑：期数行缺列、取值缺失或数据区被切断"
+                )
+            lines = document_lines(document)
+            title_index, text_records = self._text_records(lines)
+            if html_records != [(period, zodiac) for period, zodiac, _p, _v in text_records]:
+                raise ParserRejection(
+                    f"「{self._column}」表格 {len(html_records)} 期与页面纯文本不一致（结构自检失败）"
+                )
+            section_text = lines[title_index].text
+            range_start = text_records[0][2]
+            range_end = text_records[-1][3] + 1
+            for period, zodiac, position, value_index in text_records:
+                period_text = lines[position].text
+                value_text = lines[value_index].text
+                draw = self._draw.search(period_text)
+                pending = draw is not None and set(
+                    char for char in draw.group(1) if char.isdigit() or char in "?？"
+                ) <= {"0", "?", "？"}
+                all_candidates.append(
+                    Candidate(
+                        period,
+                        zodiac,
+                        normalize_space(f"{period_text} {value_text}"),
+                        document.source_id,
+                        document.page_order * 1_000_000 + position,
+                        (
+                            f"section:{section_text}",
+                            "table-columns:期数/千里眼杀一肖",
+                            f"anchor-line:{title_index}",
+                            f"section-range:{range_start}-{range_end}",
+                            f"draw-status:{'pending' if pending else 'drawn'}",
+                        ),
+                        record_id=document.record_id,
+                    )
+                )
+        all_candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(all_candidates)
+
+
+class GaoshouWangLuntanKillZodiacParser:
+    """Parse 高手网论坛：首页「『绝杀1肖1尾』」表格里的《杀一肖》。
+
+    表格每行形如「302期【虎+9尾】开 888准√」，要取的是方括号里加号前面的
+    生肖（尾数只是同一行的附加列，不参与取值）。
+
+    站方域名会换，因此不拿域名当关键字，只认栏目名『绝杀1肖1尾』和行语义。
+    来源唯一性靠三道硬约束：栏目名在整页必须唯一；整页命中「NNN期【X+N尾】」
+    的表格行数必须与本表行数相等；表格解析结果必须与页面纯文本逐期一致。
+    任何一处对不上都整块丢弃并写明原因，绝不猜值，也不把「少了后几期」
+    当成成功。
+    """
+
+    _site_name = "高手网论坛"
+    _column = "『绝杀1肖1尾』"
+    _value = re.compile(
+        r"(\d{2,4})\s*期\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*\+\s*(\d)\s*尾\s*】"
+    )
+    _period_line = re.compile(
+        r"^(\d{2,4})\s*期\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])\s*\+\s*(\d)\s*尾\s*】\s*开\s*$"
+    )
+    _draw_line = re.compile(r"^((?:[鼠牛虎兔龙蛇马羊猴鸡狗猪]\s*)?[0-9?？]{1,8})\s*准")
+    _section_open = re.compile(r"<div\s+class\s*=\s*['\"]a1['\"]", re.IGNORECASE)
+    _row = re.compile(r"<tr\b.*?</tr>", re.IGNORECASE | re.DOTALL)
+
+    @staticmethod
+    def _same_endpoint(site: SiteConfig, document) -> bool:
+        expected = urlsplit(site.url)
+        actual = urlsplit(document.final_url)
+        return (
+            expected.scheme.lower() == actual.scheme.lower()
+            and expected.netloc.lower() == actual.netloc.lower()
+            and (expected.path or "/") == (actual.path or "/")
+        )
+
+    @classmethod
+    def _html_records(cls, source: str) -> list[tuple[int, str, str]]:
+        """返回 [(期数, 生肖, 尾数)]；来源不唯一或结构可疑时抛 ParserRejection。"""
+        count = source.count(cls._column)
+        if count == 0:
+            raise ParserRejection(f"页面没有「{cls._column}」栏目")
+        if count > 1:
+            raise ParserRejection(f"「{cls._column}」出现 {count} 次，来源不唯一")
+        start = source.index(cls._column)
+        section = cls._section_open.search(source, start)
+        end = section.start() if section is not None else len(source)
+        records: list[tuple[int, str, str]] = []
+        trailing = False
+        for row in cls._row.findall(source[start:end]):
+            match = cls._value.search(_fragment_text(row))
+            if match is None:
+                trailing = True  # 表格尾部的说明行/空行
+                continue
+            if trailing:
+                raise ParserRejection(f"「{cls._column}」表格数据区被非期数行打断")
+            records.append((int(match.group(1)), match.group(2), match.group(3)))
+        if not records:
+            raise ParserRejection(f"「{cls._column}」表格没有数据行")
+        periods = [record[0] for record in records]
+        if periods != sorted(periods, reverse=True) or len(set(periods)) != len(periods):
+            raise ParserRejection(f"「{cls._column}」期数不是严格递减的单一列表")
+        page_total = sum(
+            1
+            for row in cls._row.findall(source)
+            if cls._value.search(_fragment_text(row)) is not None
+        )
+        if page_total != len(records):
+            raise ParserRejection(
+                f"整页有 {page_total} 行「期数【生肖+尾】」，"
+                f"与「{cls._column}」表格的 {len(records)} 行对不上，来源不唯一"
+            )
+        return records
+
+    @classmethod
+    def _text_records(
+        cls, lines: tuple[TextLine, ...]
+    ) -> tuple[int, list[tuple[int, str, str, int, int]]]:
+        """返回 (标题行号, [(期数, 生肖, 尾数, 期数行号, 开奖行号)])。"""
+        texts = tuple(line.text for line in lines)
+        title_indexes = [index for index, text in enumerate(texts) if cls._column in text]
+        if not title_indexes:
+            raise ParserRejection(f"页面没有「{cls._column}」标题行")
+        if len(title_indexes) > 1:
+            raise ParserRejection(f"「{cls._column}」标题行出现 {len(title_indexes)} 次，来源不唯一")
+        title_index = title_indexes[0]
+        records: list[tuple[int, str, str, int, int]] = []
+        stopped = False
+        index = title_index + 1
+        while index < len(texts):
+            match = cls._period_line.match(texts[index])
+            if match is None:
+                if records:
+                    stopped = True
+                index += 1
+                continue
+            if stopped:
+                raise ParserRejection(f"「{cls._column}」纯文本数据区被非期数行打断")
+            if index + 1 >= len(texts):
+                raise ParserRejection(f"第 {index} 行「{texts[index]}」后面没有开奖行")
+            draw = cls._draw_line.match(texts[index + 1])
+            if draw is None:
+                raise ParserRejection(f"第 {index} 行「{texts[index]}」后面没有开奖行")
+            records.append(
+                (int(match.group(1)), match.group(2), match.group(3), index, index + 1)
+            )
+            index += 2
+        if not records:
+            raise ParserRejection(f"「{cls._column}」板块没有数据行")
+        return title_index, records
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if site.name != self._site_name:
+            return ()
+        all_candidates: list[Candidate] = []
+        for document in bundle.documents:
+            if document.document_type not in {DocumentType.HTML, DocumentType.BROWSER}:
+                continue
+            if not self._same_endpoint(site, document):
+                continue
+            html_records = self._html_records(document.text)
+            lines = document_lines(document)
+            title_index, text_records = self._text_records(lines)
+            if html_records != [
+                (period, zodiac, tail) for period, zodiac, tail, _p, _d in text_records
+            ]:
+                raise ParserRejection(
+                    f"「{self._column}」表格 {len(html_records)} 期与页面纯文本不一致（结构自检失败）"
+                )
+            section_text = lines[title_index].text
+            range_start = text_records[0][3]
+            range_end = text_records[-1][4] + 1
+            for period, zodiac, _tail, position, draw_index in text_records:
+                period_text = lines[position].text
+                draw_text = lines[draw_index].text
+                draw = self._draw_line.match(draw_text)
+                pending = draw is not None and set(draw.group(1)) <= {"0", "?", "？"}
+                all_candidates.append(
+                    Candidate(
+                        period,
+                        zodiac,
+                        normalize_space(f"{period_text} {draw_text}"),
+                        document.source_id,
+                        document.page_order * 1_000_000 + position,
+                        (
+                            f"section:{section_text}",
+                            "table-columns:期数/绝杀1肖1尾",
+                            f"anchor-line:{title_index}",
+                            f"section-range:{range_start}-{range_end}",
+                            f"draw-status:{'pending' if pending else 'drawn'}",
+                        ),
+                        record_id=document.record_id,
+                    )
+                )
+        all_candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(all_candidates)
+
+
+class RowListKillZodiacParser:
+    """逐行「NNN期…【生肖】开…准」单列表站的专属解析器（按站点参数实例化）。
+
+    这类页面没有真正的表格：每期一行纯文本，行里同时带期号、生肖和开奖号，
+    要取的只是方括号里的生肖。站方域名会换，所以不拿域名当关键字，只认
+    标题标记、身份锚点和行语义。来源唯一性靠三道自检：标题标记出现次数
+    固定；整页 HTML 期号锚点序列必须与文本数据行完全一致；每行的原文标记
+    数量必须等于数据行数。任何一处对不上都抛 ParserRejection，绝不猜值。
+
+    「开??」这类未开奖行照常产出候选，但附 record-status:incomplete 证据，
+    方向窗口据此把它当成「还没出结果」，不会把下一期预告误判成更新期。
+    """
+
+    def __init__(
+        self,
+        *,
+        site_name: str,
+        section_marker: str,
+        section_counts: tuple[int, int],
+        row: re.Pattern[str],
+        html_row_marker: str | re.Pattern[str],
+        html_period: re.Pattern[str],
+        identity_marker: str | None = None,
+        columns: str | None = None,
+    ) -> None:
+        self._site_name = site_name
+        self._section_marker = section_marker
+        self._section_counts = section_counts
+        self._row = row
+        self._html_row_marker = html_row_marker
+        self._html_period = html_period
+        self._identity_marker = identity_marker
+        self._columns = columns
+
+    @staticmethod
+    def _same_endpoint(site: SiteConfig, document) -> bool:
+        expected = urlsplit(site.url)
+        actual = urlsplit(document.final_url)
+        return (
+            expected.scheme.lower() == actual.scheme.lower()
+            and expected.netloc.lower() == actual.netloc.lower()
+            and (expected.path or "/") == (actual.path or "/")
+        )
+
+    def _text_records(
+        self, lines: tuple[TextLine, ...]
+    ) -> tuple[int, list[tuple[int, str, str, int]]]:
+        """返回 (标题行号, [(期数, 生肖, 开奖原文, 行号)])。"""
+        texts = tuple(line.text for line in lines)
+        title_indexes = [index for index, text in enumerate(texts) if self._section_marker in text]
+        low, high = self._section_counts
+        if not title_indexes:
+            raise ParserRejection(f"页面没有「{self._section_marker}」标题行")
+        if not low <= len(title_indexes) <= high:
+            raise ParserRejection(
+                f"「{self._section_marker}」标题行出现 {len(title_indexes)} 次，来源不唯一"
+            )
+        records: list[tuple[int, str, str, int]] = []
+        stopped = False
+        for index, text in enumerate(texts):
+            match = self._row.match(text)
+            if match is None:
+                if records:
+                    stopped = True
+                continue
+            if stopped:
+                raise ParserRejection("数据区被非期数行打断，页面不是单一列表")
+            records.append((int(match.group(1)), match.group(2), match.group(3), index))
+        if not records:
+            raise ParserRejection(f"「{self._section_marker}」板块没有数据行")
+        periods = [record[0] for record in records]
+        if periods != sorted(periods, reverse=True) or len(set(periods)) != len(periods):
+            raise ParserRejection("期数不是严格递减的单一列表")
+        return title_indexes[0], records
+
+    def _check_html(self, source: str, records: list[tuple[int, str, str, int]]) -> None:
+        low, high = self._section_counts
+        section_count = source.count(self._section_marker)
+        if not low <= section_count <= high:
+            raise ParserRejection(
+                f"「{self._section_marker}」在页面出现 {section_count} 次，来源不唯一"
+            )
+        if self._identity_marker is not None:
+            identity_count = source.count(self._identity_marker)
+            if identity_count != 1:
+                raise ParserRejection(
+                    f"身份锚点「{self._identity_marker}」出现 {identity_count} 次，来源不唯一"
+                )
+        marker_count = (
+            source.count(self._html_row_marker)
+            if isinstance(self._html_row_marker, str)
+            else len(self._html_row_marker.findall(source))
+        )
+        if marker_count != len(records):
+            raise ParserRejection(
+                f"页面数据行标记出现 {marker_count} 次，"
+                f"与数据行 {len(records)} 条对不上，来源不唯一"
+            )
+        html_periods = [int(value) for value in self._html_period.findall(source)]
+        if html_periods != [record[0] for record in records]:
+            raise ParserRejection("HTML 期号序列与纯文本数据行不一致（结构自检失败）")
+        if self._columns is not None:
+            for column in self._columns.split("/"):
+                header = re.search(rf"<th[^>]*>\s*{re.escape(column)}\s*</th>", source)
+                if header is None:
+                    raise ParserRejection(f"表头缺少「{column}」列")
+
+    def parse(self, site: SiteConfig, bundle: SourceBundle) -> tuple[Candidate, ...]:
+        if site.name != self._site_name:
+            return ()
+        candidates: list[Candidate] = []
+        for document in bundle.documents:
+            if document.document_type not in {DocumentType.HTML, DocumentType.BROWSER}:
+                continue
+            if not self._same_endpoint(site, document):
+                continue
+            lines = document_lines(document)
+            title_index, records = self._text_records(lines)
+            self._check_html(document.text, records)
+            section_text = normalize_space(lines[title_index].text)
+            range_start = records[0][3]
+            range_end = records[-1][3] + 1
+            for period, zodiac, draw, index in records:
+                pending = set(draw) <= {"?", "？", "0"}
+                evidence = [
+                    f"section:{section_text}",
+                    f"anchor-line:{title_index}",
+                    f"section-range:{range_start}-{range_end}",
+                    f"draw-status:{'pending' if pending else 'drawn'}",
+                ]
+                if self._columns is not None:
+                    evidence.append(f"table-columns:{self._columns}")
+                if pending:
+                    evidence.append("record-status:incomplete")
+                candidates.append(
+                    Candidate(
+                        period,
+                        zodiac,
+                        normalize_space(lines[index].text),
+                        document.source_id,
+                        document.page_order * 1_000_000 + index,
+                        tuple(evidence),
+                        record_id=document.record_id,
+                    )
+                )
+        candidates.sort(key=lambda candidate: candidate.page_order)
+        return tuple(candidates)
+
+
 RESTART_CYCLE_REGEX_SITES = frozenset(
     {
         # 伤夷折衄：同一篇文章里有「今年 301→…」和「去年 306→…」两段递减列表，
@@ -3834,6 +4343,59 @@ def parser_entries() -> tuple[tuple[str, Parser], ...]:
             (
                 "special.sijiu_huangbinhong_kill_zodiac",
                 SijiuHuangbinhongKillZodiacParser(),
+            ),
+            (
+                "special.chuangfu_qianliyan_kill_zodiac",
+                ChuangfuQianliyanKillZodiacParser(),
+            ),
+            (
+                "special.gaoshou_wang_luntan_kill_zodiac",
+                GaoshouWangLuntanKillZodiacParser(),
+            ),
+            (
+                "special.jiumeng_siwei_kill_zodiac",
+                RowListKillZodiacParser(
+                    site_name="旧梦思维",
+                    section_marker="必杀一肖",
+                    section_counts=(1, 1),
+                    row=re.compile(
+                        r"^(\d{2,4})\s*期\s*旧梦思维\s*杀肖\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
+                        r"\s*】\s*开\s*(\S+?)\s*准$"
+                    ),
+                    html_row_marker="旧梦思维杀肖",
+                    html_period=re.compile(r"(\d{2,4})\s*期\s*旧梦思维\s*杀肖"),
+                    identity_marker="作者：旧梦思维",
+                ),
+            ),
+            (
+                "special.liuhe_xinjing_zhuanye_kill_zodiac",
+                RowListKillZodiacParser(
+                    site_name="六合心经最专业",
+                    section_marker="【最专业】━━━必杀一肖",
+                    section_counts=(1, 2),
+                    row=re.compile(
+                        r"^(\d{2,4})\s*期\s*杀1肖\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
+                        r"\s*】\s*开\s*(\S+?)\s*准$"
+                    ),
+                    html_row_marker='class="spanqi"',
+                    html_period=re.compile(r'<span class="spanqi">(\d{2,4})期</span>'),
+                    columns="期数/类型/预测/开奖结果",
+                ),
+            ),
+            (
+                "special.jiujiu_zhizun_kill_zodiac",
+                RowListKillZodiacParser(
+                    site_name="九五之尊",
+                    section_marker="【绝杀一肖】",
+                    section_counts=(1, 2),
+                    row=re.compile(
+                        r"^(\d{2,4})\s*期\s*[:：]\s*绝杀一肖\s*【\s*([鼠牛虎兔龙蛇马羊猴鸡狗猪])"
+                        r"(?:\2)*\s*】\s*特\s*(\S+?)\s*(?:准|错|中)$"
+                    ),
+                    html_row_marker=re.compile(r"【[鼠牛虎兔龙蛇马羊猴鸡狗猪]{1,3}】特"),
+                    html_period=re.compile(r"(\d{2,4})期："),
+                    identity_marker="九五之尊",
+                ),
             ),
             ("special.kaijiang_facai_table", KaijiangFacaiTableParser()),
             ("special.yizhixia_article", YizhixiaArticleParser()),

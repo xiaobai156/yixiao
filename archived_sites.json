@@ -511,6 +511,86 @@
       "api_url": null,
       "archived_at": "2026-10-27",
       "archive_reason": "用户点名封存（页面已无期号内容，站方疑似下架）"
+    },
+    {
+      "name": "神剑山庄",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+      "parser_id": "special.ttss_period_article",
+      "source_policy": "http_documents",
+      "api_url": null,
+      "archived_at": "2026-10-30",
+      "archive_reason": "用户点名封存（整域 dh-nwsm-0806.cmw01490353c.app 从本机不可达：DNS 解析 198.18.x 假 IP、TLS 握手失败）"
+    },
+    {
+      "name": "九阳真经",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+      "parser_id": "special.ttss_period_article",
+      "source_policy": "http_documents",
+      "api_url": null,
+      "archived_at": "2026-10-30",
+      "archive_reason": "用户点名封存（整域 dh-nwsm-0806.cmw01490353c.app 从本机不可达：DNS 解析 198.18.x 假 IP、TLS 握手失败）"
+    },
+    {
+      "name": "华佗神医",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+      "parser_id": "special.ttss_period_article",
+      "source_policy": "http_documents",
+      "api_url": null,
+      "archived_at": "2026-10-30",
+      "archive_reason": "用户点名封存（整域 dh-nwsm-0806.cmw01490353c.app 从本机不可达：DNS 解析 198.18.x 假 IP、TLS 握手失败）"
+    },
+    {
+      "name": "一丈青三",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+      "parser_id": "special.ttss_period_article",
+      "source_policy": "http_documents",
+      "api_url": null,
+      "archived_at": "2026-10-30",
+      "archive_reason": "用户点名封存（整域 dh-nwsm-0806.cmw01490353c.app 从本机不可达：DNS 解析 198.18.x 假 IP、TLS 握手失败）"
+    },
+    {
+      "name": "三霄娘娘",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+      "parser_id": "special.ttss_period_article",
+      "source_policy": "http_documents",
+      "api_url": null,
+      "archived_at": "2026-10-30",
+      "archive_reason": "用户点名封存（整域 dh-nwsm-0806.cmw01490353c.app 从本机不可达：DNS 解析 198.18.x 假 IP、TLS 握手失败）"
+    },
+    {
+      "name": "降龙掌门",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+      "parser_id": "special.ttss_period_article",
+      "source_policy": "http_documents",
+      "api_url": null,
+      "archived_at": "2026-10-30",
+      "archive_reason": "用户点名封存（整域 dh-nwsm-0806.cmw01490353c.app 从本机不可达：DNS 解析 198.18.x 假 IP、TLS 握手失败）"
+    },
+    {
+      "name": "元始天尊",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+      "parser_id": "special.ttss_period_article",
+      "source_policy": "http_documents",
+      "api_url": null,
+      "archived_at": "2026-10-30",
+      "archive_reason": "用户点名封存（整域 dh-nwsm-0806.cmw01490353c.app 从本机不可达：DNS 解析 198.18.x 假 IP、TLS 握手失败）"
+    },
+    {
+      "name": "白骨夫人",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+      "parser_id": "special.ttss_period_article",
+      "source_policy": "http_documents",
+      "api_url": null,
+      "archived_at": "2026-10-30",
+      "archive_reason": "用户点名封存（整域 dh-nwsm-0806.cmw01490353c.app 从本机不可达：DNS 解析 198.18.x 假 IP、TLS 握手失败）"
     }
   ],
   "cache_entries": [
@@ -6433,6 +6513,894 @@
         }
       ],
       "fingerprint": "猴猪羊兔羊蛇猴牛猪兔"
+    },
+    {
+      "name": "神剑山庄",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+      "error": "HTTP 请求失败（未关闭证书验证）：HTTPSConnectionPool(host='dh-nwsm-0806.cmw01490353c.app', port=443): Max retries exceeded with url: /pk/cmpk13.html (Caused by SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1007)')))",
+      "record_provenance": {
+        "292": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "evidence_sha256": "5042189a8ad4c2c008d2bc11bcb86a5fc2c4de8a207f386e14e3e174c0542317"
+        },
+        "293": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "evidence_sha256": "662ede85ed415bb10e21a411a7582a1254797bade4b88ea102759ab1a1073d25"
+        },
+        "294": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "evidence_sha256": "f4796b13f64741f975c94d8f2f780fe2f68e820bde79bfd91377fb50d3f1b3bd"
+        },
+        "295": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "evidence_sha256": "3f6318a08dbe2ad39e9d7ecf2f35b34d06c48986e7896ef406600f660672a1e7"
+        },
+        "296": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "evidence_sha256": "9a1a36cfe0073abe687b383ceab844ca0edf8d07df160ed2bc4e7b61c00a9da5"
+        },
+        "297": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "evidence_sha256": "66056c841dcb342d5c11060c7f90dbeeaeb9793e3c4e2e952f9ac2caa308375b"
+        },
+        "298": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "evidence_sha256": "6a227c25c3877720e154c635616974a36b9d4238246ae7de72210287a3cd2305"
+        },
+        "299": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "evidence_sha256": "e2cd536ea3a484d41450dfdbba562731b5dd13399135b91a5fcc68557fd6ce22"
+        },
+        "300": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "evidence_sha256": "61fb01ff77f58b5ec6a6d24fe32cadb0420680c8f9fbc8ed7c207d9ff8ef0784"
+        },
+        "301": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk13.html",
+          "evidence_sha256": "694edb622d72bd9ae02c270bdadcd5d76c166c131f521205e28f1ef3a140a263"
+        }
+      },
+      "records": [
+        {
+          "period": 301,
+          "zodiac": "虎"
+        },
+        {
+          "period": 300,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 299,
+          "zodiac": "猴"
+        },
+        {
+          "period": 298,
+          "zodiac": "龙"
+        },
+        {
+          "period": 297,
+          "zodiac": "猪"
+        },
+        {
+          "period": 296,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 295,
+          "zodiac": "狗"
+        },
+        {
+          "period": 294,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 293,
+          "zodiac": "猪"
+        },
+        {
+          "period": 292,
+          "zodiac": "羊"
+        }
+      ],
+      "fingerprint": "虎鸡猴龙猪蛇狗鼠猪羊"
+    },
+    {
+      "name": "九阳真经",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+      "error": "HTTP 请求失败（未关闭证书验证）：HTTPSConnectionPool(host='dh-nwsm-0806.cmw01490353c.app', port=443): Max retries exceeded with url: /pk/cmpk15.html (Caused by SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1007)')))",
+      "record_provenance": {
+        "292": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "evidence_sha256": "03b7bdc0fcfaa3bece8350d85a638fcdf08b3719f2e3d026a04c76337016e822"
+        },
+        "293": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "evidence_sha256": "2fafada4ec1d72433cee6fb1888b070e5a52501583ee302e4ff9e064e2838478"
+        },
+        "294": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "evidence_sha256": "2dc7df693b52a199d85592e355b9c3c73fd3537b5a62d7c656e5388d6e047e48"
+        },
+        "295": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "evidence_sha256": "8924333ae0860ca5c840fafec2fd5d8924b764ba04678caffe777caeed741a67"
+        },
+        "296": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "evidence_sha256": "7d613f20a54af6061d9a7ee75a547b9da7bd63d3b3531af4290d63505080656b"
+        },
+        "297": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "evidence_sha256": "e8f10fc7241843c7b75913de8a318c4ba5b5a2d0d755e51307d9563f3092d14c"
+        },
+        "298": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "evidence_sha256": "a9220e2764fa568dd6f7c3429ed6d69cb1aea9e418aff48e6a89d64c734c3bfd"
+        },
+        "299": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "evidence_sha256": "4d86bdd59144bd333abf1fbdf148c2ef8ddc8fcef3e9dd047f88f5c83049b0a4"
+        },
+        "300": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "evidence_sha256": "cab028134537e420ee727d347d96738a8932020713760580174d92b5b20d9052"
+        },
+        "301": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk15.html",
+          "evidence_sha256": "5cfd1c9a667dbf78705cc06ca63dc8c05570b520f126213678d6d5fa9553aff9"
+        }
+      },
+      "records": [
+        {
+          "period": 301,
+          "zodiac": "马"
+        },
+        {
+          "period": 300,
+          "zodiac": "狗"
+        },
+        {
+          "period": 299,
+          "zodiac": "虎"
+        },
+        {
+          "period": 298,
+          "zodiac": "猪"
+        },
+        {
+          "period": 297,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 296,
+          "zodiac": "龙"
+        },
+        {
+          "period": 295,
+          "zodiac": "虎"
+        },
+        {
+          "period": 294,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 293,
+          "zodiac": "猴"
+        },
+        {
+          "period": 292,
+          "zodiac": "羊"
+        }
+      ],
+      "fingerprint": "马狗虎猪鸡龙虎鸡猴羊"
+    },
+    {
+      "name": "华佗神医",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+      "error": "HTTP 请求失败（未关闭证书验证）：HTTPSConnectionPool(host='dh-nwsm-0806.cmw01490353c.app', port=443): Max retries exceeded with url: /pk/cmpk16.html (Caused by SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1007)')))",
+      "record_provenance": {
+        "292": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "evidence_sha256": "338ce52f014597382301df20091e2ecdf0a601f41e6f52044df35fdf3b4d9fae"
+        },
+        "293": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "evidence_sha256": "d978a56f6979ff2e47c966fa15eeb1539972e3c96535e4b22a581c086794044d"
+        },
+        "294": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "evidence_sha256": "4eace8a2d12137e911febfa6b8d3172debf63a617cf498560fcdd280ba2b93f0"
+        },
+        "295": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "evidence_sha256": "364b779e2539b5d5368d52bee2f9042d7b1fb3f51c2cbe4f9544a18a7fe51099"
+        },
+        "296": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "evidence_sha256": "7f98182a72a2e4a754cc4c5e956f0090db9f4721ab50c4cc8611a813c03381d4"
+        },
+        "297": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "evidence_sha256": "2e280daa86dbfbf776d10bec26ebc55d10cc97cd39b28b9d04d868da2779a23a"
+        },
+        "298": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "evidence_sha256": "3cd2352c75d4774d1a503db1f5a4ceed85e0106e7a285955d01021880f30bd53"
+        },
+        "299": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "evidence_sha256": "15dcad0e1e4d02ac457f5ba5f5b007b57e953b11c1654ef90e3764cd0d171a35"
+        },
+        "300": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "evidence_sha256": "59b2e8bc3f53eeaa5b6766839dea0d3ff2125a4c0720fb8fa6cc4938f7ff32df"
+        },
+        "301": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk16.html",
+          "evidence_sha256": "3ed8ed84c46d53a1072d5fef386cef687572e0f9842c95e0d17f2c82e8c59bf5"
+        }
+      },
+      "records": [
+        {
+          "period": 301,
+          "zodiac": "马"
+        },
+        {
+          "period": 300,
+          "zodiac": "羊"
+        },
+        {
+          "period": 299,
+          "zodiac": "猪"
+        },
+        {
+          "period": 298,
+          "zodiac": "马"
+        },
+        {
+          "period": 297,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 296,
+          "zodiac": "羊"
+        },
+        {
+          "period": 295,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 294,
+          "zodiac": "羊"
+        },
+        {
+          "period": 293,
+          "zodiac": "牛"
+        },
+        {
+          "period": 292,
+          "zodiac": "羊"
+        }
+      ],
+      "fingerprint": "马羊猪马鼠羊蛇羊牛羊"
+    },
+    {
+      "name": "一丈青三",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+      "error": "HTTP 请求失败（未关闭证书验证）：HTTPSConnectionPool(host='dh-nwsm-0806.cmw01490353c.app', port=443): Max retries exceeded with url: /pk/cmpk18.html (Caused by SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1007)')))",
+      "record_provenance": {
+        "292": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "evidence_sha256": "91743ac3aee45529b494c8c55266507b76c936f8b32f1127b8d148d99583df07"
+        },
+        "293": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "evidence_sha256": "581cb1a14c3fd707b07d6a5d7009f336b701b5d10013d36904e343d416950cfe"
+        },
+        "294": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "evidence_sha256": "3bab0ec2ebfda1c48dd235c249e4c63d89769fa74e551bb101091bc1cea2d469"
+        },
+        "295": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "evidence_sha256": "797ae77b61c60b75d90ed9eae87a27ed5dbd9a7303999f7dde0f75ed00faf597"
+        },
+        "296": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "evidence_sha256": "038c511634fdef747571deb2cc3935bd15b202bec7e3c042ee60b6c39fd79a38"
+        },
+        "297": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "evidence_sha256": "b8e02d156f35e8c9a8cfa694189c5aeda17d9f6693645d09a78ebf9c833daa2b"
+        },
+        "298": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "evidence_sha256": "8f764736a1bd70bdbf790a5dc13cb7aecd31662a03a3d318383aae9133ba39d6"
+        },
+        "299": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "evidence_sha256": "5af880fa0b11acc58d8ea9638b2b98c190ca6d563181f25103a348ddfd49597b"
+        },
+        "300": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "evidence_sha256": "2cf86a2cbea87bacd10a71d8e9bbc3f8dab19c3b3b3a1b37b4c56d59a14eac8c"
+        },
+        "301": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk18.html",
+          "evidence_sha256": "f2387b8aefd59c2417da0f365fd9c9638b736031bad59bedd7bea3b0ac63720c"
+        }
+      },
+      "records": [
+        {
+          "period": 301,
+          "zodiac": "马"
+        },
+        {
+          "period": 300,
+          "zodiac": "马"
+        },
+        {
+          "period": 299,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 298,
+          "zodiac": "牛"
+        },
+        {
+          "period": 297,
+          "zodiac": "马"
+        },
+        {
+          "period": 296,
+          "zodiac": "龙"
+        },
+        {
+          "period": 295,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 294,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 293,
+          "zodiac": "龙"
+        },
+        {
+          "period": 292,
+          "zodiac": "蛇"
+        }
+      ],
+      "fingerprint": "马马鸡牛马龙鼠鸡龙蛇"
+    },
+    {
+      "name": "三霄娘娘",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+      "error": "HTTP 请求失败（未关闭证书验证）：HTTPSConnectionPool(host='dh-nwsm-0806.cmw01490353c.app', port=443): Max retries exceeded with url: /pk/cmpk17.html (Caused by SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1007)')))",
+      "record_provenance": {
+        "292": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "evidence_sha256": "837265d8fac746bab7fee1b72178a4b2b70a707f7bd0ac2921b85788e578c1d0"
+        },
+        "293": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "evidence_sha256": "1284a9186bcf64e83003943611ee0a0a7e444dbc70e7a5a861a7ee2d01a80e24"
+        },
+        "294": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "evidence_sha256": "154217f2cdd5cac0819fe634bbe6773998374d6ad939905b25524f43b5112460"
+        },
+        "295": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "evidence_sha256": "957356187a6c079697196a2b8677759f0aa5e1e0ed0c801be3c834f5232f0cab"
+        },
+        "296": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "evidence_sha256": "77084453f4ea98b1d04efc7be68f116d33189f7ea2cac64de3fe6939c03819ab"
+        },
+        "297": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "evidence_sha256": "7abd28bd407b1d36c675513f79bc620d3f5fb2218018ff34b7ef2dded3e5fcf5"
+        },
+        "298": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "evidence_sha256": "3eb61aeb8a036fbf672d7ae8ec270aaa6e99633cf7b03f17c6aa71c37c6afdd9"
+        },
+        "299": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "evidence_sha256": "9a7d0e7b21fe414afa41a616e19c21f3e3484626ed59265d518ef08b10fd4d7e"
+        },
+        "300": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "evidence_sha256": "09f3d19cf465651abd205968e5490b3ebf9fc47cc1622a24d1cc46a95dd6257d"
+        },
+        "301": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk17.html",
+          "evidence_sha256": "d05084c41288668a769c20b0588c81d4e469041f0fce7b9134825c527a40f8b8"
+        }
+      },
+      "records": [
+        {
+          "period": 301,
+          "zodiac": "马"
+        },
+        {
+          "period": 300,
+          "zodiac": "龙"
+        },
+        {
+          "period": 299,
+          "zodiac": "龙"
+        },
+        {
+          "period": 298,
+          "zodiac": "猪"
+        },
+        {
+          "period": 297,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 296,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 295,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 294,
+          "zodiac": "羊"
+        },
+        {
+          "period": 293,
+          "zodiac": "马"
+        },
+        {
+          "period": 292,
+          "zodiac": "虎"
+        }
+      ],
+      "fingerprint": "马龙龙猪鼠鼠蛇羊马虎"
+    },
+    {
+      "name": "降龙掌门",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+      "error": "HTTP 请求失败（未关闭证书验证）：HTTPSConnectionPool(host='dh-nwsm-0806.cmw01490353c.app', port=443): Max retries exceeded with url: /pk/cmpk19.html (Caused by SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1007)')))",
+      "record_provenance": {
+        "292": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "evidence_sha256": "395b87a75337ab034ad8a7002bf4db3fcac553f74784d682840f1e2b092985dd"
+        },
+        "293": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "evidence_sha256": "4b1cde9551737e1ffe6e3ae5b01b6619e65c4feec0fc3ea97fa9e3b40003b681"
+        },
+        "294": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "evidence_sha256": "d556c68ae70dceedcd5cfd099208a4cc151b905254fece2eb6284ccc2584dec5"
+        },
+        "295": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "evidence_sha256": "8f925b267b3d18ad736469f52e3cddd71463966761d4af69570bba6a425c03eb"
+        },
+        "296": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "evidence_sha256": "0f062179178031ce49dce6edd7c04edb9e2d9285a296415f8b2da15545fcdc3d"
+        },
+        "297": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "evidence_sha256": "fc80c45f658abf3f632f37ebff9988236bb5a361883f1e62354169a22f9cc208"
+        },
+        "298": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "evidence_sha256": "e8d7f5260879c5384794ec6e4a1573f9ca7fcf7f37929ca07626d68c2bc71be4"
+        },
+        "299": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "evidence_sha256": "fe46ca9f0047e397af256c303a4c8432e692b844d007669ccb9080d76098eab3"
+        },
+        "300": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "evidence_sha256": "616cd4edc614575ae7753beb506f5e78cc0668574f005a7476da00e6fe0f3a35"
+        },
+        "301": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk19.html",
+          "evidence_sha256": "5ffae97fa8340809e7b1c646392f391625d4186ce94f95bda90b2d39198a6962"
+        }
+      },
+      "records": [
+        {
+          "period": 301,
+          "zodiac": "兔"
+        },
+        {
+          "period": 300,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 299,
+          "zodiac": "牛"
+        },
+        {
+          "period": 298,
+          "zodiac": "牛"
+        },
+        {
+          "period": 297,
+          "zodiac": "兔"
+        },
+        {
+          "period": 296,
+          "zodiac": "牛"
+        },
+        {
+          "period": 295,
+          "zodiac": "马"
+        },
+        {
+          "period": 294,
+          "zodiac": "马"
+        },
+        {
+          "period": 293,
+          "zodiac": "狗"
+        },
+        {
+          "period": 292,
+          "zodiac": "狗"
+        }
+      ],
+      "fingerprint": "兔蛇牛牛兔牛马马狗狗"
+    },
+    {
+      "name": "元始天尊",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+      "error": "HTTP 请求失败（未关闭证书验证）：HTTPSConnectionPool(host='dh-nwsm-0806.cmw01490353c.app', port=443): Max retries exceeded with url: /pk/cmpk20.html (Caused by SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1007)')))",
+      "record_provenance": {
+        "292": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "evidence_sha256": "d56d8a001287085e44c0a106a2d02732d1caec3d386055675b24c49929e98217"
+        },
+        "293": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "evidence_sha256": "bd998f1b672d7b759f2c7d2714f2dcf4b90684705cc00bf16364c79b96d6fa5e"
+        },
+        "294": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "evidence_sha256": "4a8574510ead639f1be9cb1f5b9e75524ba458bfb6365e9ce5f9a8a0c3cfa715"
+        },
+        "295": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "evidence_sha256": "acb9d9d64cab45df031b4e99c3b09e997a7f2697e424829ddebc6a41d76250ed"
+        },
+        "296": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "evidence_sha256": "54c8a9846f7faf90d78a5907709cc59e3f2ecc8be74be387359188397d001211"
+        },
+        "297": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "evidence_sha256": "1b98a0ff76b608c4bf8eae61e449ea3398fee272dfab04a4b5501cd655677c56"
+        },
+        "298": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "evidence_sha256": "34e77f0ea856b495fe81da07c363848ca9c50db6e3f0472e67ef663183aa5d5e"
+        },
+        "299": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "evidence_sha256": "d5643eaa42d4f6f72bb110f2bea2ea5b89c24c19e0177b0fdb02adc0eb8ca100"
+        },
+        "300": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "evidence_sha256": "b9fe4e77c3feb4499d2ddc32987bba9a363cadabb7558bda9ade06734f6021d1"
+        },
+        "301": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk20.html",
+          "evidence_sha256": "dc4ffb5901785f3ca1417c7cea374edee7e30d9d15861c897b7ce10569bbccf9"
+        }
+      },
+      "records": [
+        {
+          "period": 301,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 300,
+          "zodiac": "虎"
+        },
+        {
+          "period": 299,
+          "zodiac": "狗"
+        },
+        {
+          "period": 298,
+          "zodiac": "狗"
+        },
+        {
+          "period": 297,
+          "zodiac": "牛"
+        },
+        {
+          "period": 296,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 295,
+          "zodiac": "猪"
+        },
+        {
+          "period": 294,
+          "zodiac": "羊"
+        },
+        {
+          "period": 293,
+          "zodiac": "狗"
+        },
+        {
+          "period": 292,
+          "zodiac": "马"
+        }
+      ],
+      "fingerprint": "鼠虎狗狗牛鸡猪羊狗马"
+    },
+    {
+      "name": "白骨夫人",
+      "pick": "top",
+      "url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+      "error": "HTTP 请求失败（未关闭证书验证）：HTTPSConnectionPool(host='dh-nwsm-0806.cmw01490353c.app', port=443): Max retries exceeded with url: /pk/cmpk11.html (Caused by SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1007)')))",
+      "record_provenance": {
+        "292": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "evidence_sha256": "72d15611a6abd201371e44ac0bb6b1dedea56dc8433feffb7e57e3f0f2481a3c"
+        },
+        "293": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "evidence_sha256": "03afc381b9355e6befeb67c8fa47fcda43b308ae517dc3518cd13dcdba70eb19"
+        },
+        "294": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "evidence_sha256": "4c420b64649223f56699cc0f885e09edd119ddb26aa6380dab0355ff8e339819"
+        },
+        "295": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "evidence_sha256": "139dd39c3bd62fa5d72fd055533408a7bc2cb69c710e5b6bf55c92ccf0954119"
+        },
+        "296": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "evidence_sha256": "fc277deec0eb0503ec7b62bfb41728a443f685156b4a57007457f36cc9a32a7a"
+        },
+        "297": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "evidence_sha256": "a48bfaaee195b6c300ff92e1848110415ee47c80ff87ac01bb14914480d20564"
+        },
+        "298": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "evidence_sha256": "f766b92027c37d6480abae2dce49435e4c31d8ca9f53d419e230f856b7a8af0f"
+        },
+        "299": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "evidence_sha256": "1a79ea68009e70f20b7d0530045d6996b79bc345d3ef945995f021e8858d606e"
+        },
+        "300": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "evidence_sha256": "0f615769c80c3edfc9b797e5ff0fed0a0cd7e56d611af567698b83ca737eb95d"
+        },
+        "301": {
+          "validation_status": "validated",
+          "source_id": "html:https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "source_url": "https://dh-nwsm-0806.cmw01490353c.app/pk/cmpk11.html",
+          "evidence_sha256": "72369d2ad9649378a843261b3989cffa4da57ca27b3879c6bb42d4abffc9a660"
+        }
+      },
+      "records": [
+        {
+          "period": 301,
+          "zodiac": "龙"
+        },
+        {
+          "period": 300,
+          "zodiac": "兔"
+        },
+        {
+          "period": 299,
+          "zodiac": "猪"
+        },
+        {
+          "period": 298,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 297,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 296,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 295,
+          "zodiac": "狗"
+        },
+        {
+          "period": 294,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 293,
+          "zodiac": "牛"
+        },
+        {
+          "period": 292,
+          "zodiac": "牛"
+        }
+      ],
+      "fingerprint": "龙兔猪蛇鼠鼠狗鸡牛牛"
     }
   ]
 }
