@@ -117,9 +117,11 @@ def test_extra_matching_row_outside_section_rejected() -> None:
         build_registry().parse(_site(), _bundle(_html(tail=TAIL + extra)))
 
 
-def test_registered_as_existing_site_with_dedicated_parser() -> None:
+def test_archived_as_existing_site_with_dedicated_parser() -> None:
     sites = json.loads((ROOT / "sites.json").read_text(encoding="utf-8"))
-    entry = next(item for item in sites if item["name"] == "高手网论坛")
+    assert not any(item["name"] == "高手网论坛" for item in sites)
+    archive = json.loads((ROOT / "archived_sites.json").read_text(encoding="utf-8"))
+    entry = next(item for item in archive["sites"] if item["name"] == "高手网论坛")
     assert entry["url"] == URL
     assert entry["pick"] == "top"
     assert entry["section"] == SiteSection.EXISTING.value

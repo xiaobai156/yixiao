@@ -591,6 +591,26 @@
       "api_url": null,
       "archived_at": "2026-10-30",
       "archive_reason": "用户点名封存（整域 dh-nwsm-0806.cmw01490353c.app 从本机不可达：DNS 解析 198.18.x 假 IP、TLS 握手失败）"
+    },
+    {
+      "name": "高手网论坛",
+      "pick": "top",
+      "url": "https://799689.cc/",
+      "section": "已有站点",
+      "parser_id": "special.gaoshou_wang_luntan_kill_zodiac",
+      "source_policy": "http_documents",
+      "archived_at": "2026-11-04T18:35:19+08:00",
+      "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "盛世繁华",
+      "pick": "bottom",
+      "url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+      "section": "新增的站点",
+      "parser_id": "regex.1139adaae11e",
+      "source_policy": "http_documents",
+      "archived_at": "2026-11-04T18:45:23+08:00",
+      "archive_reason": "用户明确要求封存，不再抓取"
     }
   ],
   "cache_entries": [
@@ -7401,6 +7421,240 @@
         }
       ],
       "fingerprint": "龙兔猪蛇鼠鼠狗鸡牛牛"
+    },
+    {
+      "name": "高手网论坛",
+      "pick": "top",
+      "url": "https://799689.cc/",
+      "section": "已有站点",
+      "error": "专属解析拒绝 308期：第 2715 行「307期【鸡+5尾】开」后面没有开奖行",
+      "records": [
+        {
+          "period": 307,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 306,
+          "zodiac": "牛"
+        },
+        {
+          "period": 305,
+          "zodiac": "羊"
+        },
+        {
+          "period": 304,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 303,
+          "zodiac": "狗"
+        },
+        {
+          "period": 302,
+          "zodiac": "虎"
+        },
+        {
+          "period": 301,
+          "zodiac": "牛"
+        },
+        {
+          "period": 300,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 299,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 298,
+          "zodiac": "猪"
+        }
+      ],
+      "fingerprint": "鸡牛羊鼠狗虎牛鼠蛇猪",
+      "record_provenance": {
+        "302": {
+          "validation_status": "validated",
+          "source_id": "html:https://799689.cc/",
+          "source_url": "https://799689.cc/",
+          "evidence_sha256": "ec0d17677a0bfe867f7e737342dc3de44bdd2f230e95b831e402ff4cab0db16c"
+        },
+        "301": {
+          "validation_status": "validated",
+          "source_id": "html:https://799689.cc/",
+          "source_url": "https://799689.cc/",
+          "evidence_sha256": "d88a28b751de6e653707b3f21b681450b212ee8859877f37d9923ad18fce77df"
+        },
+        "300": {
+          "validation_status": "validated",
+          "source_id": "html:https://799689.cc/",
+          "source_url": "https://799689.cc/",
+          "evidence_sha256": "ac9ea3d16c973ee1db97e9938de2933c26bbb84a199fe86b9d99def1808f0c71"
+        },
+        "299": {
+          "validation_status": "validated",
+          "source_id": "html:https://799689.cc/",
+          "source_url": "https://799689.cc/",
+          "evidence_sha256": "275c305fd60097e62ec0b3f7f85caac54725d0404ef5429ff7721c41464920fa"
+        },
+        "298": {
+          "validation_status": "validated",
+          "source_id": "html:https://799689.cc/",
+          "source_url": "https://799689.cc/",
+          "evidence_sha256": "c24f60ee47cf358d83947898641a55e33bc64f02113aecb8d2cc9e8758b96912"
+        },
+        "303": {
+          "validation_status": "validated",
+          "source_id": "html:https://799689.cc/",
+          "source_url": "https://799689.cc/",
+          "evidence_sha256": "2612f143ab5f56a7a0c170bb0cb1461ea87b2110c078995b8098bb7d4e449238"
+        },
+        "304": {
+          "validation_status": "validated",
+          "source_id": "html:https://799689.cc/",
+          "source_url": "https://799689.cc/",
+          "evidence_sha256": "e119cf7be3950d483b9e1419391f39d4bf313472ac6de179f2e773a0424c1cf3"
+        },
+        "305": {
+          "validation_status": "validated",
+          "source_id": "html:https://799689.cc/",
+          "source_url": "https://799689.cc/",
+          "evidence_sha256": "f8e61d35b9d1ea5362db15b3693de51bb9a03923e5aa797a1160a52483e384f5"
+        },
+        "306": {
+          "validation_status": "validated",
+          "source_id": "html:https://799689.cc/",
+          "source_url": "https://799689.cc/",
+          "evidence_sha256": "df0e026c5ae8f5f3f8df668814f6aa83ce5f08d5c4975aa4556f3d8b6521cb2d"
+        },
+        "307": {
+          "validation_status": "validated",
+          "source_id": "html:https://799689.cc/",
+          "source_url": "https://799689.cc/",
+          "evidence_sha256": "3f17721eb0c71b92431df85872b2f4916797072e691a393a6e3202ce630b0a84"
+        }
+      }
+    },
+    {
+      "name": "盛世繁华",
+      "pick": "bottom",
+      "url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+      "section": "新增的站点",
+      "error": "专属解析未命中指定 308期，禁止回落通用解析",
+      "records": [
+        {
+          "period": 307,
+          "zodiac": "牛"
+        },
+        {
+          "period": 306,
+          "zodiac": "龙"
+        },
+        {
+          "period": 305,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 304,
+          "zodiac": "牛"
+        },
+        {
+          "period": 303,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 302,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 301,
+          "zodiac": "羊"
+        },
+        {
+          "period": 300,
+          "zodiac": "羊"
+        },
+        {
+          "period": 299,
+          "zodiac": "狗"
+        },
+        {
+          "period": 298,
+          "zodiac": "虎"
+        }
+      ],
+      "fingerprint": "牛龙鸡牛蛇蛇羊羊狗虎",
+      "record_provenance": {
+        "298": {
+          "validation_status": "validated",
+          "source_id": "html:https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "source_url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "evidence_sha256": "d476138833b087afdce3aaa3d72b195b2c898b68fedd6fe31465ccb596651557",
+          "record_id": "2072"
+        },
+        "299": {
+          "validation_status": "validated",
+          "source_id": "html:https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "source_url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "evidence_sha256": "89906ca10afea8ca6ead3cb75ebe2cfa5796ee371017cca0e8829dba02b20de4",
+          "record_id": "2072"
+        },
+        "300": {
+          "validation_status": "validated",
+          "source_id": "html:https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "source_url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "evidence_sha256": "4d967d4242ec2f3632c34e493447cecb7f573454b910f5e4469360237f40c15f",
+          "record_id": "2072"
+        },
+        "301": {
+          "validation_status": "validated",
+          "source_id": "html:https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "source_url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "evidence_sha256": "3befb7e6d358f6b486b1fe6a61c9b76bf92f82022a6a49502908e1cb6aab2e45",
+          "record_id": "2072"
+        },
+        "302": {
+          "validation_status": "validated",
+          "source_id": "html:https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "source_url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "evidence_sha256": "3d1f97a9b0cd8259ac61a6fc24ffdd272ba22821865fca21a8eb68048d2d74d0",
+          "record_id": "2072"
+        },
+        "303": {
+          "validation_status": "validated",
+          "source_id": "html:https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "source_url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "evidence_sha256": "f122b81d3f5b2a54e716ff4250627cfddb53b3aafd4eb05eb151bd8d96aee871",
+          "record_id": "2072"
+        },
+        "304": {
+          "validation_status": "validated",
+          "source_id": "html:https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "source_url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "evidence_sha256": "828690fc4f7df376cd9e31224c7fc82f45eaac05a685b0d0f38a7fd7928aa09d",
+          "record_id": "2072"
+        },
+        "305": {
+          "validation_status": "validated",
+          "source_id": "html:https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "source_url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "evidence_sha256": "b7351e981b95007ca0a19f8d036f324b4519cf33bdb3b6d452bee972996dbc59",
+          "record_id": "2072"
+        },
+        "306": {
+          "validation_status": "validated",
+          "source_id": "html:https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "source_url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "evidence_sha256": "f6c397093f20bd4582ba34f58644a0d359f9af904244320fe3d29c0b7731cafa",
+          "record_id": "2072"
+        },
+        "307": {
+          "validation_status": "validated",
+          "source_id": "html:https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "source_url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
+          "evidence_sha256": "60050c7e7b06d78f0cc992443a2bc7ccfe437d01e45ed68839e85cd15c1b34f1",
+          "record_id": "2072"
+        }
+      }
     }
   ]
 }

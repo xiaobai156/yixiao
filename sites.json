@@ -2867,14 +2867,6 @@
     "source_policy": "http_documents"
   },
   {
-    "name": "盛世繁华",
-    "pick": "bottom",
-    "url": "https://z0gcdiww42.669332.shop/bbs/topic.php?id=2072",
-    "section": "新增的站点",
-    "parser_id": "regex.1139adaae11e",
-    "source_policy": "http_documents"
-  },
-  {
     "name": "风雨晦冥",
     "pick": "bottom",
     "url": "https://vvcgny.5f189-h4v2h-vwraux.xyz:17466/topic/565973.html",
@@ -4325,14 +4317,6 @@
     "section": "已有站点",
     "parser_id": "regex.86a7042b2c5a",
     "source_policy": "browser"
-  },
-  {
-    "name": "高手网论坛",
-    "pick": "top",
-    "url": "https://799689.cc/",
-    "section": "已有站点",
-    "parser_id": "special.gaoshou_wang_luntan_kill_zodiac",
-    "source_policy": "http_documents"
   },
   {
     "name": "九五之尊",
