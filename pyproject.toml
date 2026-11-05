@@ -31,4 +31,3 @@ dev = ["pytest>=8,<10", "ruff>=0.6,<1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["historical_snapshot: requires matching historical production cache/config/TXT; opt in explicitly"]

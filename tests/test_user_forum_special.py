@@ -610,52 +610,6 @@ def test_241_bottom_user_sites_expose_only_valid_inline_history(
     assert [(item.period, item.zodiac) for item in parser.parse(history_site, bundle)] == expected
 
 
-def test_241_special_user_sites_are_formal_existing_sites_with_cache_and_output() -> None:
-    names = {"捡料糊口的曾白温", "钟哥割"}
-    sites = load_sites(
-        Path("sites.json"),
-        parser_ids=build_registry().parser_ids,
-        source_policies=SOURCE_POLICIES,
-    )
-    selected = {site.name: site for site in sites if site.name in names}
-
-    assert set(selected) == names
-    assert all(site.section is SiteSection.EXISTING for site in selected.values())
-    assert all(site.direction is Direction.BOTTOM for site in selected.values())
-    assert all(site.parser_id == "special.user_forum_post" for site in selected.values())
-
-    cache = json.loads(Path("recent_10_cache.json").read_text(encoding="utf-8-sig"))
-    cached = {site["name"]: site for site in cache["sites"] if site["name"] in names}
-    assert [record["period"] for record in cached["捡料糊口的曾白温"]["records"]] == [
-        241,
-        240,
-        239,
-        238,
-        237,
-        236,
-        235,
-        234,
-        233,
-        232,
-    ]
-    assert cached["捡料糊口的曾白温"]["onboarding_exception"]["missing_periods"] == []
-    assert [record["period"] for record in cached["钟哥割"]["records"]] == list(
-        range(241, 231, -1)
-    )
-    assert cached["钟哥割"]["onboarding_exception"]["duplicate_with"] == ["七月未时"]
-
-    success = Path(
-        r"C:\Users\Administrator\Desktop\每天工具\爬虫合集\七类数据统一归纳\241期-肖.txt"
-    ).read_text(encoding="utf-8")
-    failure_path = Path(
-        r"C:\Users\Administrator\Desktop\每天工具\爬虫合集\七类数据统一归纳失败\241期-肖-失败.txt"
-    )
-    failure = failure_path.read_text(encoding="utf-8") if failure_path.exists() else ""
-    assert "牛 捡料糊口的曾白温" in success
-    assert "马 钟哥割" in success
-    assert not any(name in failure for name in names)
-
-
 def test_zhonggea_top_selects_first_same_period_post_when_values_differ() -> None:
     first = _row(
         record_id=15975717,
