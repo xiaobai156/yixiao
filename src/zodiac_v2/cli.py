@@ -142,6 +142,8 @@ def _runtime(sites_file: Path) -> tuple[tuple[SiteConfig, ...], ScrapeService]:
         parser_ids=registry.parser_ids,
         source_policies=SOURCE_POLICIES,
     )
+    # 站点名表用于识别“侧栏/推荐位里堆了多个站名”的伪锚点。
+    registry = build_registry([site.name for site in sites])
     return sites, ScrapeService(DefaultSourceGateway(), registry)
 
 

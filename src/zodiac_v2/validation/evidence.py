@@ -9,6 +9,22 @@ from html.parser import HTMLParser
 from zodiac_v2.contracts import Candidate, DocumentType, FailureCode, SourceBundle, ValidationDecision, ZODIACS
 
 _SPACE_PATTERN = re.compile(r"[\s\u3000]+")
+_PERIOD_TOKEN_PATTERN = re.compile(r"(?<!\d)(第\s*)?(\d{1,4})\s*期")
+_FULLWIDTH_DIGITS = str.maketrans("０１２３４５６７８９", "0123456789")
+
+# “本月第2期”这类序号标签最大只到 12；更大的“第309期”按真实期号处理。
+_MAX_ORDINAL_LABEL = 12
+# 期号后紧跟这些词是战绩说明，不是新记录。
+_STREAK_NOTE_PATTERN = re.compile(r"\s*(?:连中|連中|连准|連準|全中|精准|精準|命中)")
+# 期号后紧跟字段词（杀鸡/禁肖/必杀…）说明这个期号是记录本身，不能当说明豁免。
+_FIELD_WORD_PATTERN = re.compile(r"[\s、，,。：:；;]*[杀殺禁绝絕必肖]")
+# 期号前出现这些词说明是上一期/历史结果，整段豁免（含括号里的写法）。
+_NOTE_MARKERS = ("上期", "往期", "前期", "上次", "前一期", "回查", "参考")
+_NOTE_WINDOW = 8
+# 少量站点写“310杀鸡”不带“期”字，用 3–4 位裸期号兜底。
+_BARE_PERIOD_PATTERN = re.compile(r"(?<!\d)(\d{3,4})(?=\s*(?:杀|殺|禁|绝|絕|必))")
+# 年份不是期号。
+_YEAR_RANGE = range(1900, 2100)
 _TRADITIONAL_ZODIACS = str.maketrans({"馬": "马", "雞": "鸡", "豬": "猪", "龍": "龙"})
 _BLOCK_TAGS = frozenset({"article", "br", "div", "li", "p", "section", "td", "th", "tr"})
 _HEADING_TAGS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6", "title"})
@@ -260,6 +276,138 @@ def _derived_missing_zodiac_matches(candidate: Candidate) -> bool:
     return len(listed) == 11 and len(set(listed)) == 11 and len(missing) == 1 and candidate.zodiac in missing
 
 
+def _is_result_note(text: str, start: int, end: int, value: int, period: int) -> bool:
+    """判断这个期号是不是上一期结果/战绩说明，而不是新记录的期号。"""
+    if value == period:
+        return False
+    if _FIELD_WORD_PATTERN.match(text, end):
+        return False
+    if any(marker in text[max(0, start - _NOTE_WINDOW) : start] for marker in _NOTE_MARKERS):
+        return True
+    return _STREAK_NOTE_PATTERN.match(text, end) is not None
+
+
+def _issue_period_tokens(text: str, period: int) -> list[int]:
+    """返回文本里的期号；“本月第2期”序号和上期结果说明不算期号。"""
+    tokens: list[int] = []
+    for match in _PERIOD_TOKEN_PATTERN.finditer(text):
+        prefix, number = match.group(1), match.group(2)
+        value = int(number.lstrip("0") or "0")
+        if prefix and value <= _MAX_ORDINAL_LABEL:
+            continue
+        if _is_result_note(text, match.start(), match.end(), value, period):
+            continue
+        tokens.append(value)
+    return tokens
+
+
+def _bare_period_tokens(text: str, period: int) -> list[int]:
+    """不带“期”字的裸期号；年份不算，前置上期/参考等说明的也不算。"""
+    values: list[int] = []
+    for match in _BARE_PERIOD_PATTERN.finditer(text):
+        value = int(match.group(1))
+        if value in _YEAR_RANGE:
+            continue
+        if value != period and any(
+            marker in text[max(0, match.start() - _NOTE_WINDOW) : match.start()] for marker in _NOTE_MARKERS
+        ):
+            continue
+        values.append(value)
+    return values
+
+
+def _raw_line_owns_period(candidate: Candidate) -> bool:
+    """为真表示原始行里生肖之前的期号都等于候选期数。
+
+    跨行拼接窗口形如 ``310期资料更新中 309期 绝杀一肖【牛】``：期号仍停在开头，
+    真正的记录属于另一个期数。生肖前出现其他期号时，值不属于本期，必须判失败。
+    ``第309期`` 是真实期号，只有 ``本月第2期`` 这类小序号才豁免。
+    """
+    zodiac_index = candidate.raw_line.find(candidate.zodiac)
+    if zodiac_index < 0:
+        return True
+    prefix = candidate.raw_line[:zodiac_index]
+    values = _issue_period_tokens(prefix, candidate.period) + _bare_period_tokens(prefix, candidate.period)
+    return all(value == candidate.period for value in values)
+
+
+def _value_line_index(
+    candidate: Candidate,
+    lines: tuple[str, ...],
+    local_position: int,
+) -> int | None:
+    """用原始行在文档里的位置偏移，定位生肖所在的物理行。"""
+    window = 8
+    joined = _normalize_space(" ".join(lines[local_position : local_position + window]))
+    raw = _normalize_space(candidate.raw_line)
+    offset = joined.find(raw)
+    if offset < 0:
+        return None
+    zodiac_offset = raw.find(candidate.zodiac)
+    if zodiac_offset < 0:
+        return None
+    target = offset + zodiac_offset
+    cursor = 0
+    for index in range(local_position, min(local_position + window, len(lines))):
+        text = _normalize_space(lines[index])
+        end = cursor + len(text)
+        if target <= end:
+            return index
+        cursor = end + 1
+    return None
+
+
+def _declared_value_line(candidate: Candidate) -> int | None:
+    for name in ("value-line", "record-line"):
+        for evidence in candidate.evidence:
+            prefix, _, value = evidence.partition(":")
+            if prefix == name and value.strip().isdigit():
+                return int(value)
+    return None
+
+
+def _is_cell_line(text: str) -> bool:
+    """表格里“一格一行”的短行、以及 JS 拼接片段，不算记录间距。"""
+    stripped = text.strip()
+    if stripped.startswith(("document.write", "document.writeln")):
+        return True
+    return len(stripped) <= 12 and not any(mark in stripped for mark in "。！？；")
+
+
+def _value_line_violation(
+    candidate: Candidate,
+    lines: tuple[str, ...],
+    local_position: int,
+) -> str | None:
+    """期号必须落在值行或紧邻值行的行上；中间夹着整段正文说明则判失败。"""
+    declared = _declared_value_line(candidate)
+    if declared is not None:
+        # 解析器已显式声明值行，归属由期号门禁负责；但声明行必须真的含这个值。
+        if not 0 <= declared < len(lines):
+            return f"声明的值行 {declared} 超出文档范围：{candidate.raw_line}"
+        if "derived:missing-zodiac" not in candidate.evidence and candidate.zodiac not in lines[declared]:
+            return f"声明的值行不含生肖 {candidate.zodiac}：{lines[declared][:60]}"
+        return None
+    value_line = _value_line_index(candidate, lines, local_position)
+    if value_line is None or not local_position <= value_line < len(lines):
+        return None
+    token_line: int | None = None
+    for index in range(local_position, value_line + 1):
+        text = lines[index]
+        if index == value_line:
+            cut = text.find(candidate.zodiac)
+            if cut >= 0:
+                text = text[:cut]
+        if _issue_period_tokens(text, candidate.period) or _bare_period_tokens(text, candidate.period):
+            token_line = index
+    if token_line is None or token_line >= value_line:
+        return None
+    gap = [index for index in range(token_line + 1, value_line) if not _is_cell_line(lines[index])]
+    if len(gap) > 1:
+        return f"候选期号行与值行之间夹了 {len(gap)} 行正文：{candidate.raw_line}"
+    return None
+
+
 def _verified_title_period(
     candidate: Candidate,
     lines: tuple[str, ...],
@@ -349,8 +497,9 @@ def validate_candidate_evidence(
             f"候选页内位置 {local_position} 超出来源文档有效范围 {len(lines)}",
         )
 
+    normalized_raw = candidate.raw_line.translate(_FULLWIDTH_DIGITS)
     if (
-        re.search(rf"(?<!\d)0*{candidate.period}(?!\d)", candidate.raw_line) is None
+        re.search(rf"(?<!\d)0*{candidate.period}(?!\d)", normalized_raw) is None
         and not _verified_title_period(candidate, lines, local_position)
     ):
         return ValidationDecision.failure(
@@ -362,6 +511,14 @@ def validate_candidate_evidence(
             FailureCode.FIELD,
             f"候选原始行不含自身生肖 {candidate.zodiac}：{candidate.raw_line}",
         )
+    if not _raw_line_owns_period(candidate):
+        return ValidationDecision.failure(
+            FailureCode.FIELD,
+            f"候选原始行在生肖前出现其他期数：{candidate.raw_line}",
+        )
+    value_line_violation = _value_line_violation(candidate, lines, local_position)
+    if value_line_violation is not None:
+        return ValidationDecision.failure(FailureCode.FIELD, value_line_violation)
 
     expected = _normalize_space(candidate.raw_line)
     source_window = _normalize_space(" ".join(lines[local_position : local_position + 8]))

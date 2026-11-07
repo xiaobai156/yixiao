@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+from collections.abc import Collection
 from dataclasses import dataclass
 from html.parser import HTMLParser
 
@@ -16,9 +17,15 @@ _SCRIPT_BASE64_PATTERNS = (
 )
 _BLOCK_TAGS = frozenset({"article", "br", "div", "li", "p", "section", "td", "th", "tr"})
 _HEADING_TAGS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6", "title"})
+_ANCHOR_NAV_PATTERN = re.compile(r"推荐|排行|排行榜|相关阅读|猜你想看")
+_RECORD_FIELD_PATTERN = re.compile(r"绝杀|絕殺|杀肖|殺肖|禁肖|一肖|必杀|杀")
 _TRADITIONAL_ZODIACS = str.maketrans({"馬": "马", "雞": "鸡", "豬": "猪", "龍": "龙"})
 _AUTHOR_BOUNDARY_PATTERN = re.compile(r"(?:作者\s*[:：]|[^\s]{1,80}\s+发表于)")
-_NAV_BOUNDARY_PATTERN = re.compile(r"上一篇|下一篇|站长宣言|目[标標]资料结束")
+_NAV_BOUNDARY_PATTERN = re.compile(
+    r"上一篇|下一篇|站长宣言|目[标標]资料结束"
+    r"|热门推荐|熱門推薦|相关推荐|相關推薦|更多推荐|推荐阅读|推薦閱讀"
+    r"|猜你喜欢|最新文章|相关文章|相關文章|友情链接|友情鏈接|热门文章|最新推荐"
+)
 _PERIOD_PATTERN = re.compile(r"\d{2,4}\s*期")
 _JSON_TEXT_FIELD_ORDER = (
     "title",
@@ -164,10 +171,44 @@ def document_lines(document: SourceDocument) -> tuple[TextLine, ...]:
     return tuple(lines)
 
 
-def scoped_blocks(lines: tuple[TextLine, ...], anchor: str) -> tuple[tuple[int, tuple[TextLine, ...]], ...]:
+def _distinct_name_hits(text: str, names: tuple[str, ...]) -> int:
+    """统计不重叠的站名命中数；站名与它的别名覆盖同一段文字时只算一个。"""
+    spans: list[tuple[int, int]] = []
+    for name in names:
+        start = text.find(name)
+        while start >= 0:
+            spans.append((start, start + len(name)))
+            start = text.find(name, start + 1)
+    spans.sort()
+    hits = 0
+    last_end = -1
+    for start, end in spans:
+        if start >= last_end:
+            hits += 1
+            last_end = end
+        else:
+            last_end = max(last_end, end)
+    return hits
+
+
+def scoped_blocks(
+    lines: tuple[TextLine, ...],
+    anchor: str,
+    known_names: Collection[str] = (),
+) -> tuple[tuple[int, tuple[TextLine, ...]], ...]:
+    names = tuple(name for name in known_names if name)
     anchor_indexes = [index for index, line in enumerate(lines) if anchor in line.text]
     blocks: list[tuple[int, tuple[TextLine, ...]]] = []
     for anchor_index in anchor_indexes:
+        anchor_text = lines[anchor_index].text
+        if not (_PERIOD_PATTERN.search(anchor_text) and _RECORD_FIELD_PATTERN.search(anchor_text)):
+            # 带期号的行是记录行，不按导航/列表处理。
+            if _NAV_BOUNDARY_PATTERN.search(anchor_text) or _ANCHOR_NAV_PATTERN.search(anchor_text):
+                # 站名只出现在导航/推荐位时，该块不能当成站点正文。
+                continue
+            if names and _distinct_name_hits(anchor_text, names) >= 3:
+                # 同一行堆了多个站名，说明这是站点列表/侧栏，不是正文锚点。
+                continue
         start = anchor_index
         if (
             anchor_index
@@ -181,7 +222,9 @@ def scoped_blocks(lines: tuple[TextLine, ...], anchor: str) -> tuple[tuple[int, 
             if line.heading:
                 end = index
                 break
-            if _NAV_BOUNDARY_PATTERN.search(line.text):
+            if _NAV_BOUNDARY_PATTERN.search(line.text) and not (
+                _PERIOD_PATTERN.search(line.text) and _RECORD_FIELD_PATTERN.search(line.text)
+            ):
                 end = index
                 break
             if (

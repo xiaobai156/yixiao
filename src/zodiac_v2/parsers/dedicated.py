@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Collection
 from typing import Protocol
 from urllib.parse import urlsplit
 
@@ -4267,7 +4268,7 @@ RESTART_CYCLE_REGEX_SITES = frozenset(
 )
 
 
-def parser_entries() -> tuple[tuple[str, Parser], ...]:
+def parser_entries(known_names: Collection[str] = ()) -> tuple[tuple[str, Parser], ...]:
     entries: list[tuple[str, Parser]] = [
         (
             f"regex.{identifier}",
@@ -4276,6 +4277,7 @@ def parser_entries() -> tuple[tuple[str, Parser], ...]:
                 anchor_aliases=ANCHOR_ALIASES,
                 directional_cycle_sites=DIRECTIONAL_CYCLE_REGEX_SITES,
                 restart_cycle_sites=RESTART_CYCLE_REGEX_SITES,
+                known_names=tuple(known_names) + tuple(ANCHOR_ALIASES.values()),
             ),
         )
         for identifier, patterns in PATTERN_SETS.items()

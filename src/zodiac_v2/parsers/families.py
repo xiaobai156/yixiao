@@ -15,6 +15,12 @@ from zodiac_v2.parsers.common import (
 
 _PENDING_DRAW_PATTERN = re.compile(r"[开開]\s*[:：]?\s*0{2,4}\s*(?:准|错)?")
 
+# 换行拼接窗口的边界：下一行本身是新记录（带“期”字或裸期号开头），或内容尚未更新的占位行。
+_RECORD_START_PATTERN = re.compile(
+    r"^[^\w]{0,5}\s*(?:(?:第\s*)?\d{1,4}\s*期|\d{3,4}\s*(?:杀|殺|禁|绝|絕|必))"
+)
+_PENDING_TEXT_PATTERN = re.compile(r"更新中|待更新|未更新|待公布|待開獎|待开奖|整理中")
+
 
 @dataclass(frozen=True, slots=True)
 class StrictArticleSpec:
@@ -92,7 +98,9 @@ class RegexFamilyParser:
         period_marker_required: bool = True,
         directional_cycle_sites: Collection[str] = (),
         restart_cycle_sites: Collection[str] = (),
+        known_names: Collection[str] = (),
     ) -> None:
+        self.known_names = tuple(known_names)
         self.patterns = tuple(re.compile(pattern, re.IGNORECASE) for pattern in patterns)
         self.anchor_aliases = MappingProxyType(dict(anchor_aliases or {}))
         self.require_anchor = require_anchor
@@ -106,7 +114,9 @@ class RegexFamilyParser:
         seen: set[tuple[str, int, int, int, str]] = set()
         for document in bundle.documents:
             lines = document_lines(document)
-            blocks = scoped_blocks(lines, anchor) if self.require_anchor else ((0, lines),)
+            blocks = (
+                scoped_blocks(lines, anchor, self.known_names) if self.require_anchor else ((0, lines),)
+            )
             for block_index, (start, block) in enumerate(blocks):
                 anchor_offset = next(
                     (index for index, item in enumerate(block) if anchor in item.text),
@@ -248,11 +258,14 @@ def _line_windows(lines: tuple[TextLine, ...], index: int) -> tuple[str, ...]:
     windows: list[str] = []
     combined: list[str] = []
     for following in lines[index : index + 3]:
-        if combined and following.heading:
+        if combined and (following.heading or _RECORD_START_PATTERN.search(following.text)):
             break
         combined.append(following.text)
         windows.append(normalize_space(" ".join(combined)))
-        if len(combined) == 1 and re.search(r"绝杀|絕殺|杀肖|殺肖|禁肖|一肖|必杀", following.text):
+        if len(combined) == 1 and (
+            re.search(r"绝杀|絕殺|杀肖|殺肖|禁肖|一肖|必杀", following.text)
+            or _PENDING_TEXT_PATTERN.search(following.text)
+        ):
             break
     return tuple(windows)
 

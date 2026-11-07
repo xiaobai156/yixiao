@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from types import MappingProxyType
 from typing import Protocol
 
@@ -59,7 +59,7 @@ class ParserRegistry:
         return selector(site, bundle, target_period)
 
 
-def build_registry() -> ParserRegistry:
+def build_registry(known_names: Collection[str] = ()) -> ParserRegistry:
     from zodiac_v2.parsers.dedicated import parser_entries
 
-    return ParserRegistry(parser_entries())
+    return ParserRegistry(parser_entries(known_names))
