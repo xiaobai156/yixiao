@@ -995,7 +995,14 @@ class ScrapeService:
                 bundle = (
                     selected_bundle
                     if selected_bundle is not None
-                    else bind_user_forum_target(site.url, bundle, target_period)
+                    else bind_user_forum_target(
+                        site.url,
+                        bundle,
+                        target_period,
+                        transport=getattr(self.gateway, "transport", None),
+                        timeout=primary_remaining(),
+                        max_bytes=site.embedded_max_bytes or EMBEDDED_MAX_BYTES,
+                    )
                 )
             documents = bundle.documents
             result = self._evaluate(site, target_period, bundle, mode)

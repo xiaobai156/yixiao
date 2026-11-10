@@ -85,10 +85,84 @@ def fetch_user_forum_api(
     )
 
 
+def _normalized_int(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if text.isdigit():
+            return int(text)
+    return None
+
+
+def derived_user_forum_detail_url(page_url: str, record_id: str) -> str:
+    """同一站点同一帖子的详情接口地址（用户列表接口只回正文摘要）。"""
+    identity = source_identity(page_url)
+    if identity.user_id is None:
+        raise SourceIdentityError("用户主页 URL 缺少用户 ID")
+    record_id_text = str(record_id).strip()
+    if not record_id_text.isdigit():
+        raise SourceIdentityError(f"帖子 ID 非法：{record_id!r}")
+    parsed = urlsplit(page_url)
+    return f"{parsed.scheme}://{parsed.netloc}/api/v1/forums/{record_id_text}"
+
+
+def fetch_user_forum_detail_row(
+    transport: HttpTransport,
+    *,
+    page_url: str,
+    record_id: str,
+    target_period: int,
+    timeout: float = 20,
+    max_bytes: int = DEFAULT_MAX_BYTES,
+) -> dict[str, object]:
+    """取同一帖子详情接口的完整正文，并校验身份、期数与发布状态。"""
+    detail_url = derived_user_forum_detail_url(page_url, record_id)
+    expected = source_identity(page_url)
+    document = fetch_http_document(
+        transport,
+        detail_url,
+        timeout=timeout,
+        max_bytes=max_bytes,
+        document_type=DocumentType.JSON,
+        source_id=f"user-forum-detail:{record_id}",
+    )
+    try:
+        payload = json.loads(document.text)
+    except json.JSONDecodeError as exc:
+        raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "帖子详情接口不是可信 JSON", url=detail_url) from exc
+    if not isinstance(payload, dict):
+        raise SourceFetchError(SourceFetchCode.SOURCE_IDENTITY, "帖子详情接口不是单条记录", url=detail_url)
+    record_id_value = _normalized_int(payload.get("id"))
+    owner_id_value = _normalized_int(payload.get("user_id"))
+    draw_value = _normalized_int(payload.get("draw"))
+    content = payload.get("content")
+    if (
+        record_id_value is None
+        or record_id_value != int(str(record_id).strip())
+        or owner_id_value != int(expected.user_id)
+        or draw_value != target_period
+        or not isinstance(content, str)
+        or not content.strip()
+    ):
+        raise SourceFetchError(
+            SourceFetchCode.SOURCE_IDENTITY,
+            f"帖子 {record_id} 的详情接口身份/期数/正文校验失败，无法确认是目标 {target_period}期帖子",
+            url=detail_url,
+        )
+    return payload
+
+
 def bind_user_forum_target(
     page_url: str,
     bundle: SourceBundle,
     target_period: int,
+    *,
+    transport: HttpTransport | None = None,
+    timeout: float = 20,
+    max_bytes: int = DEFAULT_MAX_BYTES,
 ) -> SourceBundle:
     """Bind a user-home source bundle to one exact requested-period forum record."""
     if isinstance(target_period, bool) or not isinstance(target_period, int) or not 1 <= target_period <= 9999:
@@ -205,6 +279,21 @@ def bind_user_forum_target(
         )
     projected_row = dict(row)
     projected_row["authorNickname"] = selected_user["nickname"]
+    detail_diagnostics: tuple[str, ...] = ()
+    if transport is not None:
+        detail_row = fetch_user_forum_detail_row(
+            transport,
+            page_url=page_url,
+            record_id=record_id,
+            target_period=target_period,
+            timeout=timeout,
+            max_bytes=max_bytes,
+        )
+        projected_row["content"] = detail_row["content"]
+        detail_diagnostics = (
+            "user-forum-detail:200",
+            f"user-forum-detail-record:{record_id}",
+        )
     selected = SourceDocument(
         json.dumps([projected_row], ensure_ascii=False, separators=(",", ":")),
         source.final_url,
@@ -216,7 +305,12 @@ def bind_user_forum_target(
     )
     return SourceBundle(
         (selected,),
-        (*bundle.diagnostics, f"user-forum-target:{target_period}", f"user-forum-record:{record_id}"),
+        (
+            *bundle.diagnostics,
+            f"user-forum-target:{target_period}",
+            f"user-forum-record:{record_id}",
+            *detail_diagnostics,
+        ),
         scan_complete=True,
     )
 
