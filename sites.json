@@ -1975,7 +1975,7 @@
     "pick": "bottom",
     "url": "https://bizlpijd.idswv-7egq9-mcpegk.xyz:16677/topic/265088.html",
     "section": "新增的站点",
-    "parser_id": "regex.86a7042b2c5a",
+    "parser_id": "family.strict_article",
     "source_policy": "http_documents"
   },
   {
@@ -3343,15 +3343,6 @@
     "api_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/46320/forums?per_page=20"
   },
   {
-    "name": "妮最可爱",
-    "pick": "top",
-    "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/231014",
-    "section": "新增的站点",
-    "parser_id": "special.user_forum_post",
-    "source_policy": "api_then_http",
-    "api_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231014/forums?per_page=20"
-  },
-  {
     "name": "朱红山峰",
     "pick": "top",
     "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/6018",
@@ -3511,15 +3502,6 @@
     "parser_id": "regex.86a7042b2c5a",
     "source_policy": "api_then_http",
     "api_url": "https://nthgdg.tqfft-smgnt-xtacyn.xyz:29488/api/proxy/manager-articles/6a1cf5ca0b8d229707caac4c"
-  },
-  {
-    "name": "捡料糊口的曾白温",
-    "pick": "bottom",
-    "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/176592",
-    "section": "已有站点",
-    "parser_id": "special.user_forum_post",
-    "source_policy": "api_then_http",
-    "api_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/176592/forums?per_page=20"
   },
   {
     "name": "钟哥割",
@@ -4068,14 +4050,6 @@
     "source_policy": "http_documents"
   },
   {
-    "name": "六合飞船",
-    "pick": "bottom",
-    "url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
-    "section": "已有站点",
-    "parser_id": "regex.86a7042b2c5a",
-    "source_policy": "http_documents"
-  },
-  {
     "name": "桑榆暮景",
     "pick": "bottom",
     "url": "https://11889900827.435458.xyz/bbs/topic.php?id=19516",
@@ -4111,14 +4085,6 @@
     "name": "一出好戏",
     "pick": "bottom",
     "url": "https://66778800827.909776.xyz/bbs/topic.php?id=18551",
-    "section": "已有站点",
-    "parser_id": "regex.86a7042b2c5a",
-    "source_policy": "http_documents"
-  },
-  {
-    "name": "水天一色",
-    "pick": "bottom",
-    "url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
     "section": "已有站点",
     "parser_id": "regex.86a7042b2c5a",
     "source_policy": "http_documents"
@@ -4177,22 +4143,6 @@
     "url": "https://12388990827.688756.xyz/bbs/topic.php?id=19160",
     "section": "已有站点",
     "parser_id": "regex.86a7042b2c5a",
-    "source_policy": "http_documents"
-  },
-  {
-    "name": "解报宝彩",
-    "pick": "bottom",
-    "url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
-    "section": "新增的站点",
-    "parser_id": "regex.6ec114aab94b",
-    "source_policy": "http_documents"
-  },
-  {
-    "name": "荒野孤狼",
-    "pick": "bottom",
-    "url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
-    "section": "新增的站点",
-    "parser_id": "regex.ed33d8f61942",
     "source_policy": "http_documents"
   },
   {
@@ -4341,5 +4291,14 @@
     "section": "已有站点",
     "parser_id": "special.liuhe_xinjing_zhuanye_kill_zodiac",
     "source_policy": "browser"
+  },
+  {
+    "name": "妮妮最帅",
+    "pick": "top",
+    "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/231022",
+    "section": "新增的站点",
+    "parser_id": "special.user_forum_post",
+    "source_policy": "api_then_http",
+    "api_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231022/forums?per_page=20"
   }
 ]

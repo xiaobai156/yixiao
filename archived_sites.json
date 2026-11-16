@@ -611,6 +611,68 @@
       "source_policy": "http_documents",
       "archived_at": "2026-11-04T18:45:23+08:00",
       "archive_reason": "用户明确要求封存，不再抓取"
+    },
+    {
+      "name": "解报宝彩",
+      "pick": "bottom",
+      "url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
+      "section": "新增的站点",
+      "parser_id": "regex.6ec114aab94b",
+      "source_policy": "http_documents",
+      "archived_at": "2026-11-12T18:51:22+08:00",
+      "archive_reason": "用户明确要求封存，不再抓取（源站 https TLSV1_UNRECOGNIZED_NAME 无法取源）"
+    },
+    {
+      "name": "荒野孤狼",
+      "pick": "bottom",
+      "url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
+      "section": "新增的站点",
+      "parser_id": "regex.ed33d8f61942",
+      "source_policy": "http_documents",
+      "archived_at": "2026-11-12T18:51:22+08:00",
+      "archive_reason": "用户明确要求封存，不再抓取（源站 https TLSV1_UNRECOGNIZED_NAME 无法取源）"
+    },
+    {
+      "name": "水天一色",
+      "pick": "bottom",
+      "url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+      "section": "已有站点",
+      "parser_id": "regex.86a7042b2c5a",
+      "source_policy": "http_documents",
+      "archived_at": "2026-11-12T18:53:43+08:00",
+      "archive_reason": "用户明确要求封存，不再抓取（源站 https TLSV1_UNRECOGNIZED_NAME 无法取源）"
+    },
+    {
+      "name": "六合飞船",
+      "pick": "bottom",
+      "url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+      "section": "已有站点",
+      "parser_id": "regex.86a7042b2c5a",
+      "source_policy": "http_documents",
+      "archived_at": "2026-11-13T18:54:49+08:00",
+      "archive_reason": "用户明确要求封存，不再抓取（317 期原帖已下架，板块内无该站新帖）"
+    },
+    {
+      "name": "妮最可爱",
+      "pick": "top",
+      "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/231014",
+      "section": "新增的站点",
+      "parser_id": "special.user_forum_post",
+      "source_policy": "api_then_http",
+      "api_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231014/forums?per_page=20",
+      "archived_at": "2026-11-14T19:42:27+08:00",
+      "archive_reason": "用户明确要求封存，不再抓取（318 期未发布，接口最新仍为 317 期）"
+    },
+    {
+      "name": "捡料糊口的曾白温",
+      "pick": "bottom",
+      "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/176592",
+      "section": "已有站点",
+      "parser_id": "special.user_forum_post",
+      "source_policy": "api_then_http",
+      "api_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/176592/forums?per_page=20",
+      "archived_at": "2026-11-16T18:38:37+08:00",
+      "archive_reason": "用户明确要求封存，不再抓取（320 期未发布，接口最新仍为 319 期）"
     }
   ],
   "cache_entries": [
@@ -7654,6 +7716,758 @@
           "evidence_sha256": "60050c7e7b06d78f0cc992443a2bc7ccfe437d01e45ed68839e85cd15c1b34f1",
           "record_id": "2072"
         }
+      }
+    },
+    {
+      "name": "解报宝彩",
+      "pick": "bottom",
+      "url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
+      "section": "新增的站点",
+      "error": "HTTP 请求失败（未关闭证书验证）：HTTPSConnectionPool(host='1214.775486.xyz', port=443): Max retries exceeded with url: /bbs/topic.php?id=20202 (Caused by SSLError(SSLError(1, '[SSL: TLSV1_UNRECOGNIZED_NAME] tlsv1 unrecognized name (_ssl.c:1007)')))",
+      "records": [
+        {
+          "period": 314,
+          "zodiac": "羊"
+        },
+        {
+          "period": 313,
+          "zodiac": "羊"
+        },
+        {
+          "period": 312,
+          "zodiac": "羊"
+        },
+        {
+          "period": 311,
+          "zodiac": "猴"
+        },
+        {
+          "period": 310,
+          "zodiac": "猪"
+        },
+        {
+          "period": 309,
+          "zodiac": "猴"
+        },
+        {
+          "period": 308,
+          "zodiac": "猪"
+        },
+        {
+          "period": 307,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 306,
+          "zodiac": "牛"
+        },
+        {
+          "period": 305,
+          "zodiac": "猪"
+        }
+      ],
+      "fingerprint": "羊羊羊猴猪猴猪蛇牛猪",
+      "record_provenance": {
+        "305": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "evidence_sha256": "8c23ebd6e33bab5b2289132cc94b2ff83603f6cf9f8fd4ab9860289da37b1d24",
+          "record_id": "20202"
+        },
+        "306": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "evidence_sha256": "b20c86d1dd918c18597ede305e7f9ac416b24e052e90f1117ab4b08bbc4e35a6",
+          "record_id": "20202"
+        },
+        "307": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "evidence_sha256": "7e0ca8880c39040c3c9c668d8c53eb0297578857749201acc930e0d4071a9a65",
+          "record_id": "20202"
+        },
+        "308": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "evidence_sha256": "cc774edd029400f93b719a1c940eb8aa70ab7c55cbb1948a6805e38294b9d2ce",
+          "record_id": "20202"
+        },
+        "309": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "evidence_sha256": "fcc8ee925f83b32ea0257f4b8113c48eaafaf17c7f90cd29b288f1974a688e4e",
+          "record_id": "20202"
+        },
+        "310": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "evidence_sha256": "07bd4e240cf27d577a7e1d094304faa166db2db1c60717ccf67cf093e719ed2d",
+          "record_id": "20202"
+        },
+        "311": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "evidence_sha256": "90c9b1fc4e1668f0bc4762a77e6724fe0966df5b02f4b04d5355d71aef6fbb0e",
+          "record_id": "20202"
+        },
+        "312": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "evidence_sha256": "0875f3303c309e99ee9eb9e2833bde1b3ed584a9fb64decdf7d1bfa636ac290c",
+          "record_id": "20202"
+        },
+        "313": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "evidence_sha256": "40b0a63878c9be43d815a4be871b06a1b529f057e37591e31c2f1a1a04bd8c92",
+          "record_id": "20202"
+        },
+        "314": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20202",
+          "evidence_sha256": "b3ab0b904f7ef1812b028124d630f493bb1c5ac8499498b9e5940fcffc992fbc",
+          "record_id": "20202"
+        }
+      }
+    },
+    {
+      "name": "荒野孤狼",
+      "pick": "bottom",
+      "url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
+      "section": "新增的站点",
+      "error": "HTTP 请求失败（未关闭证书验证）：HTTPSConnectionPool(host='1214.775486.xyz', port=443): Max retries exceeded with url: /bbs/topic.php?id=20211 (Caused by SSLError(SSLError(1, '[SSL: TLSV1_UNRECOGNIZED_NAME] tlsv1 unrecognized name (_ssl.c:1007)')))",
+      "records": [
+        {
+          "period": 314,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 313,
+          "zodiac": "兔"
+        },
+        {
+          "period": 312,
+          "zodiac": "龙"
+        },
+        {
+          "period": 311,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 310,
+          "zodiac": "羊"
+        },
+        {
+          "period": 309,
+          "zodiac": "虎"
+        },
+        {
+          "period": 308,
+          "zodiac": "龙"
+        },
+        {
+          "period": 307,
+          "zodiac": "羊"
+        },
+        {
+          "period": 306,
+          "zodiac": "羊"
+        },
+        {
+          "period": 305,
+          "zodiac": "鸡"
+        }
+      ],
+      "fingerprint": "鸡兔龙鸡羊虎龙羊羊鸡",
+      "record_provenance": {
+        "305": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "evidence_sha256": "8a5992d15bf3faf9d8bfbf48636471e5874b6194092d4fb626db44648dde11da",
+          "record_id": "20211"
+        },
+        "306": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "evidence_sha256": "f5f34c780a0aa215992385f91332537f18a75dd652da2d535be158ec14521e7e",
+          "record_id": "20211"
+        },
+        "307": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "evidence_sha256": "099f96d670d66d97e400544d7dda7666a1779e8d6afff085640bec2efd5e651c",
+          "record_id": "20211"
+        },
+        "308": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "evidence_sha256": "a8a3a1bb74dbecbae06894316642838cb0c7cd5b7da494df95928d339c6b3dc0",
+          "record_id": "20211"
+        },
+        "309": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "evidence_sha256": "030e109fe81495823175c5e1e74312df158f5e472eb2924f87c4612a3193f933",
+          "record_id": "20211"
+        },
+        "310": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "evidence_sha256": "d140647b5d5e9ea62989dbe60f6024a4b09faf1fbf3b8da5066aa2bacf184ddc",
+          "record_id": "20211"
+        },
+        "311": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "evidence_sha256": "9d8238ee561b9e9cd48cc591875514e4bb2ba8197967b8ac341515e3a4430bb7",
+          "record_id": "20211"
+        },
+        "312": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "evidence_sha256": "3011d33032db9c12eefd1817922663abaf1232fcfffb42dad79547862023230d",
+          "record_id": "20211"
+        },
+        "313": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "evidence_sha256": "4e13a677c978a72b51b047a0fd503ef8c03a2e2618423ae88ef3029399d22cf8",
+          "record_id": "20211"
+        },
+        "314": {
+          "validation_status": "validated",
+          "source_id": "html:https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "source_url": "https://1214.775486.xyz/bbs/topic.php?id=20211",
+          "evidence_sha256": "a9443d1855119881fedf5de3106eee81517ecf79cf99cdd17824f3c732c6118b",
+          "record_id": "20211"
+        }
+      }
+    },
+    {
+      "name": "水天一色",
+      "pick": "bottom",
+      "url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+      "section": "已有站点",
+      "error": "HTTP 请求失败（未关闭证书验证）：HTTPSConnectionPool(host='0130190827.657954.xyz', port=443): Max retries exceeded with url: /bbs/topic.php?id=20197 (Caused by SSLError(SSLError(1, '[SSL: TLSV1_UNRECOGNIZED_NAME] tlsv1 unrecognized name (_ssl.c:1007)')))",
+      "records": [
+        {
+          "period": 314,
+          "zodiac": "兔"
+        },
+        {
+          "period": 313,
+          "zodiac": "虎"
+        },
+        {
+          "period": 312,
+          "zodiac": "兔"
+        },
+        {
+          "period": 311,
+          "zodiac": "兔"
+        },
+        {
+          "period": 310,
+          "zodiac": "牛"
+        },
+        {
+          "period": 309,
+          "zodiac": "猪"
+        },
+        {
+          "period": 308,
+          "zodiac": "羊"
+        },
+        {
+          "period": 307,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 306,
+          "zodiac": "羊"
+        },
+        {
+          "period": 305,
+          "zodiac": "狗"
+        }
+      ],
+      "fingerprint": "兔虎兔兔牛猪羊鸡羊狗",
+      "record_provenance": {
+        "305": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "source_url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "evidence_sha256": "bdb9d8dde35dc1a2447d06bc111e92f17055469f94a9e0c3980807d2a9323a2a",
+          "record_id": "20197"
+        },
+        "306": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "source_url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "evidence_sha256": "99c86141756033a8329133e618c451c803a0d3a9c9e8d1be06b2e9f3446d2825",
+          "record_id": "20197"
+        },
+        "307": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "source_url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "evidence_sha256": "fba35e038118cf9bdca455261fa7670a9faa95958c1b70f362db15258bf6b0ac",
+          "record_id": "20197"
+        },
+        "308": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "source_url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "evidence_sha256": "f4d40dde1e01fcd54b830d178816a23c9f6db00029031c24613f140d51b7c41f",
+          "record_id": "20197"
+        },
+        "309": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "source_url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "evidence_sha256": "030ff03a75e15f4d75c5b01725c2705e8792867247a56750e1312ae076930601",
+          "record_id": "20197"
+        },
+        "310": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "source_url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "evidence_sha256": "bf5cedf3f160922ab4956146878ed123a04609f90dca517a2edd7f65456cb1d2",
+          "record_id": "20197"
+        },
+        "311": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "source_url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "evidence_sha256": "8194253fe03c27646aac53863bb26e61721454f50dae4a2852160a51e19dbcd6",
+          "record_id": "20197"
+        },
+        "312": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "source_url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "evidence_sha256": "5a24a6509949637a58a96f73ad1ab178b2559d9a8c1b48973947679fb5cb8265",
+          "record_id": "20197"
+        },
+        "313": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "source_url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "evidence_sha256": "ab2e69cc6f03562475f521e2d6271736e0e02f936537f0f5229f470480e9b378",
+          "record_id": "20197"
+        },
+        "314": {
+          "validation_status": "validated",
+          "source_id": "html:https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "source_url": "https://0130190827.657954.xyz/bbs/topic.php?id=20197",
+          "evidence_sha256": "ada06414d14ee0098d8077cf790b996ad653f0be9c1469b1cddd04e375a374d8",
+          "record_id": "20197"
+        }
+      }
+    },
+    {
+      "name": "六合飞船",
+      "pick": "bottom",
+      "url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+      "section": "已有站点",
+      "error": "专属解析未命中指定 317期，禁止回落通用解析",
+      "records": [
+        {
+          "period": 316,
+          "zodiac": "龙"
+        },
+        {
+          "period": 315,
+          "zodiac": "羊"
+        },
+        {
+          "period": 314,
+          "zodiac": "牛"
+        },
+        {
+          "period": 313,
+          "zodiac": "蛇"
+        },
+        {
+          "period": 312,
+          "zodiac": "狗"
+        },
+        {
+          "period": 311,
+          "zodiac": "猴"
+        },
+        {
+          "period": 310,
+          "zodiac": "猴"
+        },
+        {
+          "period": 309,
+          "zodiac": "狗"
+        },
+        {
+          "period": 308,
+          "zodiac": "羊"
+        },
+        {
+          "period": 307,
+          "zodiac": "龙"
+        }
+      ],
+      "fingerprint": "龙羊牛蛇狗猴猴狗羊龙",
+      "record_provenance": {
+        "307": {
+          "validation_status": "validated",
+          "source_id": "html:https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "source_url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "evidence_sha256": "02493f43990671bf71960b848f5eff2dd1ce4712b3be9f74a0b0ad28faa4fd89",
+          "record_id": "20032"
+        },
+        "308": {
+          "validation_status": "validated",
+          "source_id": "html:https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "source_url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "evidence_sha256": "0603a12f6af45988311d75397c7f8dc29155cfb70f7281a89d9a1ab5113a5c71",
+          "record_id": "20032"
+        },
+        "309": {
+          "validation_status": "validated",
+          "source_id": "html:https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "source_url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "evidence_sha256": "9274a0b8ea49a1cc13ae5735a86e984acdf99eef0d7b90a850cd8bcf76081bbf",
+          "record_id": "20032"
+        },
+        "310": {
+          "validation_status": "validated",
+          "source_id": "html:https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "source_url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "evidence_sha256": "a40a414ab9a91a9729469aeb5b40ba539dc0c433515869c0684e64c5c5e88f99",
+          "record_id": "20032"
+        },
+        "311": {
+          "validation_status": "validated",
+          "source_id": "html:https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "source_url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "evidence_sha256": "04ec13b6729606543a23e2717127bfb6e8001c34d06b163b3af715488f9cd4bc",
+          "record_id": "20032"
+        },
+        "312": {
+          "validation_status": "validated",
+          "source_id": "html:https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "source_url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "evidence_sha256": "cfc96eeea08740b8ad2e0287838c64b019002465edb2bcec6948c00f700ee472",
+          "record_id": "20032"
+        },
+        "313": {
+          "validation_status": "validated",
+          "source_id": "html:https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "source_url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "evidence_sha256": "379dd0654e25120b117960bd1ce911ddac3e72c906b3dc3cc9bd69c83fa4063d",
+          "record_id": "20032"
+        },
+        "314": {
+          "validation_status": "validated",
+          "source_id": "html:https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "source_url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "evidence_sha256": "145e59526b78a5dd9388e2074dee67d4c45baa2d5f79dae9aa55160a6b132128",
+          "record_id": "20032"
+        },
+        "315": {
+          "validation_status": "validated",
+          "source_id": "html:https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "source_url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "evidence_sha256": "4e7a4545abfa7869b78854245efa1f757a1f1f6dae26cff5252a7efa0f14d7e5",
+          "record_id": "20032"
+        },
+        "316": {
+          "validation_status": "validated",
+          "source_id": "html:https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "source_url": "https://12388990827.794555.xyz/bbs/topic.php?id=20032",
+          "evidence_sha256": "78ea7032e7ab97eb8c23b4ae4a537e50e89c6871c2d5fc2d25a44b10a694b874",
+          "record_id": "20032"
+        }
+      }
+    },
+    {
+      "name": "妮最可爱",
+      "pick": "top",
+      "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/231014",
+      "section": "新增的站点",
+      "error": "用户 231014 的接口未找到指定 318期帖子",
+      "records": [
+        {
+          "period": 317,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 316,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 315,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 314,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 313,
+          "zodiac": "马"
+        },
+        {
+          "period": 312,
+          "zodiac": "马"
+        },
+        {
+          "period": 311,
+          "zodiac": "猴"
+        },
+        {
+          "period": 309,
+          "zodiac": "龙"
+        },
+        {
+          "period": 308,
+          "zodiac": "虎"
+        },
+        {
+          "period": 307,
+          "zodiac": "虎"
+        }
+      ],
+      "fingerprint": "鼠鼠鼠鸡马马猴龙虎虎",
+      "record_provenance": {
+        "307": {
+          "validation_status": "validated",
+          "source_id": "user:231014:record:16324166",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231014/forums?per_page=20",
+          "evidence_sha256": "05fe4f1a866ed7da5dfabf138a51b9d715f5bcd2781efd040b84c2d282bd6e1d",
+          "record_id": "16324166"
+        },
+        "308": {
+          "validation_status": "validated",
+          "source_id": "user:231014:record:16329441",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231014/forums?per_page=20",
+          "evidence_sha256": "abebc0976ce531f6222c10686be508cbab5aa841143087ec499e9eaf947f46df",
+          "record_id": "16329441"
+        },
+        "309": {
+          "validation_status": "validated",
+          "source_id": "user:231014:record:16334568",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231014/forums?per_page=20",
+          "evidence_sha256": "dca173c94b3c12313d67408bb173f9927e9858bd0c1080ddbce48c3ef194935c",
+          "record_id": "16334568"
+        },
+        "311": {
+          "validation_status": "validated",
+          "source_id": "user:231014:record:16350229",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231014/forums?per_page=20",
+          "evidence_sha256": "8023d53e3366e9afc05d27a7760a880c68ffc1b5626dfd6ffdd0e0990bc64677",
+          "record_id": "16350229"
+        },
+        "312": {
+          "validation_status": "validated",
+          "source_id": "user:231014:record:16357622",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231014/forums?per_page=20",
+          "evidence_sha256": "3461cdbc87b80187950bf296abc31645b73f9d913bcc4776cdd871fbc442758a",
+          "record_id": "16357622"
+        },
+        "313": {
+          "validation_status": "validated",
+          "source_id": "user:231014:record:16360970",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231014/forums?per_page=20",
+          "evidence_sha256": "6e1a7cb329f36807862ccce8a48416af061321a952af4d5677da46664d9a4bc5",
+          "record_id": "16360970"
+        },
+        "314": {
+          "validation_status": "validated",
+          "source_id": "user:231014:record:16370141",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231014/forums?per_page=20",
+          "evidence_sha256": "ace81f4c0cfe685f340400ebade06e031d176cf700bec0f3c8e920af036aeba3",
+          "record_id": "16370141"
+        },
+        "315": {
+          "validation_status": "validated",
+          "source_id": "user:231014:record:16373824",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231014/forums?per_page=20",
+          "evidence_sha256": "e831f4bbfbe10a07aa5a8d47aa421c834fe1722cdc2353bc06653173f987869e",
+          "record_id": "16373824"
+        },
+        "316": {
+          "validation_status": "validated",
+          "source_id": "user:231014:record:16381256",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231014/forums?per_page=20",
+          "evidence_sha256": "085632df65c698f853f0dff3143176f382c7f90bc811d08999b4143e20bb4a2f",
+          "record_id": "16381256"
+        },
+        "317": {
+          "validation_status": "validated",
+          "source_id": "user:231014:record:16388111",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/231014/forums?per_page=20",
+          "evidence_sha256": "524eeecbcdc88cef76c8f73c88b04ae1732d9c8b5a594d95ec0a1efee100c97f",
+          "record_id": "16388111"
+        }
+      }
+    },
+    {
+      "name": "捡料糊口的曾白温",
+      "pick": "bottom",
+      "url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/#/users/176592",
+      "section": "已有站点",
+      "error": "用户 176592 的接口未找到指定 320期帖子",
+      "records": [
+        {
+          "period": 319,
+          "zodiac": "鼠"
+        },
+        {
+          "period": 318,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 317,
+          "zodiac": "猴"
+        },
+        {
+          "period": 316,
+          "zodiac": "马"
+        },
+        {
+          "period": 315,
+          "zodiac": "牛"
+        },
+        {
+          "period": 314,
+          "zodiac": "猪"
+        },
+        {
+          "period": 313,
+          "zodiac": "马"
+        },
+        {
+          "period": 312,
+          "zodiac": "羊"
+        },
+        {
+          "period": 311,
+          "zodiac": "鸡"
+        },
+        {
+          "period": 310,
+          "zodiac": "狗"
+        }
+      ],
+      "fingerprint": "鼠鸡猴马牛猪马羊鸡狗",
+      "record_provenance": {
+        "310": {
+          "validation_status": "validated",
+          "source_id": "user:176592:record:16338446",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/176592/forums?per_page=20",
+          "evidence_sha256": "0ab3259720f750ba911058ee45e5bfedceec65dcd384c767c0e74bfeb87d67f4",
+          "record_id": "16338446"
+        },
+        "311": {
+          "validation_status": "validated",
+          "source_id": "user:176592:record:16346529",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/176592/forums?per_page=20",
+          "evidence_sha256": "15de3bfb8bd2dd442ca0ecb7492e3457f2854a16b43599522f24cc7b0acd41f7",
+          "record_id": "16346529"
+        },
+        "312": {
+          "validation_status": "validated",
+          "source_id": "user:176592:record:16352489",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/176592/forums?per_page=20",
+          "evidence_sha256": "800fb74296242b622b73415deb18f6b9ff78e97c7c6cc1e14a8b84633d82daae",
+          "record_id": "16352489"
+        },
+        "313": {
+          "validation_status": "validated",
+          "source_id": "user:176592:record:16359814",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/176592/forums?per_page=20",
+          "evidence_sha256": "2a878da50930cacfe2cd293545a99e584ccfcba2fc0965216d5c64f10b8f1cd3",
+          "record_id": "16359814"
+        },
+        "314": {
+          "validation_status": "validated",
+          "source_id": "user:176592:record:16365946",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/176592/forums?per_page=20",
+          "evidence_sha256": "f7696569576c8dbc8299d4c9cdd562c62fc1904392b18c76fcea8fd010d59c2a",
+          "record_id": "16365946"
+        },
+        "315": {
+          "validation_status": "validated",
+          "source_id": "user:176592:record:16372149",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/176592/forums?per_page=20",
+          "evidence_sha256": "a76856653388ac7a53a93d93e7a99ecda7d3bb9f233b92da46c1dd6dbf2a20bc",
+          "record_id": "16372149"
+        },
+        "316": {
+          "validation_status": "validated",
+          "source_id": "user:176592:record:16380084",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/176592/forums?per_page=20",
+          "evidence_sha256": "428bc45fd1e5de77b3e85c3332ddc82a02a58c03ed6d739514307e51c72b67c7",
+          "record_id": "16380084"
+        },
+        "317": {
+          "validation_status": "validated",
+          "source_id": "user:176592:record:16386163",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/176592/forums?per_page=20",
+          "evidence_sha256": "5638de4be4cb493da53b49101b33dbadb19b8d94d4807c7f0b6d542234a39f94",
+          "record_id": "16386163"
+        },
+        "318": {
+          "validation_status": "validated",
+          "source_id": "user:176592:record:16393816",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/176592/forums?per_page=20",
+          "evidence_sha256": "23b3613bb5bccc52b00e7d65a6206cc0d748d0cef12bb0ccc0d599388d82c526",
+          "record_id": "16393816"
+        },
+        "319": {
+          "validation_status": "validated",
+          "source_id": "user:176592:record:16399951",
+          "source_url": "https://zcphjs.ce83x-ms2rz-orwude.work:12277/api/v1/users/176592/forums?per_page=20",
+          "evidence_sha256": "11ab270db0d260b8bbd5dad19f70353a89eb6fd0cef3c2920eb617c1c8246c36",
+          "record_id": "16399951"
+        }
+      },
+      "onboarding_exception": {
+        "target_period": 241,
+        "exception": "用户批准历史不足及连续3期疑似重复特例",
+        "validated_periods": [
+          241,
+          240,
+          239,
+          238,
+          237,
+          236,
+          235,
+          234,
+          233,
+          232
+        ],
+        "missing_periods": [],
+        "duplicate_with": [
+          "蓬头赤脚"
+        ]
       }
     }
   ]
