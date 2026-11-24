@@ -104,6 +104,25 @@ def test_top_direction_picks_first_matching_post() -> None:
     assert decision.candidate.record_id == "16394739"
 
 
+def test_327_topic_renamed_to_nizui_keai_still_parses() -> None:
+    """327 期栏目又改成「妮最可爱」，正文仍取当期第一条 327=兔。"""
+    site = _site()
+    bundle = _bundle(
+        _row(
+            16454873,
+            327,
+            "妮最可爱",
+            "<div>327期♥绝杀一肖——兔——？</div>326期♥绝杀一肖——虎——✓（猴）（23）",
+        )
+    )
+
+    decision = validate_candidates(site, bundle, UserForumPostParser().parse(site, bundle), 327)
+
+    assert decision.ok and decision.candidate is not None
+    assert decision.candidate.record_id == "16454873"
+    assert decision.candidate.zodiac == "兔"
+
+
 def test_site_is_registered_in_new_section() -> None:
     entries = json.loads((_ROOT / "sites.json").read_text(encoding="utf-8"))
     hits = [entry for entry in entries if entry.get("name") == "妮妮最帅"]

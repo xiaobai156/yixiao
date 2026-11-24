@@ -123,7 +123,9 @@ def test_both_sites_registered_as_existing_sites_with_common_parser() -> None:
     assert kaixin["url"] == KAIXIN_URL
     assert kaixin["pick"] == "top"
     assert kaixin["section"] == SiteSection.EXISTING.value
-    assert kaixin["parser_id"] == f"regex.{COMMON_PATTERN_ID}"
+    # 327 期起页面出现「年度双循环」（当期区块 327→001 紧接旧年 365→327），
+    # 通用正则会把旧年 327 期也当候选（虎/鼠冲突），故改用专属年度循环解析。
+    assert kaixin["parser_id"] == "family.strict_article"
     assert kaixin["source_policy"] == "browser"
 
     daming = entries["打鸣小鸡"]

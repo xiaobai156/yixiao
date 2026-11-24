@@ -124,7 +124,7 @@ def test_placeholder_titles_still_use_the_configured_direction() -> None:
 
 
 def test_kaijiang_facai_accepts_live_bare_zodiac_cell() -> None:
-    url = "https://84477.kjfc88b.app:2443/welcome.html#234432"
+    url = "https://84477.kjfc88b.app:2443/new/app/am.html#234432"
     site = SiteConfig(
         "开奖发财",
         url,

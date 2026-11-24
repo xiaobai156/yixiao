@@ -8,7 +8,8 @@ from zodiac_v2.parsers.dedicated import KaijiangFacaiTableParser
 from zodiac_v2.validation.conflicts import validate_candidates
 
 ROOT = Path(__file__).parents[1]
-URL = "https://84477.kjfc88b.app:2443/welcome.html#234432"
+# welcome.html 会被站内跳转到 /new/app/am.html 并丢掉 fragment，故直接指向真实落地页。
+URL = "https://84477.kjfc88b.app:2443/new/app/am.html#234432"
 
 
 def _bundle(url: str = URL) -> SourceBundle:
@@ -58,7 +59,7 @@ def test_browser_table_rejects_wrong_endpoint() -> None:
 
     assert not KaijiangFacaiTableParser().parse(
         site,
-        _bundle("https://wrong.example/welcome.html#234432"),
+        _bundle("https://wrong.example/new/app/am.html#234432"),
     )
 
 

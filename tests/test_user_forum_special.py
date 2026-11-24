@@ -610,6 +610,30 @@ def test_241_bottom_user_sites_expose_only_valid_inline_history(
     assert [(item.period, item.zodiac) for item in parser.parse(history_site, bundle)] == expected
 
 
+def test_qingyunzi_326_topic_with_trailing_period_is_parsed() -> None:
+    """326 期青云子把栏目写成「稳杀一肖。」（带中文句号），必须仍能命中。"""
+
+    host = "https://zcphjs.ce83x-ms2rz-orwude.work:12277"
+    user_id = 200290
+    site = _site("青云子", user_id, host=host, section=SiteSection.EXISTING)
+    row = _row(
+        record_id=16453502,
+        user_id=user_id,
+        name="青云子",
+        draw=326,
+        topic="稳杀一肖。",
+        content="资料杀一肖《今年错13》<div>325期杀《鸡》开龙03✔</div>"
+        "<div>326期杀《兔》</div>",
+    )
+    bundle = _bundle(user_id, row, host=host)
+
+    candidates = UserForumPostParser().parse(site, bundle)
+    decision = validate_candidates(site, bundle, candidates, 326)
+
+    assert decision.ok and decision.candidate is not None
+    assert (decision.candidate.period, decision.candidate.zodiac) == (326, "兔")
+
+
 def test_zhonggea_top_selects_first_same_period_post_when_values_differ() -> None:
     first = _row(
         record_id=15975717,

@@ -167,3 +167,49 @@ def test_315_open_placeholder_topic_and_compact_record_are_supported() -> None:
     assert [(candidate.period, candidate.zodiac) for candidate in candidates] == [(315, "鼠")]
     assert decision.ok and decision.candidate is not None
     assert (decision.candidate.period, decision.candidate.zodiac) == (315, "鼠")
+
+
+def test_327_new_topic_and_period_suffixed_kill_record_are_supported() -> None:
+    """327 期帖栏目改成「327   回归一下，点赞起来」，正文写成「327期杀猴」。"""
+    row = {
+        "id": 16459424,
+        "status": "published",
+        "user_id": 166365,
+        "draw": 327,
+        "topic": "327   回归一下，点赞起来",
+        "content": "327期杀猴<br>开贴用的",
+        "user": {"id": 166365, "nickname": "杨家男孩"},
+    }
+    bundle = _bundle(row)
+
+    selected = bind_user_forum_target(_site().url, bundle, 327)
+    candidates = UserForumPostParser().parse(_site(), selected)
+    decision = validate_candidates(_site(), selected, candidates, 327)
+
+    assert selected.documents[0].record_id == "16459424"
+    assert [(candidate.period, candidate.zodiac) for candidate in candidates] == [(327, "猴")]
+    assert decision.ok and decision.candidate is not None
+    assert (decision.candidate.period, decision.candidate.zodiac) == (327, "猴")
+
+
+def test_328_topic_and_body_with_previous_period_line_are_supported() -> None:
+    """328 期帖栏目是「328   一切以评论区为主」，正文同时含 327 与 328 两行，只取 328。"""
+    row = {
+        "id": 16459848,
+        "status": "published",
+        "user_id": 166365,
+        "draw": 328,
+        "topic": "328   一切以评论区为主",
+        "content": "327期杀猴✔️&nbsp; &nbsp; &nbsp;一肖特狗✔️<div>328期杀狗<br><div>开贴用的</div></div>",
+        "user": {"id": 166365, "nickname": "杨家男孩"},
+    }
+    bundle = _bundle(row)
+
+    selected = bind_user_forum_target(_site().url, bundle, 328)
+    candidates = UserForumPostParser().parse(_site(), selected)
+    decision = validate_candidates(_site(), selected, candidates, 328)
+
+    assert selected.documents[0].record_id == "16459848"
+    assert [(candidate.period, candidate.zodiac) for candidate in candidates] == [(328, "狗")]
+    assert decision.ok and decision.candidate is not None
+    assert (decision.candidate.period, decision.candidate.zodiac) == (328, "狗")
