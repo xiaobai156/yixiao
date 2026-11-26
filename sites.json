@@ -4122,14 +4122,6 @@
     "source_policy": "http_documents"
   },
   {
-    "name": "精品福星",
-    "pick": "bottom",
-    "url": "https://88888020827.885536.xyz/bbs/topic.php?id=19452",
-    "section": "已有站点",
-    "parser_id": "regex.86a7042b2c5a",
-    "source_policy": "http_documents"
-  },
-  {
     "name": "深藏若虚",
     "pick": "bottom",
     "url": "https://6609960827.115646.xyz/bbs/topic.php?id=20718",
